@@ -1,89 +1,46 @@
-# Backend (Python/FastAPI) - Virtual environments and dependencies
+# Backend (Python/FastAPI)
 backend/env/
 backend/venv/
 backend/.venv/
 backend/__pycache__/
 backend/*.py[cod]
-backend/*$py.class
-backend/*.so
-backend/.Python
-backend/pip-log.txt
-backend/pip-delete-this-directory.txt
-backend/.tox/
+backend/*.pyo
+backend/*.pyd
+backend/*.egg
+backend/*.egg-info/
 backend/.pytest_cache/
 backend/.coverage
 backend/coverage.xml
 backend/*.cover
-backend/*.pyo
-backend/*.pyd
-backend/*.pyc
-backend/*.egg-info/
-backend/*.egg
+backend/htmlcov/
+backend/dist/
+backend/build/
 
-# Backend - Generated static files (images, videos, voiceovers)
+# Backend - Generated static files
 backend/static/images/*
 backend/static/videos/*
 backend/static/voiceovers/*
 
-# Backend - Database files (e.g., SQLite for local dev)
-backend/*.sqlite3
-
 # Backend - Environment variables
-.env
-.env.local
-.env.*.local
 backend/.env
 backend/.env.local
 backend/.env.*.local
 
-# Frontend (Node.js/React/Vue/etc.)
+# Backend - Database files (e.g., SQLite)
+backend/*.sqlite3
+
+# Frontend (Vue/JavaScript)
 frontend/node_modules/
-frontend/.next/
-frontend/out/
-frontend/dist/
-frontend/.nuxt/
+frontend/dist/            # Build output for Vue
+frontend/.vite/           # Vite cache (used by Vue 3)
 frontend/.cache/
 frontend/.pnp
 frontend/.pnp.js
 
-# Frontend - Dependency lockfiles (if you don't want to commit them; otherwise, keep them)
-# frontend/yarn.lock
-# frontend/package-lock.json
-
-# Frontend - Log files
-frontend/npm-debug.log*
-frontend/yarn-debug.log*
-frontend/yarn-error.log*
-frontend/pnpm-debug.log*
-
-# Python-specific (general, for any root-level Python files if needed)
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-pip-log.txt
-pip-delete-this-directory.txt
-.tox/
-.pytest_cache/
-.coverage
-coverage.xml
-*.cover
-*.pyo
-*.pyd
-*.pyc
-*.egg-info/
-*.egg
-
-# Environment variables (general)
+# Environment variables (root-level)
 .env
 .env.local
 .env.*.local
-
-# Static files (if you have any at root; adjust paths as needed)
-static/images/*
-static/videos/*
-static/voiceovers/*
 
 # Editor and IDE files
 .DS_Store
@@ -95,14 +52,8 @@ static/voiceovers/*
 *.sln
 *.sw?
 
-# Log files (general)
+# Log files
 *.log
-
-# Build and distribution artifacts (general)
-dist/
-build/
-htmlcov/
-.coverage.*
 
 # Miscellaneous
 *.bak
