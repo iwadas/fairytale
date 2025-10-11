@@ -85,8 +85,8 @@ async def seed_database():
                     image_prompt="A menacing dark cliff where Ojciec Mateusz appears, casting a shadow across the land.",
                     video_prompt="The camera zooms in on Ojciec Mateusz, with storm clouds gathering in the background, intensifying the atmosphere.",
                     project=project,
-                    image_src="static/images/scenes/scene_a7c88a8c-42d2-4012-8b39-6fca019dd7f0.png",
-                    video_src="static/videos/scenes/scene_a7c88a8c-42d2-4012-8b39-6fca019dd7f0.mp4"
+                    image_src="static/images/scenes/scene_d79a2d02-f185-4848-a312-5c30db385b81.png",
+                    video_src="static/videos/scenes/scene_d79a2d02-f185-4848-a312-5c30db385b81.mp4"
                 ),
                 Scene(
                     id="b1234567-89ab-cdef-0123-456789abcdef",
@@ -95,8 +95,8 @@ async def seed_database():
                     image_prompt="Ojciec Mateusz summons the Dragon, which bursts forth in flames, creating a terrifying scene of destruction.",
                     video_prompt="Dragon roars with fire engulfing the sky, Ojciec Mateusz stands with arms raised triumphantly.",
                     project=project,
-                    image_src="static/images/scenes/scene_b1234567-89ab-cdef-0123-456789abcdef.png",
-                    video_src="static/videos/scenes/scene_b1234567-89ab-cdef-0123-456789abcdef.mp4"
+                    image_src="static/images/scenes/scene_5dd4f6f6-0c24-4bda-acb2-e6181a2b1483.png",
+                    video_src="static/videos/scenes/scene_5dd4f6f6-0c24-4bda-acb2-e6181a2b1483.mp4"
                 ),
                 Scene(
                     id="c2345678-90ab-cdef-1234-567890abcdef",
@@ -105,8 +105,8 @@ async def seed_database():
                     image_prompt="The Dragon attacks the peaceful village, breathing fire on houses as villagers run in panic.",
                     video_prompt="The camera shows the Dragon swooping over the village, fire engulfing rooftops, and chaos spreading everywhere.",
                     project=project,
-                    image_src="static/images/scenes/scene_c2345678-90ab-cdef-1234-567890abcdef.png",
-                    video_src="static/videos/scenes/scene_c2345678-90ab-cdef-1234-567890abcdef.mp4"
+                    image_src="static/images/scenes/scene_1494d543-5e7c-4135-99b6-b39b736b7a4c.png",
+                    video_src="static/videos/scenes/scene_1494d543-5e7c-4135-99b6-b39b736b7a4c.mp4"
                 ),
                 Scene(
                     id="d3456789-01ab-cdef-2345-678901abcdef",
@@ -115,8 +115,8 @@ async def seed_database():
                     image_prompt="Mega Knight stands tall, his sword glowing, rallying the villagers to stand against the Dragon.",
                     video_prompt="Close-up of Mega Knight lifting his sword, determination in his eyes as the camera zooms dramatically.",
                     project=project,
-                    image_src="static/images/scenes/scene_d3456789-01ab-cdef-2345-678901abcdef.png",
-                    video_src="static/videos/scenes/scene_d3456789-01ab-cdef-2345-678901abcdef.mp4"
+                    image_src="static/images/scenes/scene_f12e0e98-5982-4a87-b38d-4d35aba6354b.png",
+                    video_src="static/videos/scenes/scene_f12e0e98-5982-4a87-b38d-4d35aba6354b.mp4"
                 ),
                 Scene(
                     id="e4567890-12ab-cdef-3456-789012abcdef",
@@ -125,8 +125,8 @@ async def seed_database():
                     image_prompt="Nature Wizard summons vines and flowers that rise to defend the villagers, forming a magical shield.",
                     video_prompt="Magical vines grow rapidly around the village, creating barriers of glowing nature energy.",
                     project=project,
-                    image_src="static/images/scenes/scene_e4567890-12ab-cdef-3456-789012abcdef.png",
-                    video_src="static/videos/scenes/scene_e4567890-12ab-cdef-3456-789012abcdef.mp4"
+                    image_src="static/images/scenes/scene_3ebaaf52-78af-4809-b06d-829c87e1b655.png",
+                    video_src=None
                 ),
                 Scene(
                     id="f5678901-23ab-cdef-4567-890123abcdef",
@@ -135,8 +135,8 @@ async def seed_database():
                     image_prompt="Stone Golem rises from the earth, his rocky fists ready to strike against the Dragon.",
                     video_prompt="The ground shakes as Stone Golem emerges, raising his fists with dust and debris falling around.",
                     project=project,
-                    image_src="static/images/scenes/scene_f5678901-23ab-cdef-4567-890123abcdef.png",
-                    video_src="static/videos/scenes/scene_f5678901-23ab-cdef-4567-890123abcdef.mp4"
+                    image_src=None,
+                    video_src=None
                 ),
                 Scene(
                     id="g6789012-34ab-cdef-5678-901234abcdef",
@@ -145,8 +145,8 @@ async def seed_database():
                     image_prompt="All heroes unite, standing together in front of the Dragon with determination and courage.",
                     video_prompt="Camera circles around the heroes as they stand in unity, their powers glowing against the looming Dragon.",
                     project=project,
-                    image_src="static/images/scenes/scene_g6789012-34ab-cdef-5678-901234abcdef.png",
-                    video_src="static/videos/scenes/scene_g6789012-34ab-cdef-5678-901234abcdef.mp4"
+                    image_src=None,
+                    video_src=None
                 ),
                 Scene(
                     id="h7890123-45ab-cdef-6789-012345abcdef",
@@ -155,8 +155,8 @@ async def seed_database():
                     image_prompt="An epic battle ensues, with the heroes clashing against the Dragon, fire and magic filling the battlefield.",
                     video_prompt="Dynamic shots of the battle: Mega Knight swings his sword, Nature Wizard casts spells, Stone Golem punches the Dragon, Dragon breathes fire.",
                     project=project,
-                    image_src="static/images/scenes/scene_h7890123-45ab-cdef-6789-012345abcdef.png",
-                    video_src="static/videos/scenes/scene_h7890123-45ab-cdef-6789-012345abcdef.mp4"
+                    image_src=None,
+                    video_src=None
                 ),
                 Scene(
                     id="i8901234-56ab-cdef-7890-123456abcdef",
@@ -165,8 +165,8 @@ async def seed_database():
                     image_prompt="The Dragon is defeated, Ojciec Mateusz is banished, and peace returns to the village with the heroes celebrated.",
                     video_prompt="The Dragon falls, Ojciec Mateusz disappears in shadows, villagers cheer and lift the heroes in joy.",
                     project=project,
-                    image_src="static/images/scenes/scene_i8901234-56ab-cdef-7890-123456abcdef.png",
-                    video_src="static/videos/scenes/scene_i8901234-56ab-cdef-7890-123456abcdef.mp4"
+                    image_src=None,
+                    video_src=None
                 ),
             ]
 
@@ -186,7 +186,7 @@ async def seed_database():
                     text="But darkness loomed on the horizon, as Ojciec Mateusz revealed his sinister plan.",
                     start_time=6,
                     duration=4,
-                    src="static/voiceovers/voiceover_bcde2345-fghi-6789-jklm-101112nopq.mp3"
+                    src="static/voiceovers/voiceover_qrst1234-uvwx-5678-yzcd-91011mnop.mp3"
                 ),
                 Voiceover(
                     id="cdef3456-ghij-7890-klmn-111213opqr",
@@ -194,7 +194,7 @@ async def seed_database():
                     text="With a mighty roar, the Dragon emerged, striking fear into the hearts of the villagers.",
                     start_time=10,
                     duration=5,
-                    src="static/voiceovers/voiceover_cdef3456-ghij-7890-klmn-111213opqr.mp3"
+                    src="static/voiceovers/voiceover_ghij1234-klmn-5678-opqr-91011stuv.mp3"
                 ),
                 Voiceover(
                     id="defg4567-hijk-8901-lmno-121314pqrs",
@@ -202,7 +202,7 @@ async def seed_database():
                     text="Yet, courage sparked in the hearts of our heroes, who rose to defend their home.",
                     start_time=15,
                     duration=5,
-                    src="static/voiceovers/voiceover_defg4567-hijk-8901-lmno-121314pqrs.mp3"
+                    src=None
                 ),
                 Voiceover(
                     id="efgh5678-ijkl-9012-mnop-131415qrst",
@@ -210,7 +210,7 @@ async def seed_database():
                     text="The battle shook the land, but unity and bravery lit their path forward.",
                     start_time=20,
                     duration=6,
-                    src="static/voiceovers/voiceover_efgh5678-ijkl-9012-mnop-131415qrst.mp3"
+                    src=None
                 ),
                 Voiceover(
                     id="fghi6789-jklm-0123-nopq-141516rstu",
@@ -218,7 +218,7 @@ async def seed_database():
                     text="At last, victory was theirs, and peace returned, stronger than ever before.",
                     start_time=26,
                     duration=5,
-                    src="static/voiceovers/voiceover_fghi6789-jklm-0123-nopq-141516rstu.mp3"
+                    src=None
                 ),
             ]
 

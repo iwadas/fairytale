@@ -45,6 +45,9 @@ place_scene_association = Table(
     Column("place_id", String(36), ForeignKey("places.id"), primary_key=True),
 )
 
+async def get_session() -> AsyncSession:
+    async with async_session_maker() as session:
+        yield session
 
 # ORM models
 class Project(Base):
@@ -96,8 +99,9 @@ class Place(Base):
     __tablename__ = "places"
 
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    name = Column(String, nullable=False)
     prompt = Column(String, nullable=False)
-    src = Column(String, nullable=False)
+    src = Column(String, nullable=True)
 
     projects = relationship("Project", secondary=place_project_association, back_populates="places")
     scenes = relationship("Scene", secondary=place_scene_association, back_populates="places")
