@@ -9,10 +9,19 @@ from PIL import Image
 import base64
 from io import BytesIO
 
+import matplotlib.pyplot as plt
+from matplotlib.animation import FuncAnimation
+from mutagen.mp3 import MP3
+from moviepy import VideoFileClip, CompositeAudioClip, AudioFileClip, AudioClip
+
+
+from fastapi import HTTPException
+
 from google import genai  
 from google.genai import types
 from elevenlabs import ElevenLabs, save
 from dotenv import load_dotenv
+from pydub import AudioSegment
 
 load_dotenv()
 GENAI_API_KEY = os.getenv("GENAI_API_KEY")
@@ -21,6 +30,121 @@ ELEVEN_LABS_API_KEY = os.getenv("ELEVEN_LABS_API_KEY")
 
 google_client = genai.Client(api_key=GENAI_API_KEY)
 eleven_labs_client = ElevenLabs(api_key=ELEVEN_LABS_API_KEY)
+
+
+fps = 24
+width_image = 1024
+height_image = 1024
+width = 960
+height = 960
+
+def create_typing_video(text, duration=10, output_filename='static/videos/scenes/typing_effect.mp4'):
+    """
+    Generate a typing effect video on a black screen with specified dimensions, with a single typing sound subclipped to match the typing duration, starting after initial_delay.
+
+    Args:
+    - text (str): The text to type.
+    - duration (int/float): Total video duration in seconds.
+    - output_filename (str): Output file name (MP4 or GIF).
+    """
+    # Setup
+    chars_per_second = 10
+    total_frames = int(duration * fps)
+    initial_delay = 1.5
+    typing_sound_path = 'static/default/sounds/typing_sound.mp3'
+
+    lines = text.split('\n')
+    num_lines = len(lines)
+    chars = list(text.replace('\n', ''))  # Flatten text for typing, ignoring newlines
+    num_chars = len(chars)
+    if num_chars == 0:
+        print("Text is empty. No video generated.")
+        return
+    
+    # Calculate frames and typing duration
+    frames_per_char = fps / chars_per_second  # Frames per character
+    char_duration = 1 / chars_per_second  # Duration per character in seconds
+    typing_duration = num_chars * char_duration  # Total duration of actual typing
+    total_frames = int(duration * fps)
+    
+    # Figure setup: black background, convert pixel dimensions to inches
+    dpi = 100
+    fig_width = width / dpi
+    fig_height = height / dpi
+    fig, ax = plt.subplots(figsize=(fig_width, fig_height), facecolor='black', dpi=dpi)
+    ax.set_xlim(0, 1)
+    ax.set_ylim(0, 1)
+    ax.set_facecolor('black')
+    ax.axis('off')
+    
+    # Text setup: create text objects for each line
+    font_size = height / (30 * max(1, num_lines * 0.5))  # Scale font with number of lines
+    line_spacing = 0.1  # Small gap between lines (in axes coordinates)
+    base_y = 0.1  # Bottom anchor (10% from bottom of screen)
+    text_objects = []
+    for i, line in enumerate(lines):
+        y_pos = base_y + (num_lines - 1 - i) * line_spacing  # Stack lines upward
+        text_obj = ax.text(0.5, y_pos, '', ha='center', va='center', 
+                          fontsize=font_size, color='white', transform=ax.transAxes)
+        text_objects.append((text_obj, line))
+    
+    def update(frame):
+        # Determine how many characters to show
+        char_index = -1 if frame < initial_delay * fps else min(int((frame - initial_delay * fps) / frames_per_char), num_chars - 1)
+        
+        # Rebuild lines with typed characters
+        char_pos = 0
+        for text_obj, line in text_objects:
+            line_len = len(line)
+            if char_pos <= char_index < char_pos + line_len:
+                text_obj.set_text(line[:char_index - char_pos + 1])
+            elif char_index >= char_pos + line_len:
+                text_obj.set_text(line)
+            else:
+                text_obj.set_text('')
+            char_pos += line_len
+        
+        return [obj for obj, _ in text_objects]
+    
+    # Create animation
+    ani = FuncAnimation(fig, update, frames=total_frames, interval=1000 / fps, 
+                        blit=True, repeat=False)
+    
+    temp_video_file = 'temp_typing_video.mp4'
+    writer = 'ffmpeg'
+    print("Generating temporary video with FFmpeg writer.")
+    ani.save(temp_video_file, writer=writer, fps=fps)
+    plt.close(fig)
+    
+    # Load the temporary video using MoviePy
+    video = VideoFileClip(temp_video_file)
+    
+    # Load typing sound and subclip to match total typing duration
+    try:
+        typing_sound = AudioFileClip(typing_sound_path)
+        # Subclip the typing sound to match the total typing duration
+        typing_sound = typing_sound.with_duration(min(typing_sound.duration, typing_duration))
+        # Create a silent audio clip for the initial delay
+        silence = AudioClip(lambda t: 0, duration=initial_delay)
+        # Combine silence and typing sound, with typing sound starting after initial_delay
+        final_audio = CompositeAudioClip([silence, typing_sound.with_start(initial_delay - 0.2)])
+    except Exception as e:
+        print(f"Error loading typing sound: {e}")
+        video.write_videofile(output_filename)
+        video.close()
+        return
+    
+    # Add the single typing sound to the video
+    video = video.with_audio(final_audio)
+    
+    # Save final video
+    video.write_videofile(output_filename)
+    video.close()
+    typing_sound.close()
+    silence.close()  # Close the silent audio clip
+    final_audio.close()  # Close the composite audio clip
+    print(f"Video with typing sound saved as {output_filename}")
+    return output_filename
 
 def pil_to_part(path: str, mime="image/png") -> types.Part:
     with open(path, "rb") as f:
@@ -76,14 +200,16 @@ def parse_skrypt(skrypt):
     return scenes
 
 def generate_speech(text: str, filename="voiceover", directory="static/voiceovers/"):
-    audio = eleven_labs_client.text_to_speech.convert(
+    response = eleven_labs_client.text_to_speech.convert_with_timestamps(
         text=text,
-        voice_id="21m00Tcm4TlvDq8ikWAM",  # example voice (Rachel)
-        model_id="eleven_multilingual_v2"
+        voice_id="nPczCjzI2devNBz1zQrb",  # example voice (Brian)
+        model_id="eleven_multilingual_v3"
     )
 
     # Make sure the directory exists
     os.makedirs(directory, exist_ok=True)
+
+    return save(response, directory=directory, filename=filename)
 
     # Build full file path
     output_path = os.path.join(directory, f"{filename}.mp3")
@@ -92,10 +218,160 @@ def generate_speech(text: str, filename="voiceover", directory="static/voiceover
     with open(output_path, "wb") as f:
         for chunk in audio:
             f.write(chunk)
+    
+    
+
+    # get duration of the generated audio
+    try:
+        audio_file = MP3(output_path)
+        duration = audio_file.info.length  # Duration in seconds
+    except Exception as e:
+        raise Exception(f"Failed to read MP3 duration: {str(e)}")
+
+    return output_path, duration
+
+async def generate_image(directory="static/images/default/", filename="image", prompt="Generate", content_images: dict = {}):
+    os.makedirs(directory, exist_ok=True)
+    output_path = os.path.join(directory, f"{filename}.png")
+
+    url = "https://api.runware.ai/v1/image/generate"
+    headers = {
+        "Authorization": f"Bearer {RUNWARE_API_KEY}",
+        "Content-Type": "application/json",
+    }
+
+    payload = {
+        "taskType": "imageInference",
+        "taskUUID": str(uuid.uuid4()),
+        "model": "runware:106@1",  # Adjust model as needed for Runware image generation
+        "positivePrompt": prompt,
+        "outputType": "URL",
+        "outputFormat": "png",
+        "height": height_image,  # Default height, adjust as needed
+        "width": width_image,   # Default width, adjust as needed
+        "deliveryMethod": "async",
+        "strenth": 0.5,
+        "steps": 50,
+    }
+
+    # Handle content images if provided
+    if content_images:
+        for name, upload_file in content_images.items():
+            img_bytes = await upload_file.read()
+            mime_type, _ = mimetypes.guess_type(upload_file.filename)
+
+            if mime_type is None:
+                ext = os.path.splitext(upload_file.filename)[1].lower()
+                if ext == '.png':
+                    mime_type = 'image/png'
+                elif ext in ('.jpg', '.jpeg'):
+                    mime_type = 'image/jpeg'
+                elif ext == '.webp':
+                    mime_type = 'image/webp'
+                else:
+                    raise ValueError(f"Unsupported image extension: {ext}")
+
+            if not mime_type.startswith('image/') or mime_type.split('/')[-1] not in ['png', 'jpeg', 'webp']:
+                raise ValueError(f"Unsupported image MIME type: {mime_type}")
+
+            # Encode the image in Base64 data URI format
+            image_data_uri = f"data:{mime_type};base64,{base64.b64encode(img_bytes).decode('utf-8')}"
+            payload["seedImage"] = image_data_uri
+            print(f"Including image {name} as seedImage in payload")
+        # Wrap in array as required by Runware
+
+    request_body = [payload]
+
+    print("Request payload:", json.dumps(request_body, indent=2))
+
+    # Send request to Runware API
+    response = requests.post(url, headers=headers, json=request_body, timeout=120)
+    if response.status_code != 200:
+        raise HTTPException(status_code=500, detail=f"Runware API error: {response.text}")
+
+    result = response.json()
+    print("Runware API response:", json.dumps(result, indent=2))
+    if "errors" in result and result["errors"]:
+        raise HTTPException(status_code=500, detail=f"Runware API errors: {result['errors']}")
+    if "data" not in result or not result["data"]:
+        raise HTTPException(status_code=500, detail=f"Unexpected Runware response: {result}")
+
+    # Check if image URL is immediately available or requires polling
+    if "url" not in result["data"][0]:
+        print("Task is pending, polling for result...")
+        task_uuid = result["data"][0]["taskUUID"]
+        print(f"Extracted task UUID: {task_uuid}")
+        poll_url = "https://api.runware.ai/v1/task"
+        max_attempts = 15
+        poll_interval = 5
+
+        poll_headers = {
+            "Authorization": f"Bearer {RUNWARE_API_KEY}",
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+        }
+
+        poll_payload = [{
+            "taskUUID": task_uuid,
+            "taskType": "getResponse",
+        }]
+
+        for attempt in range(max_attempts):
+            time.sleep(poll_interval)
+            try:
+                print(f"Polling attempt {attempt + 1}/{max_attempts} for task UUID: {task_uuid}")
+                poll_response = requests.post(poll_url, headers=poll_headers, json=poll_payload, timeout=30)
+                poll_response.raise_for_status()
+                poll_result = poll_response.json()
+                print(f"Polling response: {json.dumps(poll_result, indent=2)}")
+
+                if "data" in poll_result and poll_result["data"]:
+                    if poll_result["data"][0].get("status") == "success":
+                        image_url = poll_result["data"][0].get("imageURL")
+                        if not image_url:
+                            raise ValueError("Task completed but no image URL found")
+                        print(f"Image URL retrieved: {image_url}")
+                        break
+                    elif poll_result["data"][0].get("taskStatus") == "FAILED":
+                        raise HTTPException(status_code=500, detail=f"Image generation failed: {poll_result['data'][0].get('error', 'Unknown error')}")
+            except requests.exceptions.HTTPError as e:
+                print(f"Polling attempt {attempt + 1} failed with HTTP error: {e}")
+                print(f"Response body: {poll_response.text}")
+                if attempt == max_attempts - 1:
+                    raise HTTPException(status_code=500, detail=f"Polling failed after {max_attempts} attempts: {e}")
+            except requests.exceptions.RequestException as e:
+                print(f"Polling attempt {attempt + 1} failed: {e}")
+                if attempt == max_attempts - 1:
+                    raise HTTPException(status_code=500, detail=f"Polling failed after {max_attempts} attempts: {e}")
+        else:
+            raise HTTPException(status_code=500, detail=f"Image generation timed out after {max_attempts * poll_interval} seconds")
+    else:
+        image_url = result["data"][0]["url"]
+
+    # Download image from URL to local storage
+    r = requests.get(image_url, stream=True, timeout=300)
+    r.raise_for_status()
+    image = Image.open(BytesIO(r.content))
+    
+    # Save the image
+    if os.path.exists(output_path):
+        try:
+            os.remove(output_path)
+            print(f"Removed existing file: {output_path}")
+        except OSError as e:
+            print(f"Error removing existing file {output_path}: {e}")
+            raise HTTPException(status_code=500, detail=f"Error removing existing file: {e}")
+
+    try:
+        image.save(output_path, format="PNG")
+        print(f"Saved image to: {output_path}")
+    except Exception as e:
+        print(f"Error saving image to {output_path}: {e}")
+        raise HTTPException(status_code=500, detail=f"Error saving image: {e}")
 
     return output_path
 
-def generate_image(directory="static/images/default/", filename="image", prompt="Generate", content_images: dict = {}):
+def generate_image_banana(directory="static/images/default/", filename="image", prompt="Generate", content_images: dict = {}):
     contents = []
     for name, upload_file  in content_images.items():
         contents.append(f"This is {name}:")
@@ -117,7 +393,19 @@ def generate_image(directory="static/images/default/", filename="image", prompt=
     response = google_client.models.generate_content(
         model="gemini-2.5-flash-image-preview",
         contents=contents,
+        config=types.GenerateContentConfig(
+            image_config=types.ImageConfig(
+                aspect_ratio="9:16",
+            )
+        )
     )
+
+    print("Full response:", response)
+    print("Candidates:", response.candidates)
+    if response.candidates:
+        print("First candidate content:", response.candidates[0].content)
+        print("Parts:", response.candidates[0].content.parts)
+
 
     for part in response.candidates[0].content.parts:
         if part.text is not None:
@@ -158,8 +446,8 @@ def generate_video(directory="static/videos/", filename="video", prompt="Generat
         "duration": duration,
         "outputType": "URL",       # ✅ only URL allowed
         "outputFormat": "mp4",
-        "height": 480,
-        "width": 864,
+        "height": height,
+        "width": width,
         "deliveryMethod": "async",
     }
 

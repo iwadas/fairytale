@@ -31,8 +31,8 @@ class VoiceoverOutput(BaseModel):
     src: Optional[str]
     text: Optional[str]
     project_id: str
-    start_time: int
-    duration: Optional[int]
+    start_time: float
+    duration: Optional[float]
 
     class Config:
         from_attributes = True

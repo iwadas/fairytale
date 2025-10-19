@@ -1,5 +1,6 @@
 import uuid
-from sqlalchemy import Column, Integer, String, Text, ForeignKey, DateTime, Table
+
+from sqlalchemy import Column, Integer, String, Text, ForeignKey, DateTime, Table, Float
 from sqlalchemy.sql import func
 from sqlalchemy.orm import declarative_base, relationship, sessionmaker
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
@@ -73,18 +74,19 @@ class Voiceover(Base):
     project = relationship("Project", back_populates="voiceovers")
     text = Column(Text, nullable=True)
     src = Column(String, nullable=True)
-    start_time = Column(Integer, nullable=False)
-    duration = Column(Integer, nullable=True)
+    start_time = Column(Float, nullable=False)
+    duration = Column(Float, nullable=True)
 
 class Scene(Base):
     __tablename__ = "scenes"
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
     scene_number = Column(Integer, nullable=False)
     duration = Column(Integer, nullable=True)
-    video_prompt = Column(Text, nullable=True)
-    video_src = Column(String, nullable=True)
-    image_src = Column(String, nullable=True)
     image_prompt = Column(Text, nullable=True)
+    video_prompt = Column(Text, nullable=True)
+    image_src = Column(String, nullable=True)
+    video_src = Column(String, nullable=True)
+    description = Column(Text, nullable=True)
     project_id = Column(String(36), ForeignKey("projects.id"))
     project = relationship("Project", back_populates="scenes")
     characters = relationship(

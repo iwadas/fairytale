@@ -11,10 +11,51 @@ import os
 from moviepy import ImageClip, VideoClip, vfx, ColorClip, CompositeVideoClip
 import numpy as np
 
+from pydantic import BaseModel
+
 from db import get_session, Scene, Character
-from services import generate_image, generate_video, filename_from_name
+from services import generate_image, generate_image_banana, generate_video, filename_from_name, create_typing_video, height, width
 
 router = APIRouter(prefix="/scenes", tags=["scenes"])
+
+
+class TypingSceneRequest(BaseModel):
+    text: str
+
+@router.post("/generate-typing-scene/{scene_id}")
+async def generate_typing_scene(
+    scene_id: str,
+    payload: TypingSceneRequest,
+    session: AsyncSession = Depends(get_session),
+):
+
+    scene = await session.get(Scene, scene_id)
+    if not scene:
+        raise HTTPException(status_code=404, detail="Scene not found")
+    
+    my_text = payload.text if payload.text else "This is a typing effect demo."
+    output_filename = create_typing_video(my_text, duration=scene.duration, output_filename=f'static/videos/scenes/{scene_id}_typing.mp4')
+
+    scene.video_src = output_filename
+    scene.video_prompt = f"Typing effect: {my_text}"
+    scene.image_prompt = f"Typing effect: {my_text}"
+    session.add(scene)
+    await session.commit()
+    await session.refresh(scene)
+    return {"message": "Typing effect video generated successfully", "scene_id": scene_id, "video_url": output_filename}
+
+
+@router.delete("/{scene_id}")
+async def delete_scene(scene_id: str, session: AsyncSession = Depends(get_session)):
+    # 1. Get scene from DB using ORM
+    scene = await session.get(Scene, scene_id)
+    if not scene:
+        raise HTTPException(status_code=404, detail="Scene not found")
+
+    # 2. Delete scene from DB
+    await session.delete(scene)
+    await session.commit()
+    return {"message": "Scene deleted successfully"}
 
 @router.post("/generate-scene-image/{scene_id}")
 async def generate_scene_image(
@@ -51,12 +92,24 @@ async def generate_scene_image(
 
     # 3. Call your image generator
     print("Generating image with prompt:", prompt)
-    image_path = generate_image(
-        directory="static/images/scenes",
-        filename=filename,
-        prompt=prompt,
-        content_images=content_images
-    )
+
+    # if content_image are empty, we use generate_image, if not we use generate_image_banana
+    if content_images:
+        print("Using content images for generation:", list(content_images.keys()))
+        image_path = generate_image_banana(
+            directory="static/images/scenes",
+            filename=filename,
+            prompt=prompt,
+            content_images=content_images
+        )
+    else:
+        print("No content images provided, using standard image generation.")
+        image_path = await generate_image(
+            directory="static/images/scenes",
+            filename=filename,
+            prompt=prompt,
+            content_images=content_images
+        )
 
     # 4. Store or update scene image in DB (attach to scene)
     scene = await session.get(Scene, scene_id)
@@ -220,7 +273,7 @@ async def add_effect_to_image(
         image_clip: Optional[ImageClip] = None
         result_clip: Optional[VideoClip] = None
 
-        video_size = (640, 640)  
+        video_size = (width, height)
 
         try:
             # Create ImageClip with duration
@@ -231,7 +284,7 @@ async def add_effect_to_image(
                 print("Applying zoom_in effect")
 
                 def make_frame(t):
-                    scale = 1.0 + (t / duration_s)  # 1.0 -> 2.0
+                    scale = 1.0 + 0.2 * (t / duration_s)  # 1.0 -> 1.2
                     temp = image_clip.resized(scale)
                     temp_fixed = CompositeVideoClip([ColorClip(video_size, color=(0, 0, 0)), temp.with_position('center')])
                     return temp_fixed.get_frame(t)
@@ -244,8 +297,8 @@ async def add_effect_to_image(
                 img_w, img_h = image_clip.size
                 crop_w, crop_h = video_size
 
-                # Ensure image width is at least 1.5x output width for smooth panning
-                min_width = int(crop_w * 1.5)
+                # Ensure image width is at least 1.1x output width for smooth panning
+                min_width = int(crop_w * 1.1)
                 if img_w < min_width or img_h < crop_h:
                     # Calculate scale to ensure width is at least min_width and height is at least crop_h
                     scale_w = min_width / img_w

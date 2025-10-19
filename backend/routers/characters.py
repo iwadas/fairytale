@@ -34,7 +34,7 @@ async def create_character(
     if image2:
         content_images["image2"] = image2
 
-    image_path = generate_image(
+    image_path = await generate_image(
         directory=f"static/images/characters",
         filename=filename_from_name(name),
         prompt=prompt,
@@ -69,7 +69,7 @@ async def update_character(
         content_images = {"image1": image1}
         if image2:
             content_images["image2"] = image2
-        image_path = generate_image(
+        image_path = await generate_image(
             directory=f"static/images/characters",
             filename=filename_from_name(name or character.name),
             prompt=prompt or character.prompt or "update",
