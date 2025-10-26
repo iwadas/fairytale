@@ -86,7 +86,6 @@ class Scene(Base):
     video_prompt = Column(Text, nullable=True)
     image_src = Column(String, nullable=True)
     video_src = Column(String, nullable=True)
-    description = Column(Text, nullable=True)
     project_id = Column(String(36), ForeignKey("projects.id"))
     project = relationship("Project", back_populates="scenes")
     characters = relationship(

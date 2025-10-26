@@ -144,7 +144,7 @@ const fixCharacterDescription = async () => {
   try {
     console.log(characterPrompt.value);
     console.log('Sending request with body:', { prompt: characterPrompt.value });
-    const response = await axios.post('http://localhost:8000/fix-character-prompt', { 
+    const response = await axios.post('http://localhost:8000/generators/fix-character-prompt', { 
       prompt: characterPrompt.value,
     });
     characterPrompt.value = response.data.fixed_prompt;

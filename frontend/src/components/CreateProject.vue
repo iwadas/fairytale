@@ -4,31 +4,13 @@
     <div class="bg-white p-6 rounded-lg shadow-sm">
       <div class="space-y-4">
         <div>
-          <label class="block text-sm font-medium text-gray-600">Title</label>
+          <label class="block text-sm font-medium text-gray-600">Topic</label>
           <input
-            v-model="projectPrompt.title"
+            v-model="projectPrompt.topic"
             type="text"
             class="w-full mt-1 p-2 border rounded-md focus:ring-2 focus:ring-blue-500"
-            placeholder="Enter title..."
+            placeholder="Enter topic..."
           />
-        </div>
-        <div>
-          <label class="block text-sm font-medium text-gray-600">Style</label>
-          <input
-            v-model="projectPrompt.style"
-            type="text"
-            class="w-full mt-1 p-2 border rounded-md focus:ring-2 focus:ring-blue-500"
-            placeholder="Enter duration..."
-          />
-        </div>
-        <div>
-          <label class="block text-sm font-medium text-gray-600">Project Prompt</label>
-          <textarea
-            v-model="projectPrompt.prompt"
-            class="w-full mt-1 p-2 border rounded-md focus:ring-2 focus:ring-blue-500"
-            rows="4"
-            placeholder="Describe the project..."
-          ></textarea>
         </div>
         <div>
           <label class="block text-sm font-medium text-gray-600">Film Duration (seconds)</label>
@@ -38,17 +20,6 @@
             class="w-full mt-1 p-2 border rounded-md focus:ring-2 focus:ring-blue-500"
             placeholder="Enter duration..."
           />
-        </div>
-        <div>
-          <label class="block text-sm font-medium text-gray-600">Voiceover</label>
-          <select
-            v-model="projectPrompt.voiceover_style"
-            class="w-full mt-1 p-2 border rounded-md focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="voice1" default>Voice 1 - Narrator</option>
-            <option value="voice2">Voice 2 - Heroic</option>
-            <option value="voice3">Voice 3 - Mystic</option>
-          </select>
         </div>
         <button
           @click="createProject"
@@ -63,25 +34,22 @@
 
 <script setup>
 import { reactive } from 'vue';
-import { useRouter } from 'vue-router';
+// import { useRouter } from 'vue-router';
 import axios from 'axios';
 
-const router = useRouter();
+// const router = useRouter();
 const projectPrompt = reactive({
-  title: '',
-  style: '',
-  prompt: '',
-  duration: 40,
-  voiceover_style: 'calm',
+  topic: '',
+  duration: 120,
 });
 
 const createProject = async () => {
   console.log('Creating project with:', projectPrompt);
-  const response = await axios.post('http://localhost:8000/generate-script', projectPrompt);
+  await axios.post('http://localhost:8000/generators/generate-script', projectPrompt);
 
-  const newProjectId = response.data.project_id;
-  console.log('Project created with ID:', response.data);
-  router.push(`/projects/${newProjectId}`);
+  // const newProjectId = response.data.project_id;
+  // console.log('Project created with ID:', response.data);
+  // router.push(`/projects/${newProjectId}`);
 
 };
 </script>

@@ -1,104 +1,38 @@
+from math import floor
 import os  # Added missing import
 from openai import OpenAI
 import instructor
 from dotenv import load_dotenv
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 import json  # Added for debug logging
+import re
+
 
 load_dotenv()
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 open_ai_client = instructor.from_openai(OpenAI(api_key=OPENAI_API_KEY))
 
-class KeyEvent(BaseModel):
-    time: str
-    event: str
-    emotional_shift: Optional[str] = None
 
-class Character(BaseModel):
-    name: str
-    prompt: str
+class GatheredStoryData(BaseModel):
+    gathered_data: str
 
-class Location(BaseModel):
-    name: str
-    prompt: str
-
-class StoryData(BaseModel):
-    title: str
-    period: str
-    summary: str
-    central_conflict: str
-    themes: List[str]
-    psychological_core: str
-    key_events: List[KeyEvent]
-    main_characters: List[Character]
-    locations: List[Location]
-    tone: str
-
-def gather_story_data(prompt: str) -> StoryData: 
+def gather_story_data(topic: str) -> GatheredStoryData: 
     messages = [
         {
             "role": "system",
-            "content": """
-            You are an expert true-crime researcher and story analyst.
-            Your task is to collect and summarize *all relevant factual and emotional information*
-            about a historical or true-crime event, preparing it for cinematic scriptwriting later.
-
-            - Be objective and fact-based but emotionally aware.
-            - Your tone should feel like a detailed briefing for a documentary screenwriter.
-            - Do NOT write narration or script dialogue yet.
-            - Organize your findings clearly and logically.
-
-            The output MUST be valid JSON and follow the given schema strictly.
-            """
+            "content": (
+                "You are a factual researcher. Provide accurate, detailed, and structured information about the topic."
+            )
         },
         {
             "role": "user",
-            "content": (
-                "Research and summarize the crime or event described below.\n\n"
-                "--- INPUT ---\n"
-                f"{prompt}\n\n"
-                "--- OUTPUT REQUIREMENTS ---\n"
-                "Return your findings as a single JSON object with these keys:\n\n"
-                "{\n"
-                '    "title": "string - short title of the event",\n'
-                '    "period": "string - e.g., \\"1996, Lakewood, Oregon\\"",\n'
-                '    "summary": "string - concise overview of what happened and why it\'s significant",\n'
-                '    "central_conflict": "string - what drives the story (e.g., betrayal, revenge, corruption)",\n'
-                '    "themes": ["string", "string"],\n'
-                '    "psychological_core": "string - what emotional or moral question the story explores",\n'
-                '    "key_events": [\n'
-                "        {\n"
-                '            "time": "string - e.g., \\"March 12, 1996\\"",\n'
-                '            "event": "string - what happened",\n'
-                '            "emotional_shift": "string - how tension or emotion changes here"\n'
-                "        }\n"
-                "    ],\n"
-                '    "main_characters": [\n'
-                "        {\n"
-                '            "name": "string",\n'
-                '            "prompt": "string - short backstory and their motivation"\n'
-                "        }\n"
-                "    ],\n"
-                '    "locations": [\n'
-                "        {\n"
-                '            "name": "string",\n'
-                '            "prompt": "string - why this place matters emotionally or narratively"\n'
-                "        }\n"
-                "    ],\n"
-                '    "tone": "string - e.g., dark, investigative, suspenseful"\n'
-                "}\n\n"
-                "⚙️ Notes:\n"
-                "- Keep the output factual — avoid cinematic language or creative expansion.\n"
-                "- Include only relevant people and places (don't invent new ones unless absolutely necessary for context).\n"
-                "- Keep descriptions concise but vivid.\n"
-                "- If any information is unknown, state `\"unknown\"`."
-            )
+            "content": f"Provide a detailed factual summary about the topic: {topic}. Your response must be between 500 and 800 words, using bullet points where appropriate. Focus on key historical facts, timeline, main figures, context, and notable outcomes or legends. Do not include fictional elements, reasoning, or commentary about your process."
         }
     ]
     response = open_ai_client.chat.completions.create(
         model="gpt-4o-mini",
-        response_model=StoryData,  # Corrected response model
+        response_model=GatheredStoryData,
         messages=messages
     )
 
@@ -108,106 +42,44 @@ def gather_story_data(prompt: str) -> StoryData:
 
     return response
 
-class VoiceoverSegment(BaseModel):
-    start_time: float
-    duration: float
-    text: str
+class Story(BaseModel):
+    script: str
 
-class VoiceoverTimeline(BaseModel):
-    title: str
-    total_duration: float
-    segments: List[VoiceoverSegment]
-
-def generate_voiceovers(story_data: StoryData, film_duration: float) -> VoiceoverTimeline:
-    target_duration = film_duration * 0.9  # Target 80% of film_duration
+def generate_story(topic: str, word_limit: int, story_data: GatheredStoryData) -> Story:
     messages = [
         {
             "role": "system",
-            "content": f"""
-            You are a professional documentary voiceover scriptwriter.
-            Your task is to first craft a cinematic, emotionally resonant narration of the story — 
-            and then format it into a timed voiceover timeline that fits ~90% (other 10% are pauses) of the total film duration ({film_duration}s).
-
-            ⚡️ APPROACH OVERVIEW:
-            - **Step 1:** Tell the story naturally, like a documentary narrator. Make it emotionally rich and immersive.
-            - **Step 2:** Condense it to fit into {target_duration}s of actual speaking + short pauses.
-            - **Step 3:** Split it into a structured voiceover timeline (segments with start_time, duration, and text).
-
-            🎯 OBJECTIVE:
-            - Final voiceover duration (speaking + pauses) = ~90% of {film_duration}s.
-            - Use natural pacing: **word_count * 0.55s** per segment (≈ 2 words/sec).
-            - Include short 1–2s pauses between segments to allow emotional breathing and visual transitions.
-            - Focus only on the most compelling and story-defining parts if time is limited.
-
-            🎬 STYLE:
-            - The tone should feel cinematic, human, and emotionally grounded — not like a summary.
-            - Think of an experienced narrator guiding the viewer through emotion, revelation, and reflection.
-            - Avoid scene directions or camera cues — focus on spoken storytelling.
-
-            ⚙️ TECHNICAL CONSTRAINTS:
-            - Each segment’s duration = word_count * 0.55s (natural pacing).
-            - Aim in short segments - not more than 2 sentences.
-            - Round all times to 0.5s increments.
-            - No overlaps: seg[i].end_time < seg[i+1].start_time.
-            - Include 1–2s pauses between segments (reflected in start_time gaps).
-            - Verify total duration = 90% of film_duration. Adjust text if not.
-            - Output JSON only (no explanations).
-
-            🔍 EXAMPLE WORKFLOW (INTERNAL):
-            1. Write a short cinematic narration of the full story.
-            2. Edit it to fit into {target_duration}s using the pacing rule (≈ 2 words/sec).
-            4. Assign timings and pauses, verify total length and no overlaps.
-            5. Output in the final JSON structure below.
-
-            --- FINAL OUTPUT FORMAT ---
-            {{
-                "title": "string - same as story_data.title",
-                "total_duration": {film_duration},
-                "segments": [
-                    {{
-                        "start_time": float (e.g., 0.0, rounded to 0.5s),
-                        "duration": float (word_count * 0.55s),
-                        "text": "string - narration (cinematic and concise)"
-                    }}
-                ]
-            }}
-            """
+            "content": (
+                "You are an excellent storyteller who writes engaging, voice-ready narratives for video scripts. "
+                "Your main goal is to make the story sound like it's being told out loud by a passionate narrator. "
+                "You use emotional delivery and natural pacing to make the listener *feel* the story, not just hear it."
+            )
         },
         {
             "role": "user",
             "content": (
-                f"Tell a cinematic documentary story based on the following structured data, then format it "
-                f"into a verified, time-aligned voiceover timeline lasting approximately {target_duration} seconds "
-                f"(≈80% of total film duration {film_duration}s).\n\n"
-                "--- INPUT STORY DATA ---\n"
-                f"{story_data.model_dump_json(indent=2)}\n\n"
-                "--- OUTPUT REQUIREMENTS ---\n"
-                "- Use natural pacing: Duration = word_count * 0.55s.\n"
-                "- Total voiceover = 90% of film duration.\n"
-                "- Include 1–2s pauses between segments for emotional rhythm.\n"
-                "- Choose only the most important, captivating story parts if time is limited.\n"
-                "- Round all times to nearest 0.5s.\n"
-                "- Verify total duration and no overlaps before output.\n\n"
-                "--- OUTPUT JSON FORMAT ---\n"
-                "{\n"
-                '    "title": "string - same as story title",\n'
-                f'    "total_duration": {film_duration},\n'
-                '    "segments": [\n'
-                "        {\n"
-                '            "start_time": float (rounded to 0.5s),\n'
-                '            "duration": float (word_count * 0.55s),\n'
-                '            "text": "cinematic narration text"\n'
-                "        }\n"
-                "    ]\n"
-                "}\n\n"
-                "After generating the story, divide it naturally into segments and assign proper timings.\n"
-                "Ensure total speaking - 90%, pauses - 10% of film_duration and no overlaps."
+                f"Create a captivating story about '{topic}'.\n\n"
+                f"Base it entirely on the following data:\n{story_data.gathered_data}\n\n"
+                f"Guidelines:\n"
+                f"- Vocabulary: 7th-grade reading level.\n"
+                f"- Style: Conversational, suspenseful, and easy to follow.\n"
+                f"- Structure: Intro hook → Main events → Reflection.\n"
+                f"- Length: Around {word_limit} words (not counting tags).\n\n"
+                f"🎭 **Emotion and pacing:**\n"
+                f"Use the following tags to make the story sound like spoken performance — not too often, but enough to make it expressive.\n"
+                f"- **SSML breaks:** Use `<break time=\"1s\"/>` or `<break time=\"2s\"/>` where a narrator would naturally pause — for tension, reflection, or transition.\n"
+                f"- **Emotion and tone tags:** You can use tags like [happy], [sad], [excited], [fearful], [curious], [quietly], [whisper], [shout], etc.\n"
+                f"  Example: [whisper][curious]But what happened next?\n"
+                f"- **Use them meaningfully:** Include these tags only when they enhance the listener's emotional engagement.\n"
+                f"  Think about how a storyteller would speak — add tags for emotional or dramatic parts, "
+                f"but avoid overuse (around 1-2 emotion or pacing tags per short paragraph is ideal).\n\n"
+                f"Output only the final story string, ready for text-to-speech."
             )
         }
     ]
     response = open_ai_client.chat.completions.create(
-        model="gpt-5-mini",
-        response_model=VoiceoverTimeline,
+        model="gpt-4o-mini",
+        response_model=Story,
         messages=messages
     )
 
@@ -217,220 +89,270 @@ def generate_voiceovers(story_data: StoryData, film_duration: float) -> Voiceove
 
     return response
 
+def story_split(story: str) -> List[Any]:
+    # First, split by break tags to preserve them as separate elements
+    pattern = r'(<break time="\d+s"/>)'
+    parts = re.split(pattern, story)
+    
+    # if segment contains '.', split by dots
+    # if the splitted part is empty - remove it
+    def split_by_dots(segment: str) -> List[Any]:
+        if '.' in segment:
+            sub_parts = [part.strip() for part in segment.split('.') if part.strip()]
+            # Remove the extra dot added to the last part if it was originally empty
+            if sub_parts and sub_parts[-1] == '.':
+                sub_parts.pop()
+            return sub_parts
+        else:
+            return [segment.strip()] if segment.strip() else []
+
+    final_parts = []
+    for part in parts:
+        split_parts = split_by_dots(part)
+        final_parts.extend(split_parts)
+
+    final_parts = finalize_voiceover_segments(final_parts)
+    return final_parts
+
+
+def finalize_voiceover_segments(segments: list[str]) -> list[Dict[str, Any]]:
+    finalized_segments = []
+    # This should split the segments to be 4 - 7 words long instead of one long segment
+    def split_video_segment(segment: str) -> List[str]:
+ 
+        def split_by_commas(words: str) -> List[str]:
+            segments = []
+            current_segment = []
+            for word in words.split():
+                current_segment.append(word)
+                if word.endswith(','):
+                    segments.append(' '.join(current_segment).strip())
+                    current_segment = []
+            if current_segment:
+                segments.append(' '.join(current_segment).strip())
+            return segments
+        split_by_commas(segment)
+        final_parts = []
+        def shorten_segments(words: str) -> List[str]:
+            nonlocal final_parts
+            # if the segment is longer than 8 words - split them apart
+            # and if splitted part include more than 8 words - split again recursively
+            words_list = words.split()
+            if len(words_list) < 8:
+                final_parts.append(words.strip())
+            else:
+                middle_index = len(words_list) // 2
+                splitted_first_part = ' '.join(words_list[:middle_index])
+                remaining_part = ' '.join(words_list[middle_index:])
+                shorten_segments(splitted_first_part)
+                shorten_segments(remaining_part)
+
+        shorten_segments(segment)
+
+        def add_duration_for_parts(segment) -> List[str]:
+            # TODO
+            # Get percentage of duration for each part based on number of characters - and give approx duration
+            # Sum of all est_duration of video_parts should be equal to est_duration of the whole segment
+            total_chars = len(segment.content)
+            for part in segment.video_parts:
+                part_duration = floor((len(part) / total_chars) * segment.est_duration)
+        
+            # add time to shortest part to make sum equal to est_duration
+            total_duration = segment.est_duration
+            current_sum = sum(floor((len(part) / total_chars) * segment.est_duration) for part in segment.video_parts)
+            duration_difference = total_duration - current_sum
+
+            parts_sorted_by_length = sorted(segment.video_parts, key=lambda x: len(x))
+
+            # Split the duration_difference across the parts, according to their length
+            # So the shortest parts should get the most extra time and longest parts the least - this should be
+            for i in range(abs(duration_difference)):
+                if duration_difference > 0:
+                    parts_sorted_by_length[i % len(parts_sorted_by_length)].duration += 1
+                else:
+                    parts_sorted_by_length[i % len(parts_sorted_by_length)].duration -= 1
+            pass
+        
+        return final_parts
+    
+
+    for segment in segments:
+        if segment.startswith('<break'):
+            duration = re.search(r'time="(\d+)s"', segment)
+            finalized_segments.append({
+                "type": "break",
+                "content": segment,
+                "est_duration": duration.group(1),
+            })
+        else:
+            # avertage characters per second is 8.5
+            est_duration = len(segment) / 8.5
+            finalized_segments.append({
+                "type": "text", 
+                "content": segment, 
+                "est_duration": round(est_duration),
+                "video_parts": split_video_segment(segment)
+            })
+            
+    return finalized_segments
+
 class Scene(BaseModel):
-    scene_number: int
-    duration: float
-    scene_type: Optional[str] = None
     image_prompt: str
     video_prompt: str
+    duration: int  # 3–7 seconds per scene
 
-class SceneList(BaseModel):
-    title: str
-    total_duration: float
+class SegmentWithScenes(BaseModel):
+    content: str
+    duration: float  # or int if always integer seconds
     scenes: List[Scene]
 
-def generate_scenes(story_data: StoryData, voiceover_timeline: VoiceoverTimeline) -> SceneList:
-    messages = messages = [
-        {
-            "role": "system",
-            "content": """
-            You are a professional documentary scene designer.
-            Your task is to transform the voiceover timeline and story data into a continuous, cinematic sequence of visual scenes that perfectly accompany the narration.
+class StoryWithScenes(BaseModel):
+    story: List[SegmentWithScenes]
 
-            🎯 PRIMARY GOALS:
-            - Create a complete list of scenes covering the entire film duration (≈ total_duration from the voiceover timeline).
-            - Each scene corresponds closely to what the narrator is saying at that moment.
-              ➤ If the narrator mentions “a storm rising,” show visual imagery of that storm or its emotional equivalent.
-              ➤ If the narrator reflects on the past, show related memories, artifacts, or symbolic visuals.
-            - The visuals must feel synchronized with the voiceover — never detached or generic.
+def add_scenes_to_story(splitted_story: List[Any]) -> List[Any]:
+    # TODO
+    # Reformat the story for better prompt engineering
+    # Changes for the prompt:
+    # - remove segments that are type "break"
+    # remove video_parts from each segment - this is not needed in the prompt
+    # so the final segments should only contain est_duration and content
 
-            🕒 TIMING & STRUCTURE:
-            - There is NO `start_time` or `end_time` per scene; those will be inferred later.
-            - However, you must ensure that the **sum of all scene durations = total film duration (±1s)**.
-            - When the voiceover pauses or ends before the total film duration:
-              ➤ Fill the remaining time with short atmospheric visuals (e.g., “black screen pause,” “slow fade through mist,” “ambient landscape stillness”).
-              ➤ Use such filler scenes sparingly — only for pacing or emotional breathing room, not as fillers for every gap.
-            - Average scene duration: 3-8 seconds - IMPORTANT.
-            - Adjust shot length dynamically:
-              ➤ Shorter for rapid narration or intense moments.
-              ➤ Longer for emotional or reflective narration.
+    # Objective:
+    # Add visualization to each segment according to whole story and segment content. The visualisation should be engaging for the viewer to watch.
 
-            🎥 STYLE & CONTENT:
-            - Match each scene directly to the voiceover's emotional and narrative content.
-            - Use varied, cinematic shot types: wide establishing shots, close-ups, handheld realism, drone sweeps, or archival footage.
-            - Emphasize storytelling through imagery — every shot should reveal something or heighten mood.
-            - Include natural transitions: fade, dissolve, match cut, camera pan, etc.
-            - Keep realism, tone, and period consistent with the story.
+    # Desired output:
+    # Each segment should have added "scenes": [{image_prompts: str, video_prompt duration: int}, ...]
+    # More information about scenes:
+    # - number of scenes should be determined by:
+    # a) est_duration of segment - it should cover full duration of segment with each scene ranging from 3 - 7 seconds
+    # b) keeping with content of the segment - f.e when story changes drastically - make sure there are scenes according to words.
+    # c) the main priority is to make it engaging for a viewer to watch - making it a good visualisation for the story
+    # scene.image_prompt - is a detailed description of scene, which is optimalized description for using AI image generation model. Keep in mind that this is will be the reference image for video_prompt. So the image should already tell the story and the video will just make it live without too many complex moves 
+    # scene.video_prompt - this should be information about what is happening with image generated from image_prompt. Avoid too complex action. Stick with camera movement and simple character actions that will not confuse AI.
+    
 
-            ⚙️ SCENE FORMAT:
-            Each scene should include:
-            - scene_number: integer (1, 2, 3, …)
-            - duration: float (3-8 seconds)
-            - image_prompt: detailed visual description for AI image/video generation (composition, lighting, setting, emotion)
-            - video_prompt: brief note about camera movement or visual tone
-            - optional scene_type (if useful): e.g., “archival,” “dramatic_reenactment,” “ambient_pause,” “black_screen_pause”
+    # remove segments with type = "break"
+    filtered_story = [{
+        "est_duration": seg.est_duration,
+        "content": seg.content,
+    } for seg in splitted_story if seg.get("type") == "text"]
+    
+    filtered_story = json.dumps(filtered_story, ensure_ascii=False, indent=2)
 
-            📏 VERIFICATION RULES:
-            - Total of all scene durations ≈ voiceover_timeline.total_duration (100% of film runtime).
-            - The number and pacing of scenes should reflect the rhythm of the narration.
-            - Avoid leaving large unfilled gaps — use pauses only where they enhance impact.
-            - Never create fewer scenes than needed to visually support every voiceover segment.
-
-            """
-        },
-        {
-            "role": "user",
-            "content": (
-                "Generate a cinematic storyboard based on the provided story and narration.\n\n"
-                "--- STORY DATA ---\n"
-                f"{story_data.model_dump_json(indent=2)}\n\n"
-                "--- VOICEOVER TIMELINE ---\n"
-                f"{voiceover_timeline.model_dump_json(indent=2)}\n\n"
-                "--- OUTPUT JSON FORMAT ---\n"
-                "{\n"
-                '    "title": "string - same as story title",\n'
-                f'    "total_duration": {voiceover_timeline.total_duration},\n'
-                '    "scenes": [\n'
-                "        {\n"
-                '            "scene_number": integer,\n'
-                '            "duration": float (3–7 typical),\n'
-                '            "image_prompt": "detailed description tied to narration",\n'
-                '            "video_prompt": "camera movement or tone (e.g., slow pan, handheld, fade)",\n'
-                '            "scene_type": "optional string (e.g., archival, ambient_pause, black_screen_pause)"\n'
-                "        }\n"
-                "    ]\n"
-                "}\n\n"
-                "--- CRITICAL REQUIREMENTS ---\n"
-                "- Each scene must visually align with the current voiceover content.\n"
-                "- Total duration of all scenes = total film duration (±1s).\n"
-                "- If gaps exist between voiceover moments, fill with cinematic pauses or transitions — but use them minimally.\n"
-                "- The storyboard must feel seamless, as if a viewer were watching the finished film.\n"
-            )
-        }
-    ]
-
-    response = open_ai_client.chat.completions.create(
-        model="gpt-5-mini",
-        response_model=SceneList,
-        messages=messages
-    )
-
-    # Debug: Log the AI response
-    print("DEBUG: generate_scenes response:")
-    print(json.dumps(response.model_dump(), indent=2))
-
-    return response
-
-class CharacterOut(BaseModel):
-    name: str
-    prompt: str
-
-class PlaceOut(BaseModel):
-    name: str
-    prompt: str
-
-class SceneOut(BaseModel):
-    scene_number: int
-    duration: int
-    image_prompt: str
-    video_prompt: str
-
-class VoiceoverOut(BaseModel):
-    text: str
-    start_time: float
-    duration: float
-
-class ProjectOut(BaseModel):
-    characters: List[CharacterOut]
-    places: List[PlaceOut]
-    scenes: List[SceneOut]
-    voiceovers: List[VoiceoverOut]
-
-def get_full_project(story_data: StoryData, voiceover_timeline: VoiceoverTimeline, scene_list: SceneList) -> ProjectOut:
     messages = [
         {
             "role": "system",
-            "content": """
-            You are a cinematic production director assistant.
-            Your task is to assemble a complete video project structure by combining story data, voiceovers, and scenes into a unified output.
-
-            🎯 Objective
-            - Merge all previous data into a single structured `ProjectOut` object.
-            - Ensure the project can be directly used for video generation.
-            - The structure must align with the specified model schema.
-
-            ⚙️ Assembly Rules
-            - Scene numbers correspond to their sequential order.
-            - Each scene includes:
-            - `duration`: rounded seconds
-            - `image_prompt` and `video_prompt` directly from scene data
-            - `character_ids`: link to characters mentioned in the story segment
-            - `places_ids`: link to relevant locations for that scene
-            - Voiceovers:
-            - Use data from the `voiceover_timeline`
-            - Calculate `start_time` cumulatively based on order and text length
-            - Ensure no overlap in timing (start of next = end of previous)
-            - Keep names and prompts consistent across all sections.
-            - Ensure continuity and logical connections (characters/places appear where appropriate).
-            - Output **only valid JSON** matching the model structure.
-
-            ⚠️ Important
-            - Do not invent new entities; use only ones already present in story_data.
-            - Scene durations and voiceover timings should be coherent (no negative gaps, no overlap).
-            - Ensure total voiceover and scene durations roughly align.
-            """
+            "content": (
+                "You are an expert film director and visual storyteller specializing in creating cinematic scene breakdowns "
+                "for AI-generated films. You deeply understand pacing, composition, and visual engagement. "
+                "Your task is to transform a text-based story into a sequence of visually engaging scenes for each segment. "
+                "Each scene will have a detailed 'image_prompt' describing the visual frame, and a simple 'video_prompt' "
+                "that defines what happens in motion (camera movement, small character actions, environmental changes). "
+                "The result should be a JSON structure matching the 'Story' schema: "
+                "Story -> List[SegmentWithScenes(content: str, scenes: List[dict(image_prompt:str, video_prompt:str, duration:int)])]. "
+                "Focus on maintaining narrative flow, emotional tone, and visual diversity. "
+                "Avoid repetitive or overly complex camera actions. "
+                "Scenes should be visually rich, consistent with the tone of the story, and make viewers feel immersed. "
+                "Important: The total sum of scene durations for each segment **must not exceed the segment’s duration by more than 2 seconds**."
+            )
         },
         {
             "role": "user",
             "content": (
-                "Combine the following inputs into one cohesive project output.\n\n"
-                "--- STORY DATA ---\n"
-                f"{story_data.model_dump_json(indent=2)}\n\n"
-                "--- VOICEOVER TIMELINE ---\n"
-                f"{voiceover_timeline.model_dump_json(indent=2)}\n\n"
-                "--- SCENE LIST ---\n"
-                f"{scene_list.model_dump_json(indent=2)}\n\n"
-                "--- OUTPUT FORMAT ---\n"
+                "Below is the story split into segments. Each segment contains the estimated duration and its text content. "
+                "Your goal is to enrich each segment with 'scenes', covering the entire duration. "
+                "Each scene should last between 3 and 7 seconds, and the **total duration of all scenes in a segment should be ≤ segment duration + 2 seconds**. "
+                "Use these rules:\n\n"
+                "- The number of scenes depends on the segment’s estimated duration.\n"
+                "- Each scene must align with narrative changes or important visual details in the text.\n"
+                "- For each scene:\n"
+                "  * 'image_prompt' should describe the static frame in rich cinematic detail, optimized for AI image generation.\n"
+                "  * 'video_prompt' should describe how the scene moves slightly — camera pans, zooms, slow character actions, weather shifts.\n"
+                "  * Avoid complex multi-character choreography, fast transitions, or abstract visual concepts.\n\n"
+                "Output format:\n"
                 "{\n"
-                '    "characters": [\n'
-                "        {\n"
-                '            "name": "string - character name",\n'
-                '            "prompt": "string - short description or visual cue for this character"\n'
-                "        }\n"
-                "    ],\n"
-                '    "places": [\n'
-                "        {\n"
-                '            "name": "string - place name",\n'
-                '            "prompt": "string - visual or atmospheric prompt for the location"\n'
-                "        }\n"
-                "    ],\n"
-                '    "scenes": [\n'
-                "        {\n"
-                '            "scene_number": "int - sequential order",\n'
-                '            "duration": "int - rounded seconds",\n'
-                '            "image_prompt": "string - detailed image prompt",\n'
-                '            "video_prompt": "string - cinematic camera or movement style",\n'
-                "        }\n"
-                "    ],\n"
-                '    "voiceovers": [\n'
-                "        {\n"
-                '            "text": "string - narration text",\n'
-                '            "start_time": "float - cumulative start time in seconds"\n'
-                '            "duration: float word_count * 0.55'
-                "        }\n"
-                "    ]\n"
-                "}"
+                "  'story': [\n"
+                "     {\n"
+                "       'content': '...',\n"
+                "       'scenes': [\n"
+                "          {\n"
+                "            'image_prompt': '...',\n"
+                "            'video_prompt': '...',\n"
+                "            'duration': int (3-7 seconds)\n"
+                "          }\n"
+                "        ]\n"
+                "     }\n"
+                "  ]\n"
+                "}\n\n"
+                "Story segments:\n"
+                f"{filtered_story}"
             )
         }
     ]
+
+    print("message:")
+    print(json.dumps(messages))
+
     response = open_ai_client.chat.completions.create(
         model="gpt-4o-mini",
-        response_model=ProjectOut,
+        response_model=StoryWithScenes,
         messages=messages
     )
 
-    # Debug: Log the AI response
-    print("DEBUG: get_full_project response:")
+    
+
+    # DEBUG PRINT OF RESPONSE
+    print("response:")
     print(json.dumps(response.model_dump(), indent=2))
 
+
+
     return response
+
+def prepare_story_for_db(story_with_scenes, splitted_story):
+    # story_with_scenes containst segments with: est_duration, content and scenes
+    # splitted_story contains est_duration, content, type
+    # join them by the same content
+    for segment in splitted_story:
+        if segment['type'] == 'text':
+            for scene_segment in story_with_scenes:
+                if scene_segment['content'] == segment['content']:
+                    segment['scenes'] = scene_segment.get('scenes', [])
+                    break
+
+    # Step 1: Add start_time to each segment (sum of previous est_durations)
+    current_time = 0
+    for segment in splitted_story:
+        segment['start_time'] = current_time
+        current_time += float(segment['est_duration'])
+
+    # Step 2: Create voiceovers list
+    voiceovers = [
+        {
+            'content': segment['content'],
+            'video_parts': segment.get('video_parts', []),
+            'est_duration': segment['est_duration'],
+            'start_time': segment['start_time']
+        }
+        for segment in splitted_story
+    ]
+
+    # Step 3: Create scenes list with calculated start times
+    scenes = []
+    for segment in splitted_story:
+        segment_start_time = segment['start_time']
+        current_scene_time = 0
+        for scene in segment.get('scenes', []):
+            start_time = float(segment_start_time) + float(current_scene_time)
+            scenes.append({
+                **scene,  # Copy all existing scene data
+                'start_time': start_time
+            })
+            current_scene_time += float(scene.get('duration', 0))
+
+    return {
+        'voiceovers': voiceovers,
+        'scenes': scenes,
+    }
+    
+

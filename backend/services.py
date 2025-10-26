@@ -202,26 +202,46 @@ def parse_skrypt(skrypt):
 def generate_speech(text: str, filename="voiceover", directory="static/voiceovers/"):
     response = eleven_labs_client.text_to_speech.convert_with_timestamps(
         text=text,
-        voice_id="nPczCjzI2devNBz1zQrb",  # example voice (Brian)
-        model_id="eleven_multilingual_v3"
+        voice_id="nPczCjzI2devNBz1zQrb",  # Valid voice ID (Brian)
+        model_id="eleven_multilingual_v2"  # Correct model ID
     )
 
     # Make sure the directory exists
     os.makedirs(directory, exist_ok=True)
 
-    return save(response, directory=directory, filename=filename)
-
     # Build full file path
     output_path = os.path.join(directory, f"{filename}.mp3")
 
-    # Write audio chunks to file
-    with open(output_path, "wb") as f:
-        for chunk in audio:
-            f.write(chunk)
-    
-    
+    # Decode base64 audio and write to file
+    try:
+        audio_bytes = base64.b64decode(response.audio_base_64)  # Decode base64 to bytes
+        with open(output_path, "wb") as f:
+            f.write(audio_bytes)  # Write decoded bytes to file
+        print("Wrote audio using response.audio_base_64")
+    except AttributeError as e:
+        raise AttributeError(f"Could not access audio_base_64. Available attributes: {dir(response)}") from e
+    except base64.binascii.Error as e:
+        raise ValueError(f"Failed to decode base64 audio: {str(e)}")
 
-    # get duration of the generated audio
+    # Print word-level timestamps using alignment
+    print("Word-level timestamps:")
+    try:
+        # Debug: Print structure of alignment to confirm format
+        print("Alignment structure:", response.alignment)
+        for word in response.alignment:  # Try alignment first
+            print(f"Word: '{word.text}', Start: {word.start:.2f}s, End: {word.end:.2f}s")
+    except AttributeError as e:
+        # Fallback: Try normalized_alignment
+        try:
+            print("Normalized alignment structure:", response.normalized_alignment)
+            for word in response.normalized_alignment:
+                print(f"Word: '{word.text}', Start: {word.start:.2f}s, End: {word.end:.2f}s")
+        except AttributeError as e2:
+            raise AttributeError(
+                f"Could not access alignment or normalized_alignment. Available attributes: {dir(response)}"
+            ) from e2
+
+    # Get duration of the generated audio
     try:
         audio_file = MP3(output_path)
         duration = audio_file.info.length  # Duration in seconds

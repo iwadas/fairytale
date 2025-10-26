@@ -38,11 +38,13 @@ async def generate_voiceover(voiceover_id: str, session: AsyncSession = Depends(
         raise ValueError("Voiceover text is empty")
 
     filename = filename_from_name(f"voiceover_{voiceover_id}")
+    print("Generating voiceover for text:")
     audio_path, duration = generate_speech(
         text=voiceover.text,
         filename=filename,
         directory="static/voiceovers"
     )
+    print("Generating stopped voiceover for text:")
 
     voiceover.src = audio_path
     voiceover.duration = duration
