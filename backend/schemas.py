@@ -30,6 +30,7 @@ class VoiceoverOutput(BaseModel):
     id: str  # UUID as string
     src: Optional[str]
     text: Optional[str]
+    text_with_pauses: Optional[str]
     project_id: str
     start_time: float
     duration: Optional[float]

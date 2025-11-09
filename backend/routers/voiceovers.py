@@ -3,6 +3,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from pydantic import BaseModel
 
+import json
+
 from db import get_session, Voiceover
 from services import generate_speech, filename_from_name
 
@@ -27,9 +29,11 @@ async def update_voiceover_start_time(
     return {"message": "Voiceover start time updated", "voiceover_id": voiceover_id, "new_start_time": payload.start_time}
 
 
+class VoiceoverGenerateRequest(BaseModel):
+    text: str
 
 @router.post("/generate-voiceover/{voiceover_id}")
-async def generate_voiceover(voiceover_id: str, session: AsyncSession = Depends(get_session)):
+async def generate_voiceover(voiceover_id: str, request: VoiceoverGenerateRequest, session: AsyncSession = Depends(get_session)):
     voiceover = await session.get(Voiceover, voiceover_id)
 
     if not voiceover:
@@ -39,8 +43,8 @@ async def generate_voiceover(voiceover_id: str, session: AsyncSession = Depends(
 
     filename = filename_from_name(f"voiceover_{voiceover_id}")
     print("Generating voiceover for text:")
-    audio_path, duration = generate_speech(
-        text=voiceover.text,
+    audio_path, duration, timestamps = generate_speech(
+        text=request.text,
         filename=filename,
         directory="static/voiceovers"
     )
@@ -48,6 +52,8 @@ async def generate_voiceover(voiceover_id: str, session: AsyncSession = Depends(
 
     voiceover.src = audio_path
     voiceover.duration = duration
+    voiceover.text = request.text
+    voiceover.timestamps = json.dumps(timestamps)
     session.add(voiceover)
     await session.commit()
     await session.refresh(voiceover)

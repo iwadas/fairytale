@@ -1,11 +1,13 @@
 import asyncio
-from fastapi import APIRouter, HTTPException, Body, UploadFile, File, Depends
+from fastapi import APIRouter, HTTPException, Body, UploadFile, File, Depends, Form, Request
+from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
-from typing import Optional, List
+from typing import Optional, List, Dict
 from pathlib import Path
 import os
+import re
 
 # MoviePy imports
 from moviepy import ImageClip, VideoClip, vfx, ColorClip, CompositeVideoClip
@@ -57,59 +59,97 @@ async def delete_scene(scene_id: str, session: AsyncSession = Depends(get_sessio
     await session.commit()
     return {"message": "Scene deleted successfully"}
 
-@router.post("/generate-scene-image/{scene_id}")
+
+def _parse_ref_images(request_form: Dict[str, UploadFile]) -> Dict[str, UploadFile]:
+    ref: Dict[str, UploadFile] = {}
+    for key, file in request_form.items():
+        if key.startswith("reference_images[") and key.endswith("]"):
+            name = key[len("reference_images[") : -1]   # strip brackets
+            ref[name] = file
+    return ref
+
+@router.post("/generate-image/{scene_id}")
 async def generate_scene_image(
     scene_id: str,
-    prompt: str = Body(..., embed=True),
-    character_ids: Optional[List[str]] = Body(default=[]),
-    image: Optional[UploadFile] = File(None),
+    files: Optional[List[UploadFile]] = File(None),  # Catch ALL files
+    lowkey: bool = Form(False),
+    image_prompt: str = Form(...),
     session: AsyncSession = Depends(get_session),
 ):
-    # 1. Get character image paths from DB using ORM
-    print("Character IDs for image generation:", character_ids)
-    content_images = {}
-    if character_ids:
-        result = await session.execute(select(Character).where(Character.id.in_(character_ids)))
-        characters = result.scalars().all()
-        for char in characters:
-            print(f"Looking for character image at: {char.name}")
-            if char.src:
-                image_path = Path(char.src)
-                print(f"Looking for character image at: {image_path}")
-                if image_path.exists():
-                    print(f"✅ Found character image on disk: {char.src}")
-                    content_images[char.name.lower().replace(" ", "_")] = open(image_path, "rb")
-                else:
-                    print(f"⚠️ Character image not found on disk: {char.src}")
-            else:
-                print(f"⚠️ Character {char.id} has no src")
-    if image is not None:
-        content_images["additional_image"] = image
-        print("appended image")
+    # Now, files[] contains ALL uploaded files
+    # But we need to know which file belongs to which scene_id
+    # → We use the **original filename** or **custom header** to map
 
-    # 2. Generate filename for scene
+    ref_images_dict = {}
+
+    if files and len(files):
+        for file in files:
+            # Option 1: Use filename to extract scene_id
+            # Assume filename is: scene_<uuid>.png
+            match = re.search(r"scene_([a-f0-9-]+)", file.filename or "")
+            if match:
+                name = match.group(1)
+                content = await file.read()
+                print(f"  → {name}: {file.filename} ({len(content)} bytes)")
+                ref_images_dict[name] = file
+                await file.seek(0)  # Reset for later
+
+    print(f"Got {len(ref_images_dict)} reference images")
+
     filename = filename_from_name(f"scene_{scene_id}")
 
     # 3. Call your image generator
-    print("Generating image with prompt:", prompt)
+    print("Generating image with prompt:", image_prompt)
 
     # if content_image are empty, we use generate_image, if not we use generate_image_banana
-    if content_images:
-        print("Using content images for generation:", list(content_images.keys()))
-        image_path = generate_image_banana(
-            directory="static/images/scenes",
-            filename=filename,
-            prompt=prompt,
-            content_images=content_images
-        )
+    image_path = generate_image_banana(
+        directory="static/images/scenes",
+        filename=filename,
+        prompt=image_prompt,
+        content_images={},
+    )
+
+    scene = await session.get(Scene, scene_id)
+    if not scene:
+        raise HTTPException(status_code=404, detail="Scene not found")
+
+    scene.image_src = image_path
+    scene.image_prompt = image_prompt
+    session.add(scene)
+
+    await session.commit()
+    # optionally refresh scene/image
+    await session.refresh(scene)
+
+    return {"message": "Scene image generated successfully", "scene_id": scene_id, "image_url": image_path}
+
+    # ------------------------------------------------------------------
+    # 2. Extract lowkey
+    # ------------------------------------------------------------------
+    print(f"\nlowkey = {lowkey!r}")
+
+    # ------------------------------------------------------------------
+    # 3. Build a clean dict of reference images
+    # ------------------------------------------------------------------
+    ref_images = _parse_ref_images(request.form)
+
+    print("\n=== REFERENCE IMAGES ===")
+    if not ref_images:
+        print("  (none)")
     else:
-        print("No content images provided, using standard image generation.")
-        image_path = await generate_image(
-            directory="static/images/scenes",
-            filename=filename,
-            prompt=prompt,
-            content_images=content_images
-        )
+        for name, upload in ref_images.items():
+            # read a tiny chunk just to prove we can access the file
+            first_kb = await upload.read(1024)
+            await upload.seek(0)          # reset for later use
+            print(
+                f"  [{name}]  size={upload.size or 'unknown'}  "
+                f"type={upload.content_type}  first_kb={len(first_kb)} bytes"
+            )
+
+    # ------------------------------------------------------------------
+    # 4. (Optional) Return a JSON summary – super handy in Postman/Insomnia
+    # ------------------------------------------------------------------
+
 
     # 4. Store or update scene image in DB (attach to scene)
     scene = await session.get(Scene, scene_id)
@@ -125,7 +165,7 @@ async def generate_scene_image(
     await session.refresh(scene)
     return {"message": "Scene image generated successfully", "scene_id": scene_id, "image_url": image_path}
 
-@router.post("/upload-scene-image/{scene_id}")
+@router.put("/upload-image/{scene_id}")
 async def upload_scene_image(
     scene_id: str,
     image: UploadFile = File(...),

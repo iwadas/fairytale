@@ -38,7 +38,8 @@ async def create_character(
         directory=f"static/images/characters",
         filename=filename_from_name(name),
         prompt=prompt,
-        content_images=content_images
+        content_images=content_images,
+        lowkey=False
     )
 
     new_char = Character(id=str(uuid.uuid4()), name=name, prompt=prompt, src=image_path)
@@ -73,14 +74,15 @@ async def update_character(
             directory=f"static/images/characters",
             filename=filename_from_name(name or character.name),
             prompt=prompt or character.prompt or "update",
-            content_images=content_images
+            content_images=content_images,
+            lowkey=False
         )
         character.src = image_path
 
     session.add(character)
     await session.commit()
     await session.refresh(character)
-    return {"message": f"Character {character_id} updated successfully", "character": CharacterOutput.model_validate(character).model_dump()}
+    return {"message": f"Character {character_id} updated successfully", "new_src": image_path}
 
 @router.get("")
 async def list_characters(session: AsyncSession = Depends(get_session)):

@@ -248,10 +248,10 @@ async def seed_database():
 
     print("Seeding finished.")
 
-async def main(drop_all: bool = True, seed: bool = True):
+async def main(drop_all: bool = True, seed: bool = False):
     await create_tables(drop_all=drop_all)
-    if seed:
-        await seed_database()
+    # if seed:
+    #     await seed_database()
 
 if __name__ == "__main__":
     asyncio.run(main(drop_all=True, seed=True))

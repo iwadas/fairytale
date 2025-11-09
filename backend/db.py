@@ -66,21 +66,22 @@ class Project(Base):
     voiceovers = relationship("Voiceover", back_populates="project")
     places = relationship("Place", secondary=place_project_association, back_populates="projects")
 
-
 class Voiceover(Base):
     __tablename__ = "voiceovers"
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
     project_id = Column(String(36), ForeignKey("projects.id"))
     project = relationship("Project", back_populates="voiceovers")
     text = Column(Text, nullable=True)
+    text_with_pauses = Column(Text, nullable=True)
     src = Column(String, nullable=True)
     start_time = Column(Float, nullable=False)
+    timestamps = Column(Text, nullable=True)
     duration = Column(Float, nullable=True)
 
 class Scene(Base):
     __tablename__ = "scenes"
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
-    scene_number = Column(Integer, nullable=False)
+    start_time = Column(Float, nullable=True)
     duration = Column(Integer, nullable=True)
     image_prompt = Column(Text, nullable=True)
     video_prompt = Column(Text, nullable=True)
@@ -95,15 +96,12 @@ class Scene(Base):
     )
     places = relationship("Place", secondary=place_scene_association, back_populates="scenes")
 
-
 class Place(Base):
     __tablename__ = "places"
-
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     name = Column(String, nullable=False)
     prompt = Column(String, nullable=False)
     src = Column(String, nullable=True)
-
     projects = relationship("Project", secondary=place_project_association, back_populates="places")
     scenes = relationship("Scene", secondary=place_scene_association, back_populates="places")
 

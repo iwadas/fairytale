@@ -77,7 +77,7 @@
               v-if="character.src"
               :src="`http://localhost:8000/${character.src}`"
               alt="Character"
-              class="size-32 object-cover rounded"
+              class="size-32 object-contain rounded"
             />
             <div class="flex flex-col">
               <p class="text-gray-800 font-medium">{{ character.name }}</p>

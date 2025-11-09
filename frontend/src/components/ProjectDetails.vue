@@ -1,721 +1,606 @@
 <template>
-  <div class="bg-white p-4 rounded-lg shadow-sm mb-4">
-    <div class="flex justify-between items-center">
-      <h2 class="text-xl font-bold text-gray-700">
-        {{ project.name }}
-      </h2>
-    </div>
+  <div class="container mx-auto p-4">
+    <!-- Preview Section -->
+    <div class="preview bg-gray-800 rounded-lg p-4 mb-4 h-[580px]">
+      <div
+        class="flex gap-2 items-center h-full"
+      >
+        <!-- LEFT: Image + details -->
+        <div class="size-[400px] min-w-[400px] bg-gray-400 rounded-lg">
+          <img
 
-    <!-- GENERATING SCENE IMAGE -->
-    <modal-container v-if="sceneImagePrompt.scene_id">
-      <div class="flex flex-col gap-4">
-        <h3>Generate image for scene</h3>
-        <button @click="fixImagePrompt" class="bg-blue-500 text-white p-2 font-bold text-sm">AI</button>
-        <textarea v-model="sceneImagePrompt.prompt" placeholder="Describe the scene..." class="h-[400px]"></textarea>
-
-        <p>Additional Image</p>
-        <input type="file" @change="addedImageToImagePrompt" class="w-full h-full object-cover rounded-md" />
-        <div v-if="scenePromptImageUrl" class="mt-2 size-[100px]">
-          <img :src="scenePromptImageUrl" alt="Selected Image" class="w-full h-full object-cover rounded-md" />
+            alt="Scene Image"
+            class="w-full h-full object-cover"
+          />
         </div>
 
-        <button @click="generateSceneImage" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700">Generate Image</button>
-        <button @click="cancelSceneImage" class="bg-gray-300 text-white px-4 py-2 rounded-md hover:bg-blue-700">Cancel</button>        
-      </div>
-    </modal-container>
+        <!-- Divider -->
+        <div class="h-full w-1 bg-white"></div>
 
-    <modal-container v-if="sceneVideoPrompt.scene_id">
-      <div class="flex flex-col gap-4">
-        <h3>Generate video for scene</h3>
-        <button @click="fixVideoPrompt" class="bg-blue-500 text-white p-2 font-bold text-sm">AI</button>
-        <textarea v-model="sceneVideoPrompt.prompt" placeholder="Describe the scene..." class="h-[400px]"></textarea>
-        <button @click="generateSceneVideo" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700">Generate Video</button>
-        <button @click="cancelSceneVideo" class="bg-gray-300 text-white px-4 py-2 rounded-md hover:bg-blue-700">Cancel</button>
-      </div>
-    </modal-container>
-
-    <modal-container v-if="typingSceneForm.scene_id">
-      <div class="flex flex-col gap-4">
-        <h3>Generate video for scene</h3>
-        <textarea v-model="typingSceneForm.text" placeholder="Describe the scene..." class="h-[400px]"></textarea>
-        <button @click="generateTypingScene" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700">Generate Typing Scene</button>
-        <button @click="typingSceneForm.scene_id = null" class="bg-gray-300 text-white px-4 py-2 rounded-md hover:bg-blue-700">Cancel</button>
-      </div>
-    </modal-container>
-
-    <div v-if="project.name" class="flex flex-col gap-6 mt-4">
-      <div>
-        <h3 class="font-bold text-lg">Characters</h3>
-        <ul class="flex flex-wrap gap-5">
-          <li v-for="character in project.characters" :key="character.id">
-            <p class="font-medium">{{ character.name }}</p>
-            <div v-if="character.src" class="size-[100px]">
-              <img :src="`http://localhost:8000/${character.src}`" alt="Character Image" class="w-full h-full object-cover rounded-md" />
+        <div 
+          class="text-gray-300 w-fit mx-auto flex gap-6 items-center" 
+          v-if="typeof(selectedSceneIndex) == 'number'"
+        >
+          <div>
+            <div class="flex gap-6">
+              <div>
+                <div class="size-[200px] min-w-[200px] bg-gray-400 rounded-lg mx-auto relative">
+                  <p class="absolute top-4 left-1/2 -translate-x-1/2 text-white fonr-bold z-10">Image</p>
+                 
+                  <img
+                    v-if="scenes[selectedSceneIndex].image_src"
+                    :src="getSrc(scenes[selectedSceneIndex].image_src)"
+                    alt="Scene Image"
+                    class="w-full h-full object-cover"
+                  />
+                  
+                </div>
+                <div class="flex flex-col gap-1">
+                  <form-button v-if="scenes[selectedSceneIndex].image_src" label="Generate Image" @clicked="generateImage"/>
+                  <form-button v-else label="Regenerate Image" @clicked="generateImage"/>
+                  <div class="flex justify-center">
+                    <p>Lowkey</p>
+                    <input type="checkbox" class="border" v-model="generateImageLowkey">
+                  </div>
+                  <input type="file" class="w-[200px] text-white bg-gray-800 border p-1 rounded-sm text-xs" @input="handleSceneImageUpload">
+                </div>
+              </div>
+              <div>
+                <div class="size-[200px] min-w-[200px] bg-gray-400 rounded-lg mx-auto relative">
+                  <p class="absolute top-4 left-1/2 -translate-x-1/2 text-white fonr-bold z-10">Video</p>
+                  <video 
+                    v-if="scenes[selectedSceneIndex].video_src" 
+                    :src="`http://localhost:8000/${scenes[selectedSceneIndex].video_src}?v=1}`"
+                    alt="Scene Video"
+                    class="w-full h-full object-cover rounded-md border" 
+                    controls 
+                  />
+                </div>
+                <div class="flex flex-col gap-1">
+                  <form-button v-if="scenes[selectedSceneIndex].video_src" label="Regenerate Video" @click="generateVideo"/>
+                  <form-button v-else label="Generate Video" @click="generateVideo"/>
+                </div>
+              </div>
             </div>
-            <p v-else class="text-sm text-gray-600">{{ character.description }}</p>
-          </li>
-        </ul>
-      </div>
-      <div>
-        <h3 class="font-bold text-lg">Scenes</h3>
-        <div class="flex gap-4">
-          <div class="w-10 rounded-lg bg-green-500">
-            <div v-for="x in Math.ceil(projectDuration / 5)" :key="x" class="h-[500px] w-10 border-b border-gray-300 text-xs text-gray-500 relative">
-              <span class="absolute bottom-0 text-white w-10 font-bold left-0 text-center">{{ x*5 }}s</span>
+            <div class="flex gap-6 mt-8">
+              <div class="flex-1">
+                <p>
+                  Image references:
+                </p>
+                <div class="overflow-y-auto flex gap-1">
+                  <reference-image
+                    v-for="referenceImg in addedReferenceImages"
+                    :key="referenceImg.src"
+                    :name="referenceImg.name"
+                    :src="referenceImg.src"
+                    @remove="removeReferenceImage"
+                    :added="true"
+                  />
+                </div>
+              </div>
+              <div class="flex-1">
+                <p>
+                  Image references:
+                </p>
+                <div class="overflow-y-auto flex gap-1" v-if="availableReferenceImages.length > 0">
+                  <reference-image
+                    v-for="refImg in availableReferenceImages"
+                    :key="refImg.name"
+                    :name="refImg.name"
+                    :src="refImg.src"
+                    @add="addReferenceImage"
+                    :added="false"
+                  />
+                </div>
+              </div>
             </div>
           </div>
-          <ul class="flex-1">
-            <li 
-              v-for="scene in project.scenes.sort((a, b) => a.scene_number - b.scene_number)" :key="scene.id" :style="`height: ${scene.duration * 100}px`" 
-              class="border rounded-md flex justify-between relative gap-4"
-            >
-              <div class="absolute bottom-0 right-0">
-                <button class="bg-gray-500 text-white p-2 rounded-md text-center" @click="showTypingSceneForm(scene.id)">
-                  Generate typing scene
-                </button>
-                <button class="bg-red-500 text-white p-2 rounded-md size-6 flex items-center justify-center" @click="deleteScene(scene.id)">
-                  X
-                </button>
-              </div> 
-
-              <div class="absolute -top-3 left-1/2 -translate-x-1/2 flex flex-col items-center bg-blue-100  z-50">
-                <button @click="toggleNewSceneForm(scene.scene_number)" class="h-6 px-2 bg-green-500 text-white rounded-full  absolute z-10">
-                  <p class="whitespace-nowrap font-bold">
-                    + add scene
-                  </p>
-                </button>
-                <div v-if="newSceneForm.scene_number == scene.scene_number" class="mt-6 p-4 bg-white border rounded-md shadow-lg">
-                  <div class="flex gap-5 justify-between">
-                    <label for="image_prompt">Image prompt</label>
-                    <input v-model="newSceneForm.image_prompt" type="text" id="image_prompt">
-                  </div>
-                  <div class="flex gap-5 justify-between">
-                    <label for="video_prompt">Video prompt</label>
-                    <input v-model="newSceneForm.video_prompt" type="text" id="video_prompt">
-                  </div>
-                  <div class="flex gap-5 justify-between">
-                    <label for="duration">Duration</label>
-                    <input v-model="newSceneForm.duration" type="number" id="duration">
-                  </div>
-                  <div class="flex justify-center gap-2">
-                    <button @click="addNewScene(scene.scene_number)" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 mt-2">Add Scene</button>
-                    <button @click="newSceneForm.scene_number = null" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 mt-2">Cancel</button>
-                  </div>
-
-                </div>
+          <div class="flex flex-col gap-5">
+            <div class="flex gap-4 justify-center">
+              <form-input label="Start Time">
+                <input type="text" class="w-[200px] text-white bg-gray-800 border p-1 rounded-sm" v-model="scenes[selectedSceneIndex].start_time">
+              </form-input>
+              <form-input label="Duration">
+                <input type="text" class="w-[200px] text-white bg-gray-800 border p-1 rounded-sm" v-model="scenes[selectedSceneIndex].duration">
+              </form-input>
+            </div>
+            <div class="flex gap-2 items-center">
+              <form-input label="Image Style" class="w-full">
+                <select v-model="imageGenerationStyle" type="select" class="text-white bg-gray-800 border-white rounded-sm w-full border">
+                  <option value="" default>Auto style</option>
+                  <option value="lifelaps">LifeLaps style</option>
+                  <option value="lifelaps_science">LifeLaps style (with_science_shit)</option>
+                  <option value="criminal">Criminal style</option>
+                </select>
+              </form-input>
+              <div v-if="imageGenerationStylePower" class="w-full">
+                <label for="stylePower" class="text-sm text-gray-300">
+                  Style Intensity: <span class="font-semibold text-white">{{ imageGenerationStylePower }}</span>/10
+                </label>
+                <input
+                  id="stylePower"
+                  v-model="imageGenerationStylePower"
+                  type="range"
+                  min="1"
+                  max="10"
+                  step="1"
+                  class="w-full accent-indigo-500 cursor-pointer"
+                />
               </div>
+            </div>
 
-              <div v-if="scene.image_src || scene.video_src" class="flex gap-1">
-                <div v-if="scene.image_src" class="max-h-[50%]">
-                  <button @click="openSceneVideoForm(scene.id)" class="bg-blue-600 z-10 text-sm font-bold text-white py-2 w-full text-center" v-if="!scene.video_src">Generate video</button>
-                  <div class="relative">
-                    <button @click="showAvailableEffects(scene.id)" class="border-blue-600 border-2 z-10 text-sm font-bold py-2 w-full text-center">Add effect</button>
-                    <div class="absolute top-0 left-0 z-20 bg-white p-2 border rounded-md w-full" v-if="showEffects[scene.id]">
-                      <p>Choose effect</p>
-                      <div class="flex flex-col gap-2 *:bg-gray-100 *:rounded-md *:p-2 mt-4">
-                        <button @click="generateSceneWithEffect(scene.id, 'zoom_in')" class="hover:bg-gray-200">Zoom</button>
-                        <button @click="generateSceneWithEffect(scene.id, 'pan')" class="hover:bg-gray-200">Pan</button>
-                        <button @click="generateSceneWithEffect(scene.id, 'fade')" class="hover:bg-gray-200">Fade</button>
-                      </div>
-                      <button @click="cancelAvailableEffect(scene.id)" class="bg-gray-300 text-white px-4 py-2 rounded-md hover:bg-blue-700 mt-4 w-full">Cancel</button>
-                    </div>
-                  </div>
-                  <button @click="openSceneImageForm(scene.id)" class="border-blue-600 border-2 z-10 text-sm font-bold py-2 w-full text-center">Regenerate image</button>
-                  <div class="w-[200px] h-auto min-w-[200px] rounded-lg overflow-hidden">
-                    <img 
-                      :src="`http://localhost:8000/${scene.image_src}?v=${version}`" 
-                      alt="Scene Image" class="w-full h-full object-cover rounded-md border zoomable-img" 
-                      :data-zoom-src="`http://localhost:8000/${scene.image_src}?v=${version}`"
-                      data-zoomable
-                      
-                    />
-                  </div>
-                </div>
-  
-                <div v-if="scene.video_src" class="max-h-[50%]">
-                  <button @click="openSceneVideoForm(scene.id)" class="bg-blue-600 z-10 text-sm font-bold text-white py-2 w-full text-center">Regenerate video</button>
-                  <div class="w-[200px] h-auto min-w-[200px] rounded-lg">
-                    <video controls :src="`http://localhost:8000/${scene.video_src}?v=${version}`" alt="Scene Video" class="w-full h-full object-cover rounded-md border" />
-                  </div>
-                </div>
-              </div>
-              
-              <div v-else class="w-[200px] h-[100px] min-w-[200px] bg-gray-200 rounded-lg flex flex-col justify-center items-center gap-3">
-                <button @click="openSceneImageForm(scene.id)" class="bg-blue-600 rounded-lg text-sm font-bold text-white py-2 w-full">Generate image</button>
-                <input type="file" alt="Scene Image" @change="setSceneImage(scene.id, $event)" class="w-full h-full object-cover rounded-md" />
-              </div>
-              <div class="flex flex-col gap-4">
-                <p class="text-sm text-gray-600">{{ scene.image_prompt }}</p>
-                <p class="text-sm text-gray-600">{{ scene.video_prompt }}</p>
-                <ul class="flex gap-2">
-                  <div v-for="character in scene.characters" :key="character.id" class="mt-2 p-2 rounded-md bg-gray-200">
-                    <p class="text-sm text-gray-800">{{ character.name }}</p>
-                  </div>
-                </ul>
-                <button @click="showCharactersToAdd = scene.id" v-if="showCharactersToAdd != scene.id" class="bg-blue-600 text-white rounded-md px-2 py-1">Add characters</button>
-                <ul v-if="showCharactersToAdd === scene.id" class="flex gap-2">
-                  <div v-for="character in project.characters.filter(c => !scene.characters.some(sc => sc.id === c.id))" :key="character.id" class="mt-2 p-2 rounded-md bg-gray-200">
-                    <p class="text-sm text-gray-800">{{ character.name }}</p>
-                    <button @click="addCharacterToScene(scene.id, character.id)" class="bg-blue-600 text-white rounded-md px-2 py-1">Add</button>
-                  </div>
-                </ul>
-              </div>
-            </li>
-          </ul>
+            <form-input label="Image Prompt" class="w-[416px]">
+              <textarea class="w-[416px] text-white bg-gray-800 border p-1 rounded-sm h-32" v-model="scenes[selectedSceneIndex].image_prompt"></textarea>
+              <form-button label="Fix Prompt" @clicked="fixImagePrompt"/>
+            </form-input>
+            <form-input label="Video Prompt" class="w-[416px]">
+              <textarea class="w-[416px] text-white bg-gray-800 border p-1 rounded-sm h-32" v-model="scenes[selectedSceneIndex].video_prompt"></textarea>
+              <form-button label="Fix Prompt" @clicked="fixVideoPrompt"/>
+            </form-input>
+          </div>
 
-          <div class="w-[400px] rounded-lg flex flex-col relative" ref="timelineRef">
+        </div>
+
+        <div
+          v-else-if="typeof(selectedVoiceoverIndex) == 'number'"
+          class="flex flex-col gap-6 items-center text-white w-fit mx-auto"
+        >
+          <div class="flex gap-4 justify-center">
+            <form-input label="Start Time" class="w-[200px]">
+              <input type="text" class="w-[200px] text-white bg-gray-800 border p-1 rounded-sm" v-model="voiceovers[selectedVoiceoverIndex].start_time">
+            </form-input>
+            <form-input label="Duration" class="w-[200px]">
+              <input type="text" class="text-white w-[200px] bg-gray-800 border p-1 rounded-sm" v-model="voiceovers[selectedVoiceoverIndex].duration">
+            </form-input>
+          </div>
+          <form-input label="Text">
+            <textarea class="w-[416px] text-white bg-gray-800 border p-1 rounded-sm h-32" v-model="voiceovers[selectedVoiceoverIndex].text"></textarea>
+          </form-input>
+          <form-input label="Text With Breakes">
+            <textarea class="w-[416px] text-white bg-gray-800 border p-1 rounded-sm h-32" v-model="voiceovers[selectedVoiceoverIndex].text_with_pauses"></textarea>
+          </form-input>
+
+          <div v-if="voiceovers[selectedVoiceoverIndex].src" class="w-[416px]">
+            <form-button  label="Regenrate Voiceover" @clicked="generateVoiceover"/>
+            <audio :src="`http://localhost:8000/${voiceovers[selectedVoiceoverIndex].src}?v=${voiceoversVersion[voiceovers[selectedVoiceoverIndex].id]}`" controls class="w-full mt-2"></audio>
+          </div>
+          <form-button v-else label="Generate Voiceover" @clicked="generateVoiceover"/>
+        </div>
+      </div>
+
+      <!-- 2. Voiceover selected (scene ignored) -->
+      
+    </div>
+
+    <!-- Timeline Section -->
+    <div class="timeline bg-gray-900 rounded-lg p-4" ref="containerRef"> 
+      <div class="overflow-x-auto relative">
+        <div class="relative" :style="{ width: `${totalWidth}px`, minWidth: '100%' }">
+          <!-- Timeline Background with Time Markers -->
+          <div class="absolute top-0 left-0 w-full h-full bg-gray-800 rounded">
+            <!-- Time Markers -->
+            <div class="flex text-xs text-gray-400 mt-2">
+              <span v-for="tick in timeTicks" :key="tick" class="absolute" :style="{ left: `${tick * pixelsPerSecond}px` }">
+                {{ formatTime(tick) }}
+              </span>
+            </div>
+          </div>
+
+          <!-- Scenes Track -->
+          <div class="relative h-40" ref="scenesTrack">
             <div
-              v-for="voiceover in project.voiceovers"
-              :key="voiceover.id"
-              class="border absolute w-full left-0 voiceover-container"
-              :style="`height: ${Math.max(voiceover.duration * 100, 100)}px; top: ${voiceover.start_time * 100}px;`"
-              ref="voiceoverRefs"
+              v-for="(scene, index) in scenes"
+              :key="scene.id"
+              class="absolute h-full mt-8 bg-blue-500 rounded cursor-move select-none border"
+              :style="{
+                left: `${scene.start_time * pixelsPerSecond}px`,
+                width: `${scene.duration * pixelsPerSecond}px`,
+              }"
+              @mousedown="startDragging($event, 'scene', scene, index, $refs.scenesTrack)"
+              @click="selectScene(scene.id)"
             >
-              <p>{{ voiceover.text }}</p>
-              <button @click="generateVoiceover(voiceover.id)" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700">Generate</button>
-              <audio v-if="voiceover.src" :src="`http://localhost:8000/${voiceover.src}`" controls class="w-full mt-2"></audio>
+              <span class="text-xs text-white">{{ scene.image_prompt }}</span>
+            </div>
+          </div>
+
+          <!-- Voiceovers Track -->
+          <div class="relative h-20 mt-4" ref="voiceoversTrack">
+            <div
+              v-for="(voiceover, index) in voiceovers"
+              :key="voiceover.id"
+              class="absolute h-full mt-6 p-2 bg-green-500 rounded cursor-move select-none"
+              :style="{
+                left: `${voiceover.start_time * pixelsPerSecond}px`,
+                width: `${voiceover.duration * pixelsPerSecond}px`,
+              }"
+              @mousedown="startDragging($event, 'voiceover', voiceover, index, $refs.voiceoversTrack)"
+              @click="selectVoiceover(voiceover.id)"
+            >
+              <span class="text-xs text-white truncate" :style="`max-width: ${voiceover.duration * pixelsPerSecond}px`">{{ voiceover.text }} </span>
             </div>
           </div>
         </div>
       </div>
-      <div>
-        <!-- DOWNLOAD BUTTON -->
-        <button class="bg-blue-500 rounded-md p-2" @click="downloadVideo">
-          Download Video
-        </button>
-      </div>
     </div>
+    <form-button label="Save project" @clicked="saveProjectChanges"/>
+    
   </div>
 </template>
 
-<style scoped>
-.voiceover-container {
-  position: absolute;
-  width: 100%;
-  background-color: lightblue;
-  border: 1px solid blue;
-  cursor: grab;
-  user-select: none;
-  transition: top 0.1s ease-out; /* Smooth movement */
-}
-
-.voiceover-container.dragging {
-  cursor: grabbing;
-  opacity: 0.8;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Visual feedback */
-}
-</style>
-
 <script setup>
+import { ref, onMounted, onBeforeUnmount, computed, watch } from 'vue';
+import axios from 'axios'
+import FormInput from './FormInput.vue'
+import FormButton from './FormButton.vue'
+import ReferenceImage from './ReferenceImage.vue'
+import getSrc from '../utils/getSrc.js'
 
-  import { ref, onMounted, computed, reactive, onUnmounted, nextTick } from 'vue';
-  import ModalContainer from './ModalContainer.vue';
-  import axios from 'axios'
-  import mediumZoom from 'medium-zoom'
 
-  const project = ref({});
-  const timelineRef = ref(null);
-  const voiceoverRefs = ref([]);
+const route = 'http://localhost:8000/'
+let projectId = null;
 
-  // Triggering images to update
-  const version = ref(0);
-  let zoom = null;
+const scenes = ref([]);
+const voiceovers = ref([]);
+const characters = ref([]);
 
-  const projectDuration = computed(()=>{
-    if (!project.value.scenes) return 0;
-    return project.value.scenes.reduce((total, scene) => total + scene.duration, 0);
-  })
-
-  // TYPING SCENE
-  const typingSceneForm = reactive({
-    scene_id: null,
-    text: '',
-  })
-
-  const showTypingSceneForm = (sceneId) => {
-    typingSceneForm.scene_id = sceneId;
-    const scene = project.value.scenes.find(s => s.id === sceneId);
-    typingSceneForm.text = scene ? scene.video_prompt : '';
-  }
-
-  const generateTypingScene = async () => {
-    await axios.post(`http://localhost:8000/scenes/generate-typing-scene/${typingSceneForm.scene_id}`, {
-        text: typingSceneForm.text
-      })
-      .then(res => {
-        console.log('Typing scene generated:', res.data);
-        const scene = project.value.scenes.find(s => s.id === typingSceneForm.scene_id);
-        if (scene) {
-          scene.video_src = res.data.video_url;
-        }
-        typingSceneForm.scene_id = null; // Close the form
-      })
-    ;
-  }
-
-  // DELETE SCENE
-  const deleteScene = async (sceneId) => {
-    await axios.delete(`http://localhost:8000/scenes/${sceneId}`);
-    project.value.scenes = project.value.scenes.filter(scene => scene.id !== sceneId);
-  }
-
-  // NEW SCENE FORM
-  const newSceneForm = reactive({
-    scene_number: null,
-    image_prompt: '',
-    video_prompt: '',
-    duration: 5,
-  })
-
-  const addNewScene = async () => {
-    // add + 1 to all scenes with scene_number >= newSceneForm.scene_number
-    project.value.scenes.forEach(scene => {
-      if (scene.scene_number >= newSceneForm.scene_number) {
-        scene.scene_number += 1;
-      }
-    });
-
-    const newSceneResponse = await axios.post(`http://localhost:8000/projects/add-scene/${project.value.id}`, {
-      project_id: project.value.id,
-      scene_number: newSceneForm.scene_number,
-      image_prompt: newSceneForm.image_prompt,
-      video_prompt: newSceneForm.video_prompt,
-      duration: newSceneForm.duration,
-    });
-    console.log(newSceneResponse.data);
-    project.value.scenes.push(newSceneResponse.data.scene);
-  }
-
-  const toggleNewSceneForm = (scene_number) => {
-    // Add new scene with form values to be the index of the project - imporatant - do not overwrite existing scenes - just add one to the given index
-    if (newSceneForm.scene_number === scene_number) {
-      // If the form is already open for this scene, close it
-      newSceneForm.scene_number = null;
-      return;
-    } else {
-      newSceneForm.scene_number = scene_number;
-      newSceneForm.image_prompt = '';
-      newSceneForm.video_prompt = '';
-      newSceneForm.duration = 5;
-    }
-  }
-
-  // DRAGGABLE VOICEOVERS
-  function useVerticalDraggable(elementRef, voiceover, options = {}) {
-  const { onDragStart, onDrag, onDragEnd } = options;
-  let isDragging = false;
-  let startY = 0;
-  let initialTop = 0;
-
-  const handlePointerDown = (event) => {
-    if (event.button !== 0) return; // Only left click
-    console.log(`Pointer down on voiceover ${voiceover.id}`); // Debug log
-    event.preventDefault(); // Prevent text selection
-    isDragging = true;
-    startY = event.clientY;
-    initialTop = parseFloat(getComputedStyle(elementRef).top) || 0;
-    elementRef.classList.add('dragging');
-    document.addEventListener('pointermove', handlePointerMove);
-    document.addEventListener('pointerup', handlePointerUp);
-    onDragStart?.(event, voiceover);
-  };
-
-  const handlePointerMove = (event) => {
-    if (!isDragging) return;
-    const deltaY = event.clientY - startY;
-    let newTop = initialTop + deltaY;
-
-    // Snap to grid (0.1s increments, assuming 100px = 1s)
-    const timeScale = 100; // Pixels per second
-    const snapInterval = 10; // Snap to 0.1s (10px)
-    newTop = Math.round(newTop / snapInterval) * snapInterval;
-
-    // Constrain within timeline bounds
-    const maxTop = (projectDuration.value - voiceover.duration) * timeScale;
-    newTop = Math.max(0, Math.min(newTop, maxTop));
-
-    elementRef.style.top = `${newTop}px`;
-    onDrag?.(newTop, event, voiceover);
-  };
-
-  const handlePointerUp = (event) => {
-    if (!isDragging) return;
-    console.log(`Pointer up on voiceover ${voiceover.id}`); // Debug log
-    isDragging = false;
-    elementRef.classList.remove('dragging');
-    document.removeEventListener('pointermove', handlePointerMove);
-    document.removeEventListener('pointerup', handlePointerUp);
-
-    const timeScale = 100; // Pixels per second
-    const newTop = parseFloat(elementRef.style.top) || 0;
-    const newStartTime = newTop / timeScale;
-
-    // Update voiceover start_time
-    voiceover.start_time = Math.max(0, newStartTime);
-    onDragEnd?.(newTop, event, voiceover);
-  };
-
-  // Attach event listener
-  console.log(`Attaching pointerdown listener to voiceover ${voiceover.id}`); // Debug log
-  elementRef.addEventListener('pointerdown', handlePointerDown);
-
-  // Return cleanup function
-  return () => {
-    console.log(`Cleaning up pointerdown listener for voiceover ${voiceover.id}`); // Debug log
-    elementRef.removeEventListener('pointerdown', handlePointerDown);
-    document.removeEventListener('pointermove', handlePointerMove);
-    document.removeEventListener('pointerup', handlePointerUp);
-  };
-}
-
-// Function to make voiceovers draggable
-function makeVoiceoversDraggable() {
-  console.log('makeVoiceoversDraggable called'); // Debug log
-  console.log('voiceoverRefs:', voiceoverRefs.value); // Debug log
-  const cleanupFunctions = [];
-  voiceoverRefs.value.forEach((el, index) => {
-    if (!el) {
-      console.warn(`No element found for voiceover at index ${index}`); // Debug log
-      return;
-    }
-    const voiceover = project.value.voiceovers[index];
-    if (!voiceover) {
-      console.warn(`No voiceover data found for index ${index}`); // Debug log
-      return;
-    }
-    console.log(`Making voiceover ${voiceover.id} draggable`); // Debug log
-    const cleanup = useVerticalDraggable(el, voiceover, {
-      onDragStart: (event, voiceover) => {
-        console.log(`Dragging started for voiceover ${voiceover.id}`);
-      },
-      onDrag: (newTop, event, voiceover) => {
-        const timeScale = 100;
-        const currentTime = newTop / timeScale;
-        console.log(`Dragging voiceover ${voiceover.id} to ${currentTime.toFixed(2)}s`);
-      },
-      onDragEnd: (newTop, event, voiceover) => {
-        console.log(`Dropped voiceover ${voiceover.id} at ${voiceover.start_time.toFixed(2)}s`);
-        // Persist the new start_time to the backend
-        axios
-          .post(
-            `http://localhost:8000/voiceovers/${voiceover.id}`,
-            { start_time: voiceover.start_time },
-            { headers: { 'Content-Type': 'application/json' } }
-          )
-          .then(() => console.log('Voiceover position updated'))
-          .catch((error) => console.error('Error updating voiceover:', error));
-      },
-    });
-    cleanupFunctions.push(cleanup);
-  });
-
-  // Cleanup on unmount
-  onUnmounted(() => {
-    console.log('Cleaning up voiceover draggable listeners'); // Debug log
-    cleanupFunctions.forEach((cleanup) => cleanup());
-  });
-}
-
-onMounted(async () => {
-  const projectId = window.location.pathname.split('/').pop();
-  const response = await fetch(`http://localhost:8000/projects/${projectId}`);
-  project.value = await response.json();
-  console.log('Project loaded:', project.value); // Debug log
-
-  // Wait for the next tick to ensure DOM is updated with voiceover elements
-  await nextTick();
-  console.log('voiceoverRefs after nextTick:', voiceoverRefs.value); // Debug log
-  makeVoiceoversDraggable();
-
-  setTimeout(() => {
-    if (zoom) {
-      zoom.detach();
-    }
-    zoom = mediumZoom('[data-zoomable]');
-    zoom.on('open', () => {
-      console.log('Image expanded');
-    });
-  }, 1000);
+const timelineDuration = 200; // Total duration of the timeline in seconds (adjust as needed)
+const pixelsPerSecond = ref(50); // 100px per second
+const totalWidth = computed(()=>{
+  return timelineDuration * pixelsPerSecond.value;
 });
 
 
+const selectedSceneIndex = ref(null);
+const selectedVoiceoverIndex = ref(null);
+const generateImageLowkey = ref(true);
 
-  // DOWNLOAD VIDEO
-  const downloadVideo = async () => {
-    const projectId = project.value.id;
-    try {
-      const response = await axios.post(`http://localhost:8000/projects/download/${projectId}`, {
-        responseType: 'blob', // Important for downloading files
-      });
-      // Create a URL for the blob
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      // Create a link element
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `project_${projectId}_video.mp4`); // Set the file name
-      // Append to the document and trigger the download
-      document.body.appendChild(link);
-      link.click();
-      // Clean up
-      link.parentNode.removeChild(link);
-      window.URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error('Error downloading video:', error);
-    }
-  }
+// SAVE
+const saveProjectChanges = async () => {
+  // images are saved automatically
+  axios.put(`${route}projects/${projectId}`, {
+    scenes: scenes.value,
+    voiceovers: voiceovers.value,
+  })
+  .then(e => {
+    console.log(e);
+  })
+}
 
-  // SCENE EFFECTS
-  const showEffects = ref({});
-  const showAvailableEffects = (sceneId) => {
-    showEffects.value[sceneId] = true;
-  }
-  const cancelAvailableEffect = (sceneId) => {
-    showEffects.value[sceneId] = false;
-  }
 
-  // ADJUSTING SCENE CHARACTERS
-  const showCharactersToAdd = ref(null);
-
-  const addCharacterToScene = (sceneId, characterId) => {
-    const scene = project.value.scenes.find(s => s.id === sceneId);
-    const character = project.value.characters.find(c => c.id === characterId);
-    if (scene && character && !scene.characters.some(c => c.id === characterId)) {
-      scene.characters.push(character);
-    }
-    axios.post(`http://localhost:8000/scenes/add-character-to-scene`, {
-      scene_id: sceneId,
-      character_id: characterId,
-    });
-    
-  }
-
-  // VOICEOVER GENERATION
-  const generateVoiceover = async (voiceoverId) => {
-    const voiceover = project.value.voiceovers.find(v => v.id === voiceoverId);
-    if (!voiceover) return;
-    try {
-      const response = await axios.post(`http://localhost:8000/voiceovers/generate-voiceover/${voiceoverId}`);
-      const data = response.data;
-      console.log('Voiceover generation response:', data);
-      // Update the project data with the new voiceover src
-      voiceover.src = data.voiceover_src; // Assuming the backend returns the voiceover URL in 'voiceover_url'
-      voiceover.duration = data.duration; // Update duration if provided
-    } catch (error) {
-      console.error('Error generating voiceover:', error.response?.data || error.message);
-    }
-  }
-
-  // SCENE IMAGE DEFINITION
-  const setSceneImage = async (sceneId, event) => {
-    const file = event.target.files[0];
-    if (!file) return;
-    const scene = project.value.scenes.find(s => s.id === sceneId);
-    if (scene) {
-      scene.src = URL.createObjectURL(file);
-      const formData = new FormData();
-      formData.append('image', file);
-      await axios.post(`http://localhost:8000/scenes/upload-scene-image/${sceneId}`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
+// GENERATING VIDEO
+const fixVideoPrompt = async () => {
+  try {
+    const response = await axios
+      .post('http://localhost:8000/generators/fix-scene-video-prompt', { 
+        image_prompt: scenes.value[selectedSceneIndex.value].image_prompt,
+        video_prompt: scenes.value[selectedSceneIndex.value].video_prompt
       })
-      console.log('Uploaded image for scene:', sceneId);
-    }
+      .catch((error) => {
+        console.error('Error response from server:', error.response ? error.response.data : error.message);
+        throw error; // Re-throw the error after logging it
+      })
+    ;
+    scenes.value[selectedSceneIndex.value].video_prompt = response.data.fixed_prompt;
+  } catch (error) {
+    console.error('Error fixing scene image prompt:', error);
   }
+}
 
-  // SCENE IMAGE EFFECTS
+const generateVideo = async () => {
+  try {
+    // Reset the form
+    const scene = scenes.value[selectedSceneIndex.value];
 
-  const generateSceneWithEffect = async (sceneId, effect) => {
-    console.log('Generating scene with effect:', sceneId, effect);
+    const response = await axios.post(`http://localhost:8000/scenes/generate-scene-video/${scene.id}`, {
+      prompt: scene.video_prompt,
+    });
+    const data = response.data;
+    scene.video_src = data.video_url; // Assuming the backend returns the video URL in 'video_url'
+    alert('Video generation started. It may take a few minutes to complete. Please refresh the page after some time to see the updated video.');
+
+  } catch (error) {
+    console.error('Error generating scene video:', error.response?.data || error.message);
+  }
+}
+
+
+// GENERATING IMAGE
+const imageGenerationStyle = ref(null);
+const imageGenerationStylePower = ref(5);
+
+const fixImagePrompt = async () => {
+  try {
+    const response = await axios
+      .post('http://localhost:8000/generators/fix-scene-image-prompt', { 
+        prompt: scenes.value[selectedSceneIndex.value].image_prompt,
+        style: imageGenerationStyle.value,
+        style_power: imageGenerationStylePower.value
+      })
+      .catch((error) => {
+        console.error('Error response from server:', error.response ? error.response.data : error.message);
+        throw error; // Re-throw the error after logging it
+      })
+    ;
+    scenes.value[selectedSceneIndex.value].image_prompt = response.data.fixed_prompt;
+  } catch (error) {
+    console.error('Error fixing scene image prompt:', error);
+  }
+}
+
+const generateImage = async () => {
+  const formData = new FormData();
+  
+  // Helper to convert URL/blob to File
+  const urlToFile = async (url, filename) => {
     try {
-      const response = await axios.post(`http://localhost:8000/scenes/add-effect-to-image/${sceneId}`, {
-        effect: effect,
-      });
-      const data = response.data;
-      console.log('Scene effect generation response:', data);
-      // Update the project data with the new image
-      const scene = project.value.scenes.find(s => s.id === sceneId);
-      if (scene) {
-        scene.image_src = data.image_url; // Assuming the backend returns the image URL in 'image_url'
+      // Handle blob: URLs
+      url = getSrc(url)
+      if (url.startsWith('blob:')) {
+        const response = await fetch(url);
+        const blob = await response.blob();
+        return new File([blob], filename, { type: blob.type });
       }
+
+      // Handle http(s) URLs (including localhost)
+      const response = await fetch(url);
+      if (!response.ok) throw new Error(`Failed to fetch ${url}`);
+      const blob = await response.blob();
+      return new File([blob], filename, { type: blob.type || 'image/jpeg' });
     } catch (error) {
-      console.error('Error generating scene with effect:', error.response?.data || error.message);
+      console.error(`Error converting ${url} to File:`, error);
+      throw error;
+    }
+  };
+
+  // Convert reference images to Files and append to formData
+  console.log(addedReferenceImages.value);
+  for (const img of addedReferenceImages.value) {
+    const file = await urlToFile(img.src, `scene_${img.name}`);  // filename: scene_<uuid>
+    formData.append("files", file);  // ← NOT reference_images[...]
+  }
+
+  formData.append("lowkey", generateImageLowkey.value);
+  formData.append("image_prompt", scenes.value[selectedSceneIndex.value].image_prompt);
+
+  // Optional: debug
+  console.log("Sending FormData:");
+  for (const [k, v] of formData.entries()) {
+    if (v instanceof File) {
+      console.log(`  ${k} -> File: ${v.name} (${v.size} bytes)`);
+    } else {
+      console.log(`  ${k} -> ${v}`);
     }
   }
 
-  // SCENE IMAGE GENERATION
-  const sceneImagePrompt = reactive({
-    prompt: '',
-    scene_id: null,
-    character_ids: [],
-    image: null,
-  })
-
-  const sceneVideoPrompt = reactive({
-    video_prompt: '',
-    scene_id: null,
-  })
-
-  const addedImageToImagePrompt = (event) => {
-    const file = event.target.files[0];
-    if (file) {
-      sceneImagePrompt.image = file;
+  const response = await axios.post(
+    `${route}scenes/generate-image/${scenes.value[selectedSceneIndex.value].id}`,
+    formData,
+    {
+      headers: { "Content-Type": "multipart/form-data" },
     }
-  }
-  const cancelSceneImage = () => {
-    sceneImagePrompt.scene_id = null;
-    sceneImagePrompt.prompt = '';
-    sceneImagePrompt.character_ids = [];
-    sceneImagePrompt.image = null;
-  }
-  const openSceneImageForm = (sceneId) => {
-    const scene = project.value.scenes.find(s => s.id === sceneId);
-    if (!scene) return;
-    sceneImagePrompt.scene_id = sceneId;
-    sceneImagePrompt.prompt = scene.image_prompt;
-    sceneImagePrompt.character_ids = scene.characters.map(c => c.id);
-    console.log('Opening image form for scene:', sceneId);
-  }
+  );
 
-  const scenePromptImageUrl = computed(() => {
-    if (sceneImagePrompt.image) {
-      return URL.createObjectURL(sceneImagePrompt.image);
-    }
-    return null;
+  console.log(response.data);
+  scenes.value[selectedSceneIndex.value].image_src = response.data.image_url;
+};
+
+// MANUAL SCENE LOAD
+const handleSceneImageUpload = (event) => {
+  const img = event.target.files[0];
+  const url = URL.createObjectURL(img);
+  console.log(url)
+  scenes.value[selectedSceneIndex.value].image_src = url;
+
+  const formData = new FormData();
+  formData.append('image', img);
+
+  axios.put(`${route}scenes/upload-image/${scenes.value[selectedSceneIndex.value].id}`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
   });
+}
 
-  // GENERATING VIDEO FOR SCENE
-  const openSceneVideoForm = (sceneId) => {
-    const scene = project.value.scenes.find(s => s.id === sceneId);
-    if (!scene) return;
-    sceneVideoPrompt.scene_id = sceneId;
-    sceneVideoPrompt.prompt = scene.video_prompt;
-    console.log('Opening video form for scene:', sceneId);
-  }
+// REFERENCE IMAGES
+const addedReferenceImages = ref([]);
 
-  const generateSceneVideo = async () => {
-    console.log('Generating video for scene:', sceneVideoPrompt);
-    try {
-      // Reset the form
-
-      const response = await axios.post(`http://localhost:8000/scenes/generate-scene-video/${sceneVideoPrompt.scene_id}`, {
-        prompt: sceneVideoPrompt.prompt,
-      });
-      cancelSceneVideo();
-
-      const data = response.data;
-      console.log('Video generation response:', data);
-      // Update the project data with the new video (if applicable)
-      const scene = project.value.scenes.find(s => s.id === sceneVideoPrompt.scene_id);
-      if (scene) {
-        scene.video_src = data.video_url; // Assuming the backend returns the video URL in 'video_url'
-      }
-
-      alert('Video generation started. It may take a few minutes to complete. Please refresh the page after some time to see the updated video.');
-
-    } catch (error) {
-      console.error('Error generating scene video:', error.response?.data || error.message);
+watch(selectedSceneIndex, ()=>{
+  if(typeof(selectedSceneIndex.value) == 'number'){
+    console.log(scenes.value[selectedSceneIndex.value].characters)
+    if(scenes.value[selectedSceneIndex.value].characters.length > 0) {
+      console.log("CHARCTERS");
+      console.log(scenes.value[selectedSceneIndex.value].characters)
+      addedReferenceImages.value = scenes.value[selectedSceneIndex.value].characters.map(el => ({ name: el.name, src: el.src }))
+      return
     }
   }
+  addedReferenceImages.value = []
+})
 
-  const cancelSceneVideo = () => {
-    sceneVideoPrompt.scene_id = null;
-    sceneVideoPrompt.prompt = '';
-  }
-
-
-  const fixVideoPrompt = async () => {
-    try {
-      console.log(sceneVideoPrompt.prompt);
-      console.log('Sending request with body:', { prompt: sceneVideoPrompt.prompt });
-      // const scene = project.value.scenes.find(s => s.id === sceneVideoPrompt.scene_id);
-      
-      const response = await axios
-        .post('http://localhost:8000/generators/fix-scene-video-prompt', { 
-
-          prompt: sceneVideoPrompt.prompt,
+const availableReferenceImages = computed(()=>{
+  const addedSrcs = addedReferenceImages.value.map(el => el.src)
+  if(typeof(selectedSceneIndex.value) == 'number'){
+    let result = []
+    characters.value.forEach(el => {
+      if(!addedSrcs.includes(el.src)){
+        result.push({
+          name: el.name,
+          src: el.src
         })
-        .catch((error) => {
-          console.error('Error response from server:', error.response ? error.response.data : error.message);
-          throw error; // Re-throw the error after logging it
+      }
+    })
+    scenes.value.forEach(el => {
+      if(el.image_src && !addedSrcs.includes(el.image_src)){
+        result.push({
+          name: 'scene_' + el.id,
+          src: el.image_src
         })
-      ;
-      sceneVideoPrompt.prompt = response.data.fixed_prompt;
-      console.log('Scene video prompt fixed:', sceneVideoPrompt.prompt);
-    } catch (error) {
-      console.error('Error fixing scene video prompt:', error);
+      }
+    })
+    return result
+  }
+  return []
+})
+
+const addReferenceImage = (referenceImg) => {
+  addedReferenceImages.value.push(referenceImg)
+}
+
+const removeReferenceImage = (referenceImgSrc) => {
+  addedReferenceImages.value = addedReferenceImages.value.filter(el => el.src != referenceImgSrc)
+  console.log(addedReferenceImages.value)
+}
+
+// VERSIONS - TO UPDATE MEDIA
+const voiceoversVersion = ref({})
+const videosVersion = ref({})
+const imagesVersion = ref({})
+
+const initializeVersions = (ref, values) => {
+  let result = {}
+  values.forEach(el => result[el.id] = 0)
+  ref.value = result
+  console.log(voiceoversVersion.value)
+}
+
+// REQUESTS
+const generateVoiceover = async () => {
+  const voiceover = voiceovers.value[selectedVoiceoverIndex.value];
+  console.log(voiceover)
+  const voiceoverResponse = await axios.post(`http://localhost:8000/voiceovers/generate-voiceover/${voiceover.id}`, {
+    text: voiceover.text
+  });
+  voiceovers.value[selectedVoiceoverIndex.value].src = voiceoverResponse.data.voiceover_src
+  voiceoversVersion.value[voiceover.id]++
+}
+
+
+// Time markers (every 10 seconds)
+const timeTicks = Array.from({ length: Math.ceil(timelineDuration / 10) + 1 }, (_, i) => i * 10);
+
+// Format time in seconds to MM:SS.ss (with milliseconds if needed, but simplified to seconds)
+const formatTime = (seconds) => {
+  const minutes = Math.floor(seconds / 60);
+  const secs = Math.floor(seconds % 60);
+  const millis = Math.floor((seconds % 1) * 10); // Get milliseconds as integer (0–9)
+
+  const millisStr = millis.toString().padStart(3, '0'); // Always 3 digits
+
+  return `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}.${String(millisStr)[2]}`;
+};
+
+// Dragging state
+const dragging = ref(null);
+
+// Handle dragging
+const startDragging = (event, type, item, index, trackRef) => {
+  event.preventDefault();
+  const trackRect = trackRef.getBoundingClientRect();
+  dragging.value = { 
+    type, 
+    item, 
+    index, 
+    startX: event.clientX, 
+    startTime: item.start_time,
+    trackLeft: trackRect.left,
+    scrollLeft: event.target.closest('.overflow-x-auto').scrollLeft
+  };
+
+  const onMouseMove = (e) => {
+    if (!dragging.value) return;
+    const deltaX = e.clientX - dragging.value.startX;
+    const deltaTime = deltaX / pixelsPerSecond.value;
+    const newStartTime = Math.max(0, Math.min(dragging.value.startTime + deltaTime, timelineDuration - item.duration));
+
+    if (type === 'scene') {
+      scenes.value[index].start_time = newStartTime;
+    } else if (type === 'voiceover') {
+      voiceovers.value[index].start_time = newStartTime;
     }
+  };
+
+  const onMouseUp = () => {
+    if (dragging.value) {
+      console.log(`${dragging.value.type} ${dragging.value.index} new start_time:`, dragging.value.item.start_time);
+      dragging.value = null;
+    }
+    document.removeEventListener('mousemove', onMouseMove);
+    document.removeEventListener('mouseup', onMouseUp);
+  };
+  document.addEventListener('mousemove', onMouseMove);
+  document.addEventListener('mouseup', onMouseUp);
+};
+
+const containerRef = ref(null)
+
+const handleWheel = (event) => {
+  // Check if Ctrl key is pressed (for zoom-like behavior)
+  if (event.ctrlKey) {
+    event.preventDefault() // Prevent default browser zoom
+
+    // Calculate zoom change based on scroll delta
+    const delta = event.deltaY > 0 ? 1/1.3 : 1.3 
+    pixelsPerSecond.value = Math.max(10, Math.min(pixelsPerSecond.value * delta, 400)) // Clamp between 0.5x and 3x
+  }
+}
+
+// Select scene for preview
+const selectScene = (sceneId) => {
+  selectedSceneIndex.value = scenes.value.findIndex(el => el.id == sceneId);
+  selectedVoiceoverIndex.value = null;
+};
+
+// Select voiceover for preview
+const selectVoiceover = (voiceoverId) => {
+  selectedVoiceoverIndex.value = voiceovers.value.findIndex(el => el.id == voiceoverId);
+  selectedSceneIndex.value = null;
+};
+
+
+onMounted(async () => {
+  projectId = window.location.pathname.split('/').pop();
+  const response = await fetch(`http://localhost:8000/projects/${projectId}`);
+  const project = await response.json();
+
+  initializeVersions(voiceoversVersion, project.voiceovers)
+  initializeVersions(videosVersion, project.voiceovers)
+  initializeVersions(imagesVersion, project.voiceovers)
+  // Wait for the next tick to ensure DOM is updated with voiceover elements
+  voiceovers.value = project.voiceovers
+  scenes.value = project.scenes
+  characters.value = project.characters
+
+  console.log(scenes.value)
+
+  selectScene(project.scenes[0].id)
+
+  if (containerRef.value) {
+    containerRef.value.addEventListener('wheel', handleWheel, { passive: false })
   }
 
-  const fixImagePrompt = async () => {
-    try {
-      console.log(sceneImagePrompt.prompt);
-      console.log('Sending request with body:', { prompt: sceneImagePrompt.prompt });
-      const response = await axios
-        .post('http://localhost:8000/generators/fix-scene-image-prompt', { 
-          prompt: sceneImagePrompt.prompt,
-        })
-        .catch((error) => {
-          console.error('Error response from server:', error.response ? error.response.data : error.message);
-          throw error; // Re-throw the error after logging it
-        })
-      ;
-      sceneImagePrompt.prompt = response.data.fixed_prompt;
-      console.log('Scene image prompt fixed:', sceneImagePrompt.prompt);
-    } catch (error) {
-      console.error('Error fixing scene image prompt:', error);
-    }
+});
+
+onBeforeUnmount(() => {
+  if (containerRef.value) {
+    containerRef.value.removeEventListener('wheel', handleWheel)
   }
+})
 
-
-  const generateSceneImage = async () => {
-    console.log('Generating image for scene:', sceneImagePrompt);
-    try {
-
-      const formData = new FormData();
-      formData.append('name', sceneImagePrompt.name);
-      formData.append('prompt', sceneImagePrompt.prompt);
-      if (sceneImagePrompt.image){
-        formData.append('image', sceneImagePrompt.image);
-      }
-      if (sceneImagePrompt.character_ids && sceneImagePrompt.character_ids.length > 0) {
-          // Append each character_id individually
-          sceneImagePrompt.character_ids.forEach(id => {
-              formData.append('character_ids', id);
-          });
-      }
-
-      const response = await axios.post(`http://localhost:8000/scenes/generate-scene-image/${sceneImagePrompt.scene_id}`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
-      const data = response.data;
-      console.log('Image generation response:', data);
-      // Update the project data with the new image
-      const scene = project.value.scenes.find(s => s.id === sceneImagePrompt.scene_id);
-      if (scene) {
-        scene.image_src = data.image_url; // Assuming the backend returns the image URL in 'image_url'
-        scene.image_prompt = sceneImagePrompt.prompt;
-      }
-      // Reset the form
-      cancelSceneImage();
-    } catch (error) {
-      console.error('Error generating scene image:', error.response?.data || error.message);
-    }
-  }
-
-
-
-  onUnmounted(() => {
-    // Clean up to avoid memory leaks
-    if (zoom) {
-      zoom.detach()
-    }
-  })
 
 </script>
 
 <style scoped>
-.zoomable-img {
-  max-width: 100%;
-  height: auto;
-  cursor: zoom-in;
+.preview {
+  min-height: 200px;
 }
+.timeline {
+  user-select: none; /* Prevent text selection during dragging */
+}
+.overflow-x-auto {
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+div[ref="containerRef"] > div {
+  transition: transform 0.1s ease-out;
+}
+
 </style>

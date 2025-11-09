@@ -36,40 +36,62 @@ def gather_story_data(topic: str) -> GatheredStoryData:
         messages=messages
     )
 
-    # Debug: Log the AI response
-    print("DEBUG: gather_story_data response:")
-    print(json.dumps(response.model_dump(), indent=2))
-
     return response
 
 class Story(BaseModel):
     script: str
 
-def generate_story(topic: str, word_limit: int, story_data: GatheredStoryData) -> Story:
+def generate_story(topic: str, word_limit: int, story_data: str, reference_stories: str) -> Story:
     messages = [
         {
             "role": "system",
             "content": (
-                "You are an excellent storyteller who writes engaging, voice-ready narratives for video scripts. "
-                "Your main goal is to make the story sound like it's being told out loud by a passionate narrator. "
-                "You use emotional delivery and natural pacing to make the listener *feel* the story, not just hear it."
+                "You are an expert storyteller and viral scriptwriter for short-form social media videos (TikTok, Reels, YouTube Shorts). "
+                "You write engaging, voice-ready narratives that feel *spoken*, not written. "
+                "Your goal is to capture attention immediately and sustain it with curiosity-driven pacing. "
+                "You use emotional delivery and natural rhythm, making the listener *feel* the story as it unfolds. "
+                "Every section of the story should have a small curiosity loop — when one mystery is resolved, introduce a new question or emotional shift that keeps the listener hooked. "
+                "You are excellent at structuring content with 'hook → payoff → new hook' to ensure viewers watch until the end. "
+                "The narration must sound natural and cinematic, not like a list of hooks. Blend tension and emotion smoothly."
             )
         },
         {
             "role": "user",
             "content": (
                 f"Create a captivating story about '{topic}'.\n\n"
-                f"Base it entirely on the following data:\n{story_data.gathered_data}\n\n"
+                f"Base the story entirely on reference storie and gathered data:"
+                f"Data:\n{story_data}\n\n"
+                f"Example reference stories about the topic: \n{reference_stories}\n\n"
                 f"Guidelines:\n"
                 f"- Vocabulary: 7th-grade reading level.\n"
                 f"- Style: Conversational, suspenseful, and easy to follow.\n"
-                f"- Structure: Intro hook → Main events → Reflection.\n"
+                f"- Structure: Intro hook (CRUTIAL) → Main events → Reflection.\n"
                 f"- Length: Around {word_limit} words (not counting tags).\n\n"
+                f"- Use **rolling hooks** throughout: each time you resolve part of the story, spark a new sense of curiosity. "
+                f"Example: answer one mystery but introduce another question, emotion, or twist. "
+                f"Keep the audience emotionally or intellectually invested — never fully satisfied until the very end.\n"
+                f"- Structure your pacing like this:\n"
+                f"  1. **Intro Hook:** Grab attention instantly with emotion, curiosity, or tension.\n"
+                f"  2. **Setup:** Build context quickly — who, where, what’s at stake.\n"
+                f"  3. **Conflict or Twist:** Raise tension or surprise the listener.\n"
+                f"  4. **Mini-Payoffs + New Hooks:** Each emotional or story beat should answer one question but open another.\n"
+                f"  5. **Final Payoff + Reflection:** End with emotional closure or a thought-provoking takeaway.\n"
+                f"- Use natural **spoken rhythm**: short sentences, occasional repetition, rhetorical questions, and brief pauses for dramatic tension.\n"
+                f"- End with a **satisfying resolution** — either emotional (makes the listener feel) or reflective (makes them think)."
                 f"🎭 **Emotion and pacing:**\n"
                 f"Use the following tags to make the story sound like spoken performance — not too often, but enough to make it expressive.\n"
-                f"- **SSML breaks:** Use `<break time=\"1s\"/>` or `<break time=\"2s\"/>` where a narrator would naturally pause — for tension, reflection, or transition.\n"
-                f"- **Emotion and tone tags:** You can use tags like [happy], [sad], [excited], [fearful], [curious], [quietly], [whisper], [shout], etc.\n"
-                f"  Example: [whisper][curious]But what happened next?\n"
+                f"- Alternate emotional tones (curiosity → excitement → tension → relief → reflection) to create an emotional rhythm that feels like a story, not a lecture.\n"
+                f"- Occasionally hint at what’s *coming next* using foreshadowing or small teasers like: ‘But then... something happened that changed everything.’"
+                f"- **SSML breaks (MANDATORY):** Use `<break time=\"1s\"/>` or `<break time=\"2s\"/>` to separate story beats. "
+                f"Think of them as moments where a narrator would naturally pause — for suspense, reflection, or emotional shift. "
+                f"Include at least **one break every 2–4 sentences**, and always after a major event, twist, or emotional moment. "
+                f"These breaks are *required* and used to split the story into segments — so never skip them.\n"
+                f"- **Emotion and tone tags:** Add emotional delivery cues like [happy], [sad], [excited], [fearful], [curious], [quietly], [whisper], [shout], etc. "
+                f"These control *how* something is said, not *when* to pause. "
+                f"Use them in addition to breaks, not instead of them.\n"
+                f"Example:\n"
+                f"[quietly]He reached for the old letter.<break time=\"1s\"/>\n"
+                f"[curious]But why was it still sealed after all these years?<break time=\"2s\"/>\n"
                 f"- **Use them meaningfully:** Include these tags only when they enhance the listener's emotional engagement.\n"
                 f"  Think about how a storyteller would speak — add tags for emotional or dramatic parts, "
                 f"but avoid overuse (around 1-2 emotion or pacing tags per short paragraph is ideal).\n\n"
@@ -83,118 +105,132 @@ def generate_story(topic: str, word_limit: int, story_data: GatheredStoryData) -
         messages=messages
     )
 
-    # Debug: Log the AI response
-    print("DEBUG: generate_voiceovers response:")
-    print(json.dumps(response.model_dump(), indent=2))
-
     return response
 
+
+def estimate_speech_time(
+    text: str,
+    words_per_minute: float = 200.0,      # average adult speaking rate
+    chars_per_minute: float = 200.0 * 5,      # ~5 chars per word * 150 wpm
+):
+    """
+    Estimate how long it will take to read *text* aloud.
+
+    1. Strip everything inside [square brackets].
+    2. Count words and characters (ignoring extra whitespace).
+    3. Compute time with a word-based and a character-based model.
+    4. Return the average (rounded to 1 decimal place) + a human-readable string.
+
+    Parameters
+    ----------
+    text               : input string, may contain [brackets]
+    words_per_minute   : speaking speed in words/min (default 150 wpm)
+    chars_per_minute   : speaking speed in characters/min (default 750 cpm)
+    min_seconds        : floor for very short texts
+
+    Returns
+    -------
+    (seconds, "X min Y sec")
+    """
+    # ------------------------------------------------------------------ #
+    # 1. Remove [anything inside square brackets] – including the brackets
+    # ------------------------------------------------------------------ #
+    clean = re.sub(r'\[.*?\]', '', text, flags=re.DOTALL)
+
+    # ------------------------------------------------------------------ #
+    # 2. Normalise whitespace (multiple spaces → one, trim)
+    # ------------------------------------------------------------------ #
+    clean = re.sub(r'\s+', ' ', clean).strip()
+
+    # ------------------------------------------------------------------ #
+    # 3. Count words and characters
+    # ------------------------------------------------------------------ #
+
+    words = len(clean.split())                # simple split on whitespace
+    chars = len(clean.replace(' ', ''))       # characters *without* spaces
+
+    # ------------------------------------------------------------------ #
+    # 4. Time estimates
+    # ------------------------------------------------------------------ #
+    # word-based
+    sec_word = (words / words_per_minute) * 60.0
+
+    # character-based (more robust for languages with long compounds)
+    sec_char = (chars / chars_per_minute) * 60.0
+
+    # average → most accurate for mixed texts
+    seconds = sec_word + sec_char / 2.0
+
+    # round to 1 decimal place
+    seconds = round(seconds, 1)
+
+    return seconds
+
+
+# from one single long string of story
+# 1. split by sentences and breaks
+# 2. for each sentence add pauses - pause is generated by comma or parts longer than 7 words.
+
 def story_split(story: str) -> List[Any]:
-    # First, split by break tags to preserve them as separate elements
+    # split breaks
     pattern = r'(<break time="\d+s"/>)'
-    parts = re.split(pattern, story)
-    
-    # if segment contains '.', split by dots
-    # if the splitted part is empty - remove it
-    def split_by_dots(segment: str) -> List[Any]:
-        if '.' in segment:
-            sub_parts = [part.strip() for part in segment.split('.') if part.strip()]
-            # Remove the extra dot added to the last part if it was originally empty
-            if sub_parts and sub_parts[-1] == '.':
-                sub_parts.pop()
-            return sub_parts
-        else:
-            return [segment.strip()] if segment.strip() else []
+    segments = re.split(pattern, story)
 
-    final_parts = []
-    for part in parts:
-        split_parts = split_by_dots(part)
-        final_parts.extend(split_parts)
-
-    final_parts = finalize_voiceover_segments(final_parts)
-    return final_parts
-
-
-def finalize_voiceover_segments(segments: list[str]) -> list[Dict[str, Any]]:
-    finalized_segments = []
-    # This should split the segments to be 4 - 7 words long instead of one long segment
-    def split_video_segment(segment: str) -> List[str]:
- 
-        def split_by_commas(words: str) -> List[str]:
-            segments = []
-            current_segment = []
-            for word in words.split():
-                current_segment.append(word)
-                if word.endswith(','):
-                    segments.append(' '.join(current_segment).strip())
-                    current_segment = []
-            if current_segment:
-                segments.append(' '.join(current_segment).strip())
-            return segments
-        split_by_commas(segment)
-        final_parts = []
-        def shorten_segments(words: str) -> List[str]:
-            nonlocal final_parts
-            # if the segment is longer than 8 words - split them apart
-            # and if splitted part include more than 8 words - split again recursively
-            words_list = words.split()
-            if len(words_list) < 8:
-                final_parts.append(words.strip())
-            else:
-                middle_index = len(words_list) // 2
-                splitted_first_part = ' '.join(words_list[:middle_index])
-                remaining_part = ' '.join(words_list[middle_index:])
-                shorten_segments(splitted_first_part)
-                shorten_segments(remaining_part)
-
-        shorten_segments(segment)
-
-        def add_duration_for_parts(segment) -> List[str]:
-            # TODO
-            # Get percentage of duration for each part based on number of characters - and give approx duration
-            # Sum of all est_duration of video_parts should be equal to est_duration of the whole segment
-            total_chars = len(segment.content)
-            for part in segment.video_parts:
-                part_duration = floor((len(part) / total_chars) * segment.est_duration)
-        
-            # add time to shortest part to make sum equal to est_duration
-            total_duration = segment.est_duration
-            current_sum = sum(floor((len(part) / total_chars) * segment.est_duration) for part in segment.video_parts)
-            duration_difference = total_duration - current_sum
-
-            parts_sorted_by_length = sorted(segment.video_parts, key=lambda x: len(x))
-
-            # Split the duration_difference across the parts, according to their length
-            # So the shortest parts should get the most extra time and longest parts the least - this should be
-            for i in range(abs(duration_difference)):
-                if duration_difference > 0:
-                    parts_sorted_by_length[i % len(parts_sorted_by_length)].duration += 1
-                else:
-                    parts_sorted_by_length[i % len(parts_sorted_by_length)].duration -= 1
-            pass
-        
-        return final_parts
-    
+    final_segments = []
 
     for segment in segments:
+
         if segment.startswith('<break'):
             duration = re.search(r'time="(\d+)s"', segment)
-            finalized_segments.append({
+            final_segments.append({
                 "type": "break",
                 "content": segment,
-                "est_duration": duration.group(1),
+                "duration": float(duration.group(1)),
+                "content_with_pauses": None
             })
+
         else:
-            # avertage characters per second is 8.5
-            est_duration = len(segment) / 8.5
-            finalized_segments.append({
-                "type": "text", 
-                "content": segment, 
-                "est_duration": round(est_duration),
-                "video_parts": split_video_segment(segment)
-            })
+            duration = estimate_speech_time(segment)
+
+            # Content with pauses is sentence with "|".
+            # Each "|" suggest that tekst will generate in another scene 
+
+            # 1: Split by dots and commas
+            splitted = re.split('[,.]', segment)
+
+            splitted_shorter = []
+            for part in splitted:
+                final_parts = []
+                def split_longer_parts_of_sentence(words: str) -> List[str]:
+                    nonlocal final_parts
+                    # if the segment is longer than 8 words - split them apart
+                    # and if splitted part include more than 8 words - split again recursively
+                    words_list = words.split()
+                    if len(words_list) < 8:
+                        final_parts.append(words.strip())
+                    else:
+                        middle_index = len(words_list) // 2
+                        splitted_first_part = ' '.join(words_list[:middle_index])
+                        remaining_part = ' '.join(words_list[middle_index:])
+                        split_longer_parts_of_sentence(splitted_first_part)
+                        split_longer_parts_of_sentence(remaining_part)
+                
+                split_longer_parts_of_sentence(part)
+                splitted_shorter.append("|".join(final_parts))
             
-    return finalized_segments
+            content_with_pauses = "|".join(splitted_shorter)
+            if content_with_pauses.endswith("|"):
+                content_with_pauses = content_with_pauses[:-1]
+            
+            final_segments.append({
+                "type": "text",
+                "content": segment,
+                "duration": duration, # average speaking cps
+                "content_with_pauses": content_with_pauses
+            })
+
+    return final_segments
+
 
 class Scene(BaseModel):
     image_prompt: str
@@ -233,43 +269,44 @@ def add_scenes_to_story(splitted_story: List[Any]) -> List[Any]:
 
     # remove segments with type = "break"
     filtered_story = [{
-        "est_duration": seg.est_duration,
-        "content": seg.content,
+        "duration": float(seg["duration"]) + 2,
+        "content": seg["content"],
     } for seg in splitted_story if seg.get("type") == "text"]
-    
-    filtered_story = json.dumps(filtered_story, ensure_ascii=False, indent=2)
 
     messages = [
         {
             "role": "system",
-            "content": (
-                "You are an expert film director and visual storyteller specializing in creating cinematic scene breakdowns "
-                "for AI-generated films. You deeply understand pacing, composition, and visual engagement. "
-                "Your task is to transform a text-based story into a sequence of visually engaging scenes for each segment. "
-                "Each scene will have a detailed 'image_prompt' describing the visual frame, and a simple 'video_prompt' "
-                "that defines what happens in motion (camera movement, small character actions, environmental changes). "
-                "The result should be a JSON structure matching the 'Story' schema: "
-                "Story -> List[SegmentWithScenes(content: str, scenes: List[dict(image_prompt:str, video_prompt:str, duration:int)])]. "
-                "Focus on maintaining narrative flow, emotional tone, and visual diversity. "
-                "Avoid repetitive or overly complex camera actions. "
-                "Scenes should be visually rich, consistent with the tone of the story, and make viewers feel immersed. "
-                "Important: The total sum of scene durations for each segment **must not exceed the segment’s duration by more than 2 seconds**."
-            )
+            "content": "You are an expert film director and visual storyteller."
         },
         {
             "role": "user",
             "content": (
-                "Below is the story split into segments. Each segment contains the estimated duration and its text content. "
-                "Your goal is to enrich each segment with 'scenes', covering the entire duration. "
-                "Each scene should last between 3 and 7 seconds, and the **total duration of all scenes in a segment should be ≤ segment duration + 2 seconds**. "
-                "Use these rules:\n\n"
-                "- The number of scenes depends on the segment’s estimated duration.\n"
-                "- Each scene must align with narrative changes or important visual details in the text.\n"
-                "- For each scene:\n"
-                "  * 'image_prompt' should describe the static frame in rich cinematic detail, optimized for AI image generation.\n"
-                "  * 'video_prompt' should describe how the scene moves slightly — camera pans, zooms, slow character actions, weather shifts.\n"
-                "  * Avoid complex multi-character choreography, fast transitions, or abstract visual concepts.\n\n"
-                "Output format:\n"
+                "You are an expert film director and visual storyteller specializing in cinematic scene breakdowns "
+                "for AI-generated films. You deeply understand pacing, composition, and emotional continuity. "
+                "Your task is to transform a text-based story into a sequence of visually engaging scenes **for every single segment**.\n\n"
+
+                "⚠️ CRITICAL ENFORCEMENT RULES:\n"
+                "- Each segment in the input MUST appear in the output.\n"
+                "- Each segment MUST have a non-empty 'scenes' array.\n"
+                "- If a segment is very short, still create at least one valid scene.\n"
+                "- Never skip any segment.\n\n"
+
+                "Each scene must include:\n"
+                "- 'image_prompt': a vivid, cinematic description of the static frame, optimized for AI image generation.\n"
+                "- 'video_prompt': a concise description of motion (camera moves, character gestures, lighting, or environmental effects).\n"
+                "- 'duration': an integer between 4–7 seconds.\n\n"
+
+                "The total duration of all scenes in each segment must **cover the segment’s duration** "
+                "and may exceed it by at most 2 seconds.\n\n"
+
+                "Scene design rules:\n"
+                "- The number of scenes depends on the segment’s duration.\n"
+                "- Each scene should align with a meaningful change in the story — a new action, mood, or visual element.\n"
+                "- Avoid overly complex choreography or abstract imagery.\n"
+                "- If a montage or quick transition fits naturally, break it into several shorter scenes instead of one.\n"
+                "- Maintain smooth pacing, emotional tone, and visual diversity.\n\n"
+
+                "OUTPUT FORMAT (strict JSON):\n"
                 "{\n"
                 "  'story': [\n"
                 "     {\n"
@@ -278,20 +315,23 @@ def add_scenes_to_story(splitted_story: List[Any]) -> List[Any]:
                 "          {\n"
                 "            'image_prompt': '...',\n"
                 "            'video_prompt': '...',\n"
-                "            'duration': int (3-7 seconds)\n"
+                "            'duration': int (4–7)\n"
                 "          }\n"
+                "          ...\n"
                 "        ]\n"
-                "     }\n"
+                "     },\n"
+                "     ...\n"
                 "  ]\n"
                 "}\n\n"
+
+
+                f"The story has {len(filtered_story)} segments in total. Therefore, the final output MUST include exactly {len(filtered_story)} segments — each with its own scenes.\n\n"
+
                 "Story segments:\n"
-                f"{filtered_story}"
+                f"{json.dumps(filtered_story, indent=2)}"
             )
         }
     ]
-
-    print("message:")
-    print(json.dumps(messages))
 
     response = open_ai_client.chat.completions.create(
         model="gpt-4o-mini",
@@ -299,42 +339,57 @@ def add_scenes_to_story(splitted_story: List[Any]) -> List[Any]:
         messages=messages
     )
 
-    
-
-    # DEBUG PRINT OF RESPONSE
-    print("response:")
-    print(json.dumps(response.model_dump(), indent=2))
-
-
-
     return response
 
 def prepare_story_for_db(story_with_scenes, splitted_story):
     # story_with_scenes containst segments with: est_duration, content and scenes
     # splitted_story contains est_duration, content, type
     # join them by the same content
+    segments_with_scenes_len = len(story_with_scenes)
+    i = 0
     for segment in splitted_story:
-        if segment['type'] == 'text':
-            for scene_segment in story_with_scenes:
-                if scene_segment['content'] == segment['content']:
-                    segment['scenes'] = scene_segment.get('scenes', [])
-                    break
+        if segment["type"] == "break":
+            continue
+        else:
+            if segments_with_scenes_len <= i:
+                break
+            else:
+                segment["scenes"] = story_with_scenes[i].get("scenes", [])
+                i += 1
+    try:
+        print("------------JOINED------------")
+        print(json.dumps(splitted_story, indent=2))
+        print("-------------------------------")
+    except:
+        print("not working")
 
     # Step 1: Add start_time to each segment (sum of previous est_durations)
     current_time = 0
     for segment in splitted_story:
         segment['start_time'] = current_time
-        current_time += float(segment['est_duration'])
+        current_time += float(segment['duration'])
 
     # Step 2: Create voiceovers list
+    voiceovers = []
+    for segment in splitted_story:
+        if segment["type"] == 'text':
+            
+            voiceovers.append({
+                'content': segment['content'],
+                'content_with_pauses': segment['content_with_pauses'],
+                'duration': segment['duration'],
+                'start_time': segment['start_time']
+            })
+
+
     voiceovers = [
         {
+            "content_with_pauses": None,
             'content': segment['content'],
-            'video_parts': segment.get('video_parts', []),
-            'est_duration': segment['est_duration'],
+            'duration': segment['duration'],
             'start_time': segment['start_time']
         }
-        for segment in splitted_story
+        for segment in splitted_story if segment["type"] == 'text'
     ]
 
     # Step 3: Create scenes list with calculated start times
@@ -354,5 +409,144 @@ def prepare_story_for_db(story_with_scenes, splitted_story):
         'voiceovers': voiceovers,
         'scenes': scenes,
     }
-    
 
+
+class PersistantCharacter(BaseModel):
+    name: str
+    image_prompt: str
+    scenes: List[int] 
+
+class ChangedScene(BaseModel):
+    scene_index: int
+    new_image_prompt: str
+
+class CharacterUpdate(BaseModel):
+    persistant_characters: List[PersistantCharacter]
+    changed_scenes: List[ChangedScene]
+
+
+def get_persistant_characters(scenes, gathered_data):
+    
+    print("----scenes----")
+    print(json.dumps(scenes, indent=2))
+    print("----gathered data----")
+    print(json.dumps(gathered_data, indent=2))
+
+    messages = [
+    {
+        "role": "system",
+        "content": (
+            "You are a JSON-only extractor assistant. "
+            "Your job is to analyze given scene descriptions and contextual data about characters, "
+            "then produce a single structured JSON output that identifies persistent characters and modified scenes. "
+            "Always output only valid JSON, with no explanations or extra text."
+        )
+    },
+    {
+        "role": "user",
+        "content": (
+            "Given two inputs—`scenes` (a list of image-description prompts, where each element is a string describing what is in the scene) "
+            "and `gathered_data` (context about the topic and characters)—produce exactly one JSON object matching the CharacterUpdate schema below and nothing else. "
+            "Use 0-based indexing for scene indices. Do NOT include any explanatory text, code fences, or extra fields. "
+            "If a field is empty, return an empty list for that field.\n\n"
+            "Output schema (exact keys & types):\n"
+            "{\n"
+            '  \"persistant_characters\": [\n'
+            "    { \"name\": string, \"image_prompt\": string, \"scenes\": [int, ...] }\n"
+            "  ],\n"
+            '  \"changed_scenes\": [\n'
+            "    { \"scene_index\": int, \"new_image_prompt\": string }\n"
+            "  ]\n"
+            "}\n\n"
+
+            "STEP 1 – Coreference and alias mapping:"
+            "Identify all aliases, nicknames, pronouns, or descriptive mentions that refer to the same named individual."
+            "Example:"
+            "- gathered_data says “Main character: Władysław Mazurkiewicz”"
+            "- scene descriptions include phrases like “the gentleman,” “the charming man,” “the killer,” or “he”"
+            "⟶ Treat ALL of these as referring to the same person: “Władysław Mazurkiewicz”."
+            "You must apply this mapping before deciding which characters are persistent."
+            "STEP 2 – Persistency analysis:"
+            "After alias mapping, treat any scene that contains any of those aliases, pronouns, or name mentions as featuring that person."
+
+            "Rules & behavior (apply these exactly):\n"
+            "1) Identify persistent characters using both scene descriptions AND gathered_data context. A character is considered persistent if:\n"
+            "   - They appear (explicitly by name OR implicitly through consistent description) across multiple scenes, OR\n"
+            "   - gathered_data identifies them as a main or central figure (protagonist, historical subject, narrator, etc.), even if some scenes only describe them indirectly (e.g. 'the gentleman', 'the killer', 'he', 'the woman', etc.).\n"
+            "2) You MUST infer when recurring descriptions clearly refer to the same individual, even if the name is omitted. Example: if gathered_data says the main character is 'Władysław Mazurkiewicz', and multiple scenes describe 'a gentleman', 'a charming man', or 'Mazurkiewicz', treat all those as referring to him.\n"
+            "3) For each persistent character:\n"
+            "   - name: use the explicit or inferred name.\n"
+            "   - image_prompt: construct a full-body reference image description following the Image Prompt Template below.\n"
+            "   - scenes: list all 0-based indices where this person appears, whether explicit or inferred.\n"
+            "4) Image Prompt Template (use this structure when you create `image_prompt` for a referenceable person):\n"
+            "   - If the character is a real person or there is a good reference image available online, the prompt MUST include the phrase: 'Reference image contains face of the character' and must describe a full-person reference photograph on a white background. "
+            "The prompt must be suitable for generating a reference image (full-body, neutral pose, clothing suitable for character, clear age/build/hair/facial features). Example structure:\n"
+            "     'Reference image: <PERSON NAME>\\nReference image contains face of the character\\nGeneral description: <build, age, sex, height/approx, distinguishing features>\\nClothing: <suitable clothing description for the character given gathered_data>\\nPose & framing: full-body, neutral standing pose, 3/4 view, visible hands and feet, head-to-toe in frame\\nBackground: white background\\nAdditional notes: <hair color/length, facial hair, ethnicity cues if relevant, expression neutral/serious/etc>'\n"
+            "   - If the character is fictional or no real reference exists, create an equally detailed full-body description on a white background (same framing/pose requirements). Use concrete visual details so generated images can be used as references.\n"
+            "5) If the same character appears with significantly different ages or appearances across scenes (example: 16yo vs 40yo), create separate PersistantCharacter entries per distinct consistent appearance if each appearance occurs in multiple scenes. "
+            "If a distinct appearance occurs only once (e.g., a single flashback with a younger version that appears in only one scene), DO NOT create a PersistantCharacter for that single-appearance variant — instead add a ChangedScene entry that updates that single scene's image prompt to reference the main reference plus a note like 'younger version'.\n"
+            "6) For every scene that should be updated to explicitly use the reference image, add a ChangedScene entry with `scene_index` and `new_image_prompt` where you modify the original scene prompt so the character's name or description is replaced or appended with: "
+            "'Reference image of <NAME>'. If it is a different appearance variant, include that explicitly (e.g. 'Reference image of <NAME> — younger version (16 yrs)'). The `new_image_prompt` should still be a complete prompt describing the whole scene, but with the character reference inserted so image generation will use the reference for that character.\n"
+            "7) If no persistent characters are found, return 'persistant_characters: []' and only supply 'changed_scenes' if you adjusted any single scenes for clarity; otherwise 'changed_scenes: []'.\n"
+            "8) Use 0-based indices for all `scene_index` and `scenes` lists.\n"
+            "9) Be logical but decisive — if gathered_data makes a person central, treat them as persistent even if not named in every scene.\n"
+            "10) Output ONLY the JSON object, with no explanations or markdown.\n\n"
+            "Inputs:\n"
+            f"SCENES: \n{json.dumps(scenes)}\n\n"
+            f"GATHERED_DATA: \n{json.dumps(gathered_data)}\n\n"
+            "Example outputs:\n\n"
+            "Example 1 (same character appears in multiple scenes):\n"
+            "{\n"
+            "  \"persistant_characters\": [\n"
+            "    {\n"
+            "      \"name\": \"Marek Kowalski\",\n"
+            "      \"image_prompt\": \"Reference image: Marek Kowalski\\nReference image contains face of the character\\nGeneral description: skinny, 28-year-old Polish male, 180 cm, short dark hair, light stubble\\nClothing: worn leather jacket, dark jeans, sturdy boots (suitable for an everyman mechanic)\\nPose & framing: full-body, neutral standing pose, 3/4 view, head-to-toe in frame\\nBackground: white background\",\n"
+            "      \"scenes\": [0, 2]\n"
+            "    }\n"
+            "  ],\n"
+            "  \"changed_scenes\": [\n"
+            "    {\n"
+            "      \"scene_index\": 0,\n"
+            "      \"new_image_prompt\": \"Street at dusk, Marek Kowalski (Reference image of Marek Kowalski) leaning on a red motorcycle, wet pavement, neon reflections, cinematic lighting\"\n"
+            "    },\n"
+            "    {\n"
+            "      \"scene_index\": 2,\n"
+            "      \"new_image_prompt\": \"Interior garage, Marek Kowalski (Reference image of Marek Kowalski) working on an engine, scattered tools, warm tungsten light\"\n"
+            "    }\n"
+            "  ]\n"
+            "}\n\n"
+            "Example 2 (no persistent characters):\n"
+            "{\n"
+            "  \"persistant_characters\": [],\n"
+            "  \"changed_scenes\": []\n"
+            "}\n\n"
+            "Now analyze the provided inputs and return only the JSON CharacterUpdate object."
+        )
+    }
+    ]
+    response = open_ai_client.chat.completions.create(
+        model="gpt-4o-mini",
+        response_model=CharacterUpdate,
+        messages=messages
+    )
+
+    return response.model_dump()
+
+
+def add_character_changes(story, character_updates):
+    story["characters"] = character_updates["persistant_characters"]
+    # add character to given scenes
+    for character in character_updates["persistant_characters"]:
+        for scene_index in character["scenes"]:
+            print(scene_index)
+            print(len(story["scenes"]))
+            print(story["scenes"][scene_index])
+            if not "characters" in story["scenes"][scene_index]:
+                story["scenes"][scene_index]["characters"] = []
+
+            story["scenes"][scene_index]["characters"].append(character["name"])
+    # correct image_prompt
+    for changed_scene in character_updates["changed_scenes"]:
+        story["scenes"][changed_scene["scene_index"]]["image_prompt"] = changed_scene["new_image_prompt"]
+
+    

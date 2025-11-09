@@ -19,7 +19,7 @@ from fastapi import HTTPException
 
 from google import genai  
 from google.genai import types
-from elevenlabs import ElevenLabs, save
+from elevenlabs import ElevenLabs, VoiceSettings
 from dotenv import load_dotenv
 from pydub import AudioSegment
 
@@ -199,11 +199,97 @@ def parse_skrypt(skrypt):
         scenes = [{"start_img_desc": "Placeholder start", "end_img_desc": "Placeholder end", "voiceover": "Placeholder voiceover"}]
     return scenes
 
+
+def alignment_to_words_with_emotion_tags(characters, character_start_times_seconds):
+    """
+    Converts character-level alignment to word-level with emotion tags preserved.
+    
+    Args:
+        characters: list of individual characters (including [ , ], spaces, punctuation)
+        character_start_times_seconds: list of start times for each character
+        character_end_times_seconds: list of end times for each character
+    
+    Returns:
+        List of dicts: [{'word': str, 'time': float}, ...]
+        - Emotion tags like [curious] are kept as full words with their start time
+        - Regular words are grouped by spaces
+    """
+    print('iterating')
+
+    if len(characters) != len(character_start_times_seconds):
+        print("not same lengths")
+        raise ValueError("All input lists must have the same length")
+
+    print('iterating')
+
+    result = []
+    i = 0
+    n = len(characters)
+
+    while i < n:
+        char = characters[i]
+        start_time = character_start_times_seconds[i]
+
+        # Case 1: Emotion tag like [curious]
+        if char == '[':
+            # Find closing ]
+            tag = ''
+            tag_start = start_time
+            j = i
+            while j < n and characters[j] != ']':
+                tag += characters[j]
+                j += 1
+            if j < n:
+                tag += ']'
+                # Use the start time of the '[' as the tag time
+                result.append({'word': tag, 'time': tag_start})
+                i = j + 1  # skip past ]
+            else:
+                # No closing ], treat as regular char
+                result.append({'word': char, 'time': start_time})
+                i += 1
+            continue
+
+        print('removed emotion tags')
+
+        # Case 2: Regular word (accumulate until space or punctuation that breaks word)
+        word = ''
+        word_start = start_time
+        while i < n:
+            char = characters[i]
+            if char == ' ' or char in ',."\'!?;:' or char == '[':
+                if word:  # only add if we have accumulated a word
+                    result.append({'word': word, 'time': word_start})
+                    word = ''
+                if char != ' ':  # keep punctuation as separate if needed, or skip spaces
+                    result.append({'word': char, 'time': character_start_times_seconds[i]})
+                i += 1
+                break
+            else:
+                if not word:
+                    word_start = character_start_times_seconds[i]
+                word += char
+                i += 1
+        else:
+            # End of input
+            if word:
+                result.append({'word': word, 'time': word_start})
+
+    print("got result")
+    print(result)
+    return result
+
+
 def generate_speech(text: str, filename="voiceover", directory="static/voiceovers/"):
     response = eleven_labs_client.text_to_speech.convert_with_timestamps(
         text=text,
         voice_id="nPczCjzI2devNBz1zQrb",  # Valid voice ID (Brian)
-        model_id="eleven_multilingual_v2"  # Correct model ID
+        model_id="eleven_v3",  # Correct model ID
+        voice_settings = VoiceSettings(
+            stability=0.5,  # For emotional expressiveness
+            similarity_boost=0.8,
+            style_exaggeration=0.6
+        )
     )
 
     # Make sure the directory exists
@@ -225,21 +311,14 @@ def generate_speech(text: str, filename="voiceover", directory="static/voiceover
 
     # Print word-level timestamps using alignment
     print("Word-level timestamps:")
+    timestamps = []
     try:
         # Debug: Print structure of alignment to confirm format
         print("Alignment structure:", response.alignment)
-        for word in response.alignment:  # Try alignment first
-            print(f"Word: '{word.text}', Start: {word.start:.2f}s, End: {word.end:.2f}s")
+        timestamps = alignment_to_words_with_emotion_tags(response.alignment.characters, response.alignment.character_start_times_seconds)
     except AttributeError as e:
-        # Fallback: Try normalized_alignment
-        try:
-            print("Normalized alignment structure:", response.normalized_alignment)
-            for word in response.normalized_alignment:
-                print(f"Word: '{word.text}', Start: {word.start:.2f}s, End: {word.end:.2f}s")
-        except AttributeError as e2:
-            raise AttributeError(
-                f"Could not access alignment or normalized_alignment. Available attributes: {dir(response)}"
-            ) from e2
+        print('error in alignment')
+        pass
 
     # Get duration of the generated audio
     try:
@@ -248,9 +327,16 @@ def generate_speech(text: str, filename="voiceover", directory="static/voiceover
     except Exception as e:
         raise Exception(f"Failed to read MP3 duration: {str(e)}")
 
-    return output_path, duration
+    return output_path, duration, timestamps
 
-async def generate_image(directory="static/images/default/", filename="image", prompt="Generate", content_images: dict = {}):
+async def generate_image(directory="static/images/default/", filename="image", prompt="Generate", content_images: dict = {}, lowkey = True):
+    if lowkey:
+        return await generate_image_runware(directory, filename, prompt, content_images)
+    else:
+        return generate_image_banana(directory, filename, prompt, content_images)
+
+
+async def generate_image_runware(directory="static/images/default/", filename="image", prompt="Generate", content_images: dict = {}):
     os.makedirs(directory, exist_ok=True)
     output_path = os.path.join(directory, f"{filename}.png")
 
@@ -447,6 +533,7 @@ def generate_image_banana(directory="static/images/default/", filename="image", 
                 print(f"Error saving image to {output_dir}: {e}")
 
     return f"{directory}/{filename}.png"
+
 
 def generate_video(directory="static/videos/", filename="video", prompt="Generate", negative_prompt="", image_path=None, duration: int = 3):
     os.makedirs(directory, exist_ok=True)
