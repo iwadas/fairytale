@@ -5,13 +5,27 @@
       <div
         class="flex gap-2 items-center h-full"
       >
-        <!-- LEFT: Image + details -->
-        <div class="size-[400px] min-w-[400px] bg-gray-400 rounded-lg">
-          <img
+        <!-- TODO -->
+        <!-- TODO -->
+        <!-- TODO -->
+        <!-- PREVIEW -->
+        <div class="relative min-w-[270px] bg-gray-900 rounded-lg overflow-hidden">
+          <video
+            ref="videoEl"
+            controls
+            width="270"
+            height="480"
+            @timeupdate="onTimeUpdate"
+          ></video>
 
-            alt="Scene Image"
-            class="w-full h-full object-cover"
-          />
+          <!-- Hidden audio for voiceovers -->
+          <audio ref="audioEl" @timeupdate="onAudioTimeUpdate"></audio>
+
+          <div class="flex flex-col gap-2 text-white">
+            <form-button @clicked="togglePlay" :label="isPlaying ? 'Pause' : 'Play'"/>
+            <form-button @clicked="reset" label="Reset"/>
+            <span ckass="text-center">Time: {{ currentTime.toFixed(2) }}s</span>
+          </div>
         </div>
 
         <!-- Divider -->
@@ -106,7 +120,7 @@
             </div>
             <div class="flex gap-2 items-center">
               <form-input label="Image Style" class="w-full">
-                <select v-model="imageGenerationStyle" type="select" class="text-white bg-gray-800 border-white rounded-sm w-full border">
+                <select v-model="imageGenerationStyle" class="text-white bg-gray-800 border-white rounded-sm w-full border">
                   <option value="" default>Auto style</option>
                   <option value="lifelaps">LifeLaps style</option>
                   <option value="lifelaps_science">LifeLaps style (with_science_shit)</option>
@@ -228,7 +242,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount, computed, watch } from 'vue';
+import { ref, onMounted, onBeforeUnmount, computed, watch, nextTick } from 'vue';
 import axios from 'axios'
 import FormInput from './FormInput.vue'
 import FormButton from './FormButton.vue'
@@ -253,6 +267,286 @@ const totalWidth = computed(()=>{
 const selectedSceneIndex = ref(null);
 const selectedVoiceoverIndex = ref(null);
 const generateImageLowkey = ref(true);
+
+
+// VERSIONS - TO UPDATE MEDIA
+const voiceoversVersion = ref({})
+const videosVersion = ref({})
+const imagesVersion = ref({})
+
+const initializeVersions = (ref, values) => {
+  let result = {}
+  values.forEach(el => result[el.id] = 0)
+  ref.value = result
+  console.log(voiceoversVersion.value)
+}
+
+
+// TODO
+// TODO
+// TODO
+// PREVIEW LOGIC
+// Preview refs & state
+const videoEl = ref(null)
+const audioEl = ref(null)
+const isPlaying = ref(false)
+const currentTime = ref(0)
+const rafId = ref(null)
+
+// Loading states (optional for UI feedback)
+const videoLoading = ref(false)
+const audioLoading = ref(false)
+
+// Performance tracking
+let playbackStartTime = 0
+let playbackStartTimestamp = 0
+
+// Throttling: prevent source change spam
+const LAST_CHANGE_THRESHOLD = 0.05 // 50ms
+let lastVideoChange = -1000
+let lastAudioChange = -1000
+
+// ================ ACTIVE ITEMS ================
+const activeScene = computed(() => {
+  const time = currentTime.value
+  for (let i = scenes.value.length - 1; i >= 0; i--) {
+    const s = scenes.value[i]
+    if (time >= s.start_time && time < s.start_time + s.duration) {
+      return s
+    }
+  }
+  return null
+})
+
+const activeVoiceover = computed(() => {
+  const time = currentTime.value
+  for (const vo of voiceovers.value) {
+    if (time >= vo.start_time && time < vo.start_time + vo.duration) {
+      return vo
+    }
+  }
+  return null
+})
+
+// ================ SAFE SOURCE SETTERS ================
+const setVideoSource = async (src, offset = 0) => {
+  const now = currentTime.value
+  if (now - lastVideoChange < LAST_CHANGE_THRESHOLD) {
+    videoEl.value.currentTime = offset
+    return
+  }
+
+  const fullSrc = (route + src).replaceAll("\\", "/")
+
+  // Same source? Just seek
+  if (videoEl.value.src === fullSrc && !videoLoading.value) {
+    videoEl.value.currentTime = offset
+    return
+  }
+
+  lastVideoChange = now
+  videoLoading.value = true
+
+  // Pause first to avoid playback during load
+  videoEl.value.pause()
+
+  try {
+    videoEl.value.src = fullSrc
+    videoEl.value.currentTime = offset
+    await videoEl.value.load()
+
+    // Wait for canplaybefore playing
+    if (isPlaying.value) {
+      await videoEl.value.play().catch(() => {}) // ignore user gesture errors
+    }
+  } catch (err) {
+    if (err.name !== 'AbortError') {
+      console.error('Video load error:', err)
+    }
+  } finally {
+    videoLoading.value = false
+  }
+}
+
+const setAudioSource = async (src, offset = 0) => {
+  const now = currentTime.value
+  if (now - lastAudioChange < LAST_CHANGE_THRESHOLD) {
+    audioEl.value.currentTime = offset
+    return
+  }
+
+  const fullSrc = (route + src).replaceAll("\\", "/")
+
+  if (audioEl.value.src === fullSrc && !audioLoading.value) {
+    audioEl.value.currentTime = offset
+    return
+  }
+
+  lastAudioChange = now
+  audioLoading.value = true
+
+  audioEl.value.pause()
+  try {
+    audioEl.value.src = fullSrc
+    audioEl.value.currentTime = offset
+    await audioEl.value.load()
+
+    if (isPlaying.value) {
+      await audioEl.value.play().catch(() => {})
+    }
+  } catch (err) {
+    if (err.name !== 'AbortError') console.error('Audio load error:', err)
+  } finally {
+    audioLoading.value = false
+  }
+}
+
+// Clear sources when no media
+const clearVideo = () => {
+  videoEl.value.pause()
+  videoEl.value.removeAttribute('src')
+  videoEl.value.load()
+}
+
+const clearAudio = () => {
+  audioEl.value.pause()
+  audioEl.value.removeAttribute('src')
+  audioEl.value.load()
+}
+
+// ================ UPDATE SOURCES ================
+const updateSourcesAtTime = async (time) => {
+  const scene = activeScene.value
+  const vo = activeVoiceover.value
+
+  // Video
+  if (scene) {
+    await setVideoSource(scene.video_src, time - scene.start_time)
+  } else if (videoEl.value.src) {
+    clearVideo()
+  }
+
+  // Audio
+  if (vo) {
+    await setAudioSource(vo.src, time - vo.start_time)
+  } else if (audioEl.value.src) {
+    clearAudio()
+  }
+}
+
+let previousActiveScene = null
+let previousActiveVoiceover = null
+// ================ PLAYBACK LOOP (RAF) ================
+const tick = () => {
+  if (!isPlaying.value) return
+
+  const now = performance.now()
+  const elapsed = (now - playbackStartTimestamp) / 1000
+  currentTime.value = playbackStartTime + elapsed
+
+  const time = currentTime.value
+  const scene = activeScene.value
+  const vo = activeVoiceover.value
+
+  let shouldUpdate = false
+
+  // 1. Always check if voiceover changed (most important!)
+  const prevVo = previousActiveVoiceover // we'll track this below
+  if (vo !== prevVo) {
+    shouldUpdate = true
+  }
+
+  // 2. Scene change detection
+  const prevScene = previousActiveScene
+  if (scene !== prevScene) {
+    shouldUpdate = true
+  }
+
+  // 3. Near boundary fallback (for safety)
+  if (scene) {
+    const localTime = time - scene.start_time
+    const nearEnd = scene.duration - localTime < 0.15
+    const nearStart = localTime < 0.1
+    if (nearEnd || nearStart) shouldUpdate = true
+  }
+
+  // 4. Drift correction
+  if (scene && Math.abs(videoEl.value.currentTime - (time - scene.start_time)) > 0.15) {
+    shouldUpdate = true
+  }
+
+  if (shouldUpdate) {
+    updateSourcesAtTime(time)
+  }
+
+  // Store for next frame
+  previousActiveScene = scene
+  previousActiveVoiceover = vo
+
+  rafId.value = requestAnimationFrame(tick)
+}
+// ================ CONTROLS ================
+const play = async () => {
+  if (isPlaying.value) return
+
+  playbackStartTime = currentTime.value
+  playbackStartTimestamp = performance.now()
+
+  isPlaying.value = true
+
+  // Start both if possible
+  const videoPlay = videoEl.value.src ? videoEl.value.play() : null
+  const audioPlay = audioEl.value.src ? audioEl.value.play() : null
+
+  await Promise.allSettled([videoPlay, audioPlay].filter(Boolean))
+  rafId.value = requestAnimationFrame(tick)
+}
+
+const pause = () => {
+  if (!isPlaying.value) return
+
+  isPlaying.value = false
+  videoEl.value.pause()
+  audioEl.value.pause()
+
+  if (rafId.value) {
+    cancelAnimationFrame(rafId.value)
+    rafId.value = null
+  }
+}
+
+const togglePlay = () => {
+  isPlaying.value ? pause() : play()
+}
+
+const seekTo = async (time) => {
+  currentTime.value = Math.max(0, time)
+  pause()
+  await updateSourcesAtTime(currentTime.value)
+
+  // Sync playback start point
+  playbackStartTime = currentTime.value
+  playbackStartTimestamp = performance.now()
+}
+
+const reset = () => {
+  seekTo(0)
+}
+
+// ================ EVENT LISTENERS ================
+// Attach events
+// ================ LIFECYCLE ================
+onBeforeUnmount(() => {
+  pause()
+  if (rafId.value) cancelAnimationFrame(rafId.value)
+})
+
+onMounted(()=>{
+  setTimeout(()=>{
+    updateSourcesAtTime(0)
+  }, 1000)
+})
+
 
 // SAVE
 const saveProjectChanges = async () => {
@@ -449,17 +743,6 @@ const removeReferenceImage = (referenceImgSrc) => {
   console.log(addedReferenceImages.value)
 }
 
-// VERSIONS - TO UPDATE MEDIA
-const voiceoversVersion = ref({})
-const videosVersion = ref({})
-const imagesVersion = ref({})
-
-const initializeVersions = (ref, values) => {
-  let result = {}
-  values.forEach(el => result[el.id] = 0)
-  ref.value = result
-  console.log(voiceoversVersion.value)
-}
 
 // REQUESTS
 const generateVoiceover = async () => {
@@ -575,6 +858,8 @@ onMounted(async () => {
   if (containerRef.value) {
     containerRef.value.addEventListener('wheel', handleWheel, { passive: false })
   }
+  nextTick()
+  updateSourcesAtTime(0)
 
 });
 
