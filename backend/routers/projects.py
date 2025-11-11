@@ -4,10 +4,11 @@ from sqlalchemy.future import select
 from sqlalchemy import update, delete
 from sqlalchemy.orm import selectinload
 import uuid
+from sqlalchemy.sql import func
 
 import os
 from typing import List, Dict, Tuple, Set
-from db import get_session, Project, Scene, Voiceover
+from db import get_session, Project, Scene, Voiceover, Place, Character
 from schemas import ProjectBasicOutput, ProjectOutput
 from moviepy import VideoFileClip, concatenate_videoclips, AudioFileClip, CompositeAudioClip
 
@@ -132,7 +133,6 @@ async def create_project(name: str = Body(...), session: AsyncSession = Depends(
 
 @router.delete("/{project_id}")
 async def delete_project(project_id: str, session: AsyncSession = Depends(get_session)):
-    return
     project = await session.get(Project, project_id)
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
@@ -145,6 +145,115 @@ async def list_projects(session: AsyncSession = Depends(get_session)):
     result = await session.execute(select(Project))
     projects = result.scalars().all()
     return [ProjectBasicOutput.model_validate(p).model_dump() for p in projects]
+
+
+@router.post("/copy/{project_id}")
+async def copy_project(
+    project_id: str,
+    session: AsyncSession = Depends(get_session)
+):
+    # 1. Fetch the original project with all relationships
+    result = await session.execute(
+        select(Project)
+        .where(Project.id == project_id)
+        .options(
+            selectinload(Project.scenes).selectinload(Scene.characters),
+            selectinload(Project.scenes).selectinload(Scene.places),
+            selectinload(Project.places),
+            selectinload(Project.characters),
+            selectinload(Project.voiceovers),
+        )
+    )
+    original_project = result.scalars().first()
+    
+    if not original_project:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    # 2. Create new Project instance
+    new_project = Project(
+        id=str(uuid.uuid4()),
+        name=f"{original_project.name} (Copy)",  # You can customize the name
+        created_at=func.now()
+    )
+    session.add(new_project)
+
+    # 3. Maps to keep track of old → new object relationships
+    character_old_to_new = {}
+    place_old_to_new = {}
+
+    # 4. Copy Characters (if any)
+    for orig_char in original_project.characters:
+        new_char = Character(
+            id=str(uuid.uuid4()),
+            name=orig_char.name,
+            prompt=orig_char.prompt,
+            src=orig_char.image_url,
+        )
+        session.add(new_char)
+        new_project.characters.append(new_char)
+        character_old_to_new[orig_char.id] = new_char
+
+    # 5. Copy Places (if any)
+    for orig_place in original_project.places:
+        new_place = Place(
+            id=str(uuid.uuid4()),
+            name=orig_place.name,
+            prompt=orig_place.prompt,
+            src=orig_place.image_url,
+        )
+        session.add(new_place)
+        new_project.places.append(new_place)
+        place_old_to_new[orig_place.id] = new_place
+
+    # 6. Copy Scenes + their relationships
+    for orig_scene in original_project.scenes:
+        new_scene = Scene(
+            id=str(uuid.uuid4()),
+            duration=orig_scene.duration,
+            start_time=orig_scene.start_time,
+            image_prompt=orig_scene.image_prompt,
+            video_prompt=orig_scene.video_prompt,
+            project_id=new_project.id,
+            image_src=orig_scene.image_src,
+            video_src=orig_scene.video_src
+            # copy other fields if exist: background_music, etc.
+        )
+        session.add(new_scene)
+        new_project.scenes.append(new_scene)
+
+        # Re-link characters
+        for orig_char in orig_scene.characters:
+            if orig_char.id in character_old_to_new:
+                new_scene.characters.append(character_old_to_new[orig_char.id])
+
+        # Re-link places (if scene has places)
+        for orig_place in orig_scene.places:
+            if orig_place.id in place_old_to_new:
+                new_scene.places.append(place_old_to_new[orig_place.id])
+
+    # 7. Copy Voiceovers
+    for orig_vo in original_project.voiceovers:
+        new_vo = Voiceover(
+            id=str(uuid.uuid4()),
+            text=orig_vo.text,
+            text_with_pauses=orig_vo.text_with_pauses,
+            project_id=new_project.id,
+            start_time=orig_vo.start_time,
+            duration=orig_vo.duration,
+            timestamps=orig_vo.timestamps, 
+            src=orig_vo.src
+        )
+        session.add(new_vo)
+        new_project.voiceovers.append(new_vo)
+
+    # 8. Commit everything
+    await session.commit()
+
+    return {
+        "success": True,
+        "new_project_id": new_project.id,
+        "message": "Project copied successfully"
+    }
 
 @router.get("/{project_id}")
 async def get_project(project_id: str, session: AsyncSession = Depends(get_session)):

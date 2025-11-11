@@ -11,12 +11,26 @@
           <p class="text-gray-800 font-medium">{{ project.name }}</p>
           <p class="text-sm text-gray-600">Created: {{ new Date(project.created_at).toLocaleDateString() }}</p>
         </div>
-        <button
-          @click="selectProject(project.id)"
-          class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-        >
-          Open
-        </button>
+        <div class="flex gap-2 items-center">
+          <button
+            @click="deleteProject(project.id)"
+            class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-blue-700"
+          >
+            Delete project
+          </button>
+          <button
+            @click="copyProject(project.id)"
+            class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+          >
+            Copy project
+          </button>
+          <button
+            @click="selectProject(project.id)"
+            class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+          >
+            Open
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -34,6 +48,16 @@ const projects = ref([]);
 const selectProject = (projectId) => {
   router.push(`/projects/${projectId}`);
 };
+
+const copyProject = (projectId) => {
+  axios.post(`http://localhost:8000/projects/copy/${projectId}`)
+    .then(res => console.log(res))
+}
+
+const deleteProject = (projectId) => {
+  axios.delete(`http://localhost:8000/projects/${projectId}`)
+    .then(res => console.log(res))
+}
 
 onMounted(()=>{
   axios.get('http://localhost:8000/projects').then(response=>{

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Body
+from fastapi import APIRouter, Depends, Body, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from pydantic import BaseModel
@@ -12,6 +12,31 @@ router = APIRouter(prefix="/voiceovers", tags=["voiceovers"])
 
 class VoiceoverUpdate(BaseModel):
     start_time: float
+
+
+@router.delete("/{voiceover_id}")
+async def delete_voiceover(
+    voiceover_id: str,
+    session: AsyncSession = Depends(get_session)
+):
+    # Fetch the voiceover
+    voiceover = await session.get(Voiceover, voiceover_id)
+    
+    if not voiceover:
+        raise HTTPException(status_code=404, detail="Voiceover not found")
+
+    # Optional: Add authorization check here if needed
+    # e.g., check if voiceover.project.user_id == current_user.id
+
+    # Delete the voiceover (SQLAlchemy will handle cascade if configured)
+    await session.delete(voiceover)
+    await session.commit()
+
+    return {
+        "success": True,
+        "message": "Voiceover deleted successfully",
+        "voiceover_id": voiceover_id
+    }
 
 @router.post("/{voiceover_id}")
 async def update_voiceover_start_time(

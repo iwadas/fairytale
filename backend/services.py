@@ -283,7 +283,7 @@ def alignment_to_words_with_emotion_tags(characters, character_start_times_secon
 def generate_speech(text: str, filename="voiceover", directory="static/voiceovers/"):
     response = eleven_labs_client.text_to_speech.convert_with_timestamps(
         text=text,
-        voice_id="nPczCjzI2devNBz1zQrb",  # Valid voice ID (Brian)
+        voice_id="Cz0K1kOv9tD8l0b5Qu53",  # Valid voice ID (Brian)
         model_id="eleven_v3",  # Correct model ID
         voice_settings = VoiceSettings(
             stability=0.5,  # For emotional expressiveness

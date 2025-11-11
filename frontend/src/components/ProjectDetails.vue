@@ -9,22 +9,44 @@
         <!-- TODO -->
         <!-- TODO -->
         <!-- PREVIEW -->
-        <div class="relative min-w-[270px] bg-gray-900 rounded-lg overflow-hidden">
-          <video
-            ref="videoEl"
-            controls
-            width="270"
-            height="480"
-            @timeupdate="onTimeUpdate"
-          ></video>
+        <div class="relative min-w-[270px] rounded-lg overflow-hidden">
+          <div class="h-[480px] relative">
+            <video
+              v-for="index in 3"
+              :key="index"
+              :ref="el => setVideoRef(el, index - 1)"
+              class="absolute inset-0 w-full object-cover top-0 left-0"
+              width="270"
+              height="480"
+              muted
+              playsinline
+              preload="auto"
+              @canplaythrough="onCanPlayThrough(index - 1)"
+            ></video>
+          </div>
+
+          <video-subtitles 
+            v-if="activeVoiceover"
+            class="absolute top-20 w-[60%] left-1/2 -translate-x-1/2 z-20"
+            :timestamps="voiceoverTimestamps"
+            :time="currentTime - activeVoiceover?.start_time"
+          />
 
           <!-- Hidden audio for voiceovers -->
-          <audio ref="audioEl" @timeupdate="onAudioTimeUpdate"></audio>
+          <audio
+            v-for="index in 2"
+            :key="'audio' + index"
+            :ref="el => audioEls[index - 1] = el"
+            preload="auto"
+            @canplaythrough="onAudioReady(index - 1)"
+            @ended="onAudioEnded(index - 1)"
+            style="display: none;"
+          ></audio>
 
-          <div class="flex flex-col gap-2 text-white">
-            <form-button @clicked="togglePlay" :label="isPlaying ? 'Pause' : 'Play'"/>
-            <form-button @clicked="reset" label="Reset"/>
-            <span ckass="text-center">Time: {{ currentTime.toFixed(2) }}s</span>
+          <div class="flex flex-col gap-2 text-white mt-2">
+            <form-button @clicked="togglePlay" :label="isPlaying ? 'Pause' : 'Play'" />
+            <form-button @clicked="reset" label="Reset" />
+            <span class="text-center">Time: {{ currentTime.toFixed(2) }}s</span>
           </div>
         </div>
 
@@ -151,6 +173,8 @@
               <textarea class="w-[416px] text-white bg-gray-800 border p-1 rounded-sm h-32" v-model="scenes[selectedSceneIndex].video_prompt"></textarea>
               <form-button label="Fix Prompt" @clicked="fixVideoPrompt"/>
             </form-input>
+
+            <form-button label="Delete scene" @clicked="deleteScene"/>
           </div>
 
         </div>
@@ -174,15 +198,17 @@
             <textarea class="w-[416px] text-white bg-gray-800 border p-1 rounded-sm h-32" v-model="voiceovers[selectedVoiceoverIndex].text_with_pauses"></textarea>
           </form-input>
 
+          {{ voiceovers[selectedVoiceoverIndex] }}
           <div v-if="voiceovers[selectedVoiceoverIndex].src" class="w-[416px]">
             <form-button  label="Regenrate Voiceover" @clicked="generateVoiceover"/>
             <audio :src="`http://localhost:8000/${voiceovers[selectedVoiceoverIndex].src}?v=${voiceoversVersion[voiceovers[selectedVoiceoverIndex].id]}`" controls class="w-full mt-2"></audio>
           </div>
           <form-button v-else label="Generate Voiceover" @clicked="generateVoiceover"/>
+          <form-button label="Delete voiceover" @clicked="deleteVoiceover"/>
         </div>
+
       </div>
 
-      <!-- 2. Voiceover selected (scene ignored) -->
       
     </div>
 
@@ -246,6 +272,7 @@ import { ref, onMounted, onBeforeUnmount, computed, watch, nextTick } from 'vue'
 import axios from 'axios'
 import FormInput from './FormInput.vue'
 import FormButton from './FormButton.vue'
+import VideoSubtitles from './VideoSubtitles.vue'
 import ReferenceImage from './ReferenceImage.vue'
 import getSrc from '../utils/getSrc.js'
 
@@ -257,16 +284,44 @@ const scenes = ref([]);
 const voiceovers = ref([]);
 const characters = ref([]);
 
-const timelineDuration = 200; // Total duration of the timeline in seconds (adjust as needed)
+const timelineDuration = 20; // Total duration of the timeline in seconds (adjust as needed)
 const pixelsPerSecond = ref(50); // 100px per second
 const totalWidth = computed(()=>{
   return timelineDuration * pixelsPerSecond.value;
 });
 
-
 const selectedSceneIndex = ref(null);
 const selectedVoiceoverIndex = ref(null);
 const generateImageLowkey = ref(true);
+const voiceoverTimestamps = ref([])
+
+const getSelectedSceneId = () => {
+  return scenes.value[selectedSceneIndex.value].id
+}
+
+const getSelectedVoiceoverId = () => {
+  return voiceovers.value[selectedVoiceoverIndex.value].id
+}
+
+// DELETE SCENE
+const deleteScene = () => {
+  const sceneId = getSelectedSceneId();
+  axios.delete(`${route}scenes/${sceneId}`)
+  if(selectedSceneIndex.value == scenes.value.length - 1){
+    selectedSceneIndex.value--
+  }
+  scenes.value = scenes.value.filter(el => el.id != sceneId)
+}
+
+const deleteVoiceover = () => {
+  const voId = getSelectedVoiceoverId();
+  axios.delete(`${route}voiceovers/${voId}`)
+  if(selectedVoiceoverIndex.value == voiceovers.value.length - 1){
+    selectedVoiceoverIndex.value--
+  }
+  voiceovers.value = voiceovers.value.filter(el => el.id != voId)
+}
+
 
 
 // VERSIONS - TO UPDATE MEDIA
@@ -287,26 +342,47 @@ const initializeVersions = (ref, values) => {
 // TODO
 // PREVIEW LOGIC
 // Preview refs & state
-const videoEl = ref(null)
-const audioEl = ref(null)
+const videoEls = ref([]) // [video0, video1, video2]
 const isPlaying = ref(false)
 const currentTime = ref(0)
 const rafId = ref(null)
 
-// Loading states (optional for UI feedback)
-const videoLoading = ref(false)
-const audioLoading = ref(false)
+const audioEls = ref([])  // [audio0, audio1]
+const activeAudioLayer = ref(0)
+const audioReady = ref([false, false])
+const audioSources = ref(['', ''])  // track current src per layer
 
-// Performance tracking
+// Track which layer is visible
+const activeLayer = ref(0)
+// Preloading state per layer
+const layerReady = ref([false, false, false])
+const layerSources = ref(['', '', '']) // current src per layer
+
+// Set refs for multiple videos
+const setVideoRef = (el, index) => {
+  if (el) videoEls.value[index] = el
+}
+
+const onAudioReady = (index) => {
+  audioReady.value[index] = true
+}
+
+const onAudioEnded = (index) => {
+  // Auto-switch back to layer 0 when this one finishes (optional)
+  if (activeAudioLayer.value === index) {
+    activeAudioLayer.value = 0
+  }
+}
+
+
+
+// Performance
 let playbackStartTime = 0
 let playbackStartTimestamp = 0
 
-// Throttling: prevent source change spam
-const LAST_CHANGE_THRESHOLD = 0.05 // 50ms
-let lastVideoChange = -1000
-let lastAudioChange = -1000
+// Throttling
 
-// ================ ACTIVE ITEMS ================
+// ================ SCENE LOGIC ================
 const activeScene = computed(() => {
   const time = currentTime.value
   for (let i = scenes.value.length - 1; i >= 0; i--) {
@@ -328,115 +404,188 @@ const activeVoiceover = computed(() => {
   return null
 })
 
-// ================ SAFE SOURCE SETTERS ================
-const setVideoSource = async (src, offset = 0) => {
-  const now = currentTime.value
-  if (now - lastVideoChange < LAST_CHANGE_THRESHOLD) {
-    videoEl.value.currentTime = offset
-    return
-  }
+const nextScene = computed(() => {
+  const current = activeScene.value
+  if (!current) return null
+  const index = scenes.value.findIndex(s => s === current)
+  return scenes.value[index + 1] || null
+})
+
+const nextVoiceover = computed(() => {
+  const current = activeVoiceover.value
+  if (!current) return null
+  const index = voiceovers.value.findIndex(vo => vo === current)
+  return voiceovers.value[index + 1] || null
+})
+
+const nextNextScene = computed(() => {
+  const next = nextScene.value
+  if (!next) return null
+  const index = scenes.value.findIndex(s => s === next)
+  return scenes.value[index + 1] || null
+})
+
+// ================ LAYER MANAGEMENT ================
+const getNextLayer = () => {
+  return (activeLayer.value + 1) % 3
+}
+
+const getNextNextLayer = () => {
+  return (activeLayer.value + 2) % 3
+}
+
+const showLayer = (layerIndex) => {
+  videoEls.value.forEach((video, i) => {
+    video.style.zIndex = i === layerIndex ? 10 : 1
+    video.style.opacity = i === layerIndex ? 1 : 0
+  })
+  activeLayer.value = layerIndex
+}
+
+const preloadVideo = async (videoEl, src, startOffset = 0) => {
+  if (!src) return
 
   const fullSrc = (route + src).replaceAll("\\", "/")
-
-  // Same source? Just seek
-  if (videoEl.value.src === fullSrc && !videoLoading.value) {
-    videoEl.value.currentTime = offset
+  if (videoEl.src === fullSrc) {
+    videoEl.currentTime = startOffset
     return
   }
 
-  lastVideoChange = now
-  videoLoading.value = true
-
-  // Pause first to avoid playback during load
-  videoEl.value.pause()
-
-  try {
-    videoEl.value.src = fullSrc
-    videoEl.value.currentTime = offset
-    await videoEl.value.load()
-
-    // Wait for canplaybefore playing
-    if (isPlaying.value) {
-      await videoEl.value.play().catch(() => {}) // ignore user gesture errors
-    }
-  } catch (err) {
-    if (err.name !== 'AbortError') {
-      console.error('Video load error:', err)
-    }
-  } finally {
-    videoLoading.value = false
-  }
+  videoEl.pause()
+  videoEl.src = fullSrc
+  videoEl.currentTime = startOffset
+  videoEl.load()
+  // We don't await here — we just trigger preload
 }
 
-const setAudioSource = async (src, offset = 0) => {
-  const now = currentTime.value
-  if (now - lastAudioChange < LAST_CHANGE_THRESHOLD) {
-    audioEl.value.currentTime = offset
-    return
-  }
-
-  const fullSrc = (route + src).replaceAll("\\", "/")
-
-  if (audioEl.value.src === fullSrc && !audioLoading.value) {
-    audioEl.value.currentTime = offset
-    return
-  }
-
-  lastAudioChange = now
-  audioLoading.value = true
-
-  audioEl.value.pause()
-  try {
-    audioEl.value.src = fullSrc
-    audioEl.value.currentTime = offset
-    await audioEl.value.load()
-
-    if (isPlaying.value) {
-      await audioEl.value.play().catch(() => {})
-    }
-  } catch (err) {
-    if (err.name !== 'AbortError') console.error('Audio load error:', err)
-  } finally {
-    audioLoading.value = false
-  }
+// Called when video is ready to play smoothly
+const onCanPlayThrough = (layerIndex) => {
+  layerReady.value[layerIndex] = true
 }
 
-// Clear sources when no media
-const clearVideo = () => {
-  videoEl.value.pause()
-  videoEl.value.removeAttribute('src')
-  videoEl.value.load()
-}
-
-const clearAudio = () => {
-  audioEl.value.pause()
-  audioEl.value.removeAttribute('src')
-  audioEl.value.load()
-}
-
-// ================ UPDATE SOURCES ================
-const updateSourcesAtTime = async (time) => {
-  const scene = activeScene.value
+const updateAudioLayers = async (time) => {
   const vo = activeVoiceover.value
+  const nextVo = nextVoiceover.value
 
-  // Video
-  if (scene) {
-    await setVideoSource(scene.video_src, time - scene.start_time)
-  } else if (videoEl.value.src) {
-    clearVideo()
+  const currentLayer = activeAudioLayer.value
+  const nextLayer = 1 - currentLayer  // toggle between 0 and 1
+
+  // 1. Current voiceover
+  if (vo) {
+    const localTime = time - vo.start_time
+    const fullSrc = (route + vo.src).replaceAll("\\", "/")
+
+    if (audioSources.value[currentLayer] !== fullSrc) {
+      // Load into current layer
+      const audio = audioEls.value[currentLayer]
+
+      voiceoverTimestamps.value = JSON.parse(vo.timestamps)
+
+      audio.pause()
+      audio.src = fullSrc
+      audio.currentTime = localTime
+      audio.load()
+      audioSources.value[currentLayer] = fullSrc
+      audioReady.value[currentLayer] = false
+    } else {
+      // Same source → just sync time
+      const audio = audioEls.value[currentLayer]
+      if (Math.abs(audio.currentTime - localTime) > 0.1) {
+        audio.currentTime = localTime
+      }
+    }
+
+    // Auto-switch to this layer when ready
+    if (audioReady.value[currentLayer] && activeAudioLayer.value !== currentLayer) {
+      activeAudioLayer.value = currentLayer
+    }
+
+    // Play if playing
+    if (isPlaying.value && audioEls.value[currentLayer].paused && audioReady.value[currentLayer]) {
+      audioEls.value[currentLayer].play().catch(() => {})
+    }
   }
 
-  // Audio
-  if (vo) {
-    await setAudioSource(vo.src, time - vo.start_time)
-  } else if (audioEl.value.src) {
-    clearAudio()
+  // 2. Preload NEXT voiceover (if exists and not too far)
+  if (nextVo && nextVo.start_time - time < 2.0) {  // preload 2s early
+    const fullSrc = (route + nextVo.src).replaceAll("\\", "/")
+    if (audioSources.value[nextLayer] !== fullSrc) {
+
+      const audio = audioEls.value[nextLayer]
+      audio.pause()
+      audio.src = fullSrc
+      audio.currentTime = 0
+      audio.load()
+      audioSources.value[nextLayer] = fullSrc
+      audioReady.value[nextLayer] = false
+    }
+  }
+
+  // 3. Auto-switch on boundary
+  if (vo && time >= vo.start_time - 0.05) {
+    if (audioReady.value[currentLayer]) {
+      activeAudioLayer.value = currentLayer
+    }
+  }
+
+  // 4. Stop inactive layer
+  const inactiveLayer = 1 - activeAudioLayer.value
+  if (audioEls.value[inactiveLayer].src && inactiveLayer !== currentLayer) {
+    audioEls.value[inactiveLayer].pause()
   }
 }
 
-let previousActiveScene = null
-let previousActiveVoiceover = null
-// ================ PLAYBACK LOOP (RAF) ================
+// ================ UPDATE LAYERS ================
+const updateVideoLayers = async (time) => {
+  const scene = activeScene.value
+  const next = nextScene.value
+  const nextNext = nextNextScene.value
+
+  if (!scene) {
+    videoEls.value.forEach(v => v.pause())
+    return
+  }
+
+  const currentLayer = activeLayer.value
+  const nextLayer = getNextLayer()
+  const nextNextLayer = getNextNextLayer()
+
+  const localTime = time - scene.start_time
+
+  // 1. Current scene → active layer
+  if (layerSources.value[currentLayer] !== scene.video_src) {
+    await preloadVideo(videoEls.value[currentLayer], scene.video_src, localTime)
+    layerSources.value[currentLayer] = scene.video_src
+    showLayer(currentLayer)
+  } else if (Math.abs(videoEls.value[currentLayer].currentTime - localTime) > 0.1) {
+    videoEls.value[currentLayer].currentTime = localTime
+  }
+
+  // 2. Preload next scene
+  if (next && layerSources.value[nextLayer] !== next.video_src) {
+    layerReady.value[nextLayer] = false
+    layerSources.value[nextLayer] = next.video_src
+    preloadVideo(videoEls.value[nextLayer], next.video_src, 0)
+  }
+
+  // 3. Preload next-next (optional but smooth)
+  if (nextNext && layerSources.value[nextNextLayer] !== nextNext.video_src) {
+    layerSources.value[nextNextLayer] = nextNext.video_src
+    preloadVideo(videoEls.value[nextNextLayer], nextNext.video_src, 0)
+  }
+
+  // Auto-switch when next scene starts
+  if (next && time >= next.start_time - 0.05) {
+    const switchLayer = layerReady.value[nextLayer] ? nextLayer : currentLayer
+    showLayer(switchLayer)
+    if (switchLayer === nextLayer) {
+      activeLayer.value = nextLayer
+      // Reset ready flags if needed
+    }
+  }
+}
+
+// ================ PLAYBACK LOOP ================
 const tick = () => {
   if (!isPlaying.value) return
 
@@ -444,109 +593,89 @@ const tick = () => {
   const elapsed = (now - playbackStartTimestamp) / 1000
   currentTime.value = playbackStartTime + elapsed
 
-  const time = currentTime.value
-  const scene = activeScene.value
-  const vo = activeVoiceover.value
+  // Update both systems
+  updateVideoLayers(currentTime.value)
+  updateAudioLayers(currentTime.value)
 
-  let shouldUpdate = false
-
-  // 1. Always check if voiceover changed (most important!)
-  const prevVo = previousActiveVoiceover // we'll track this below
-  if (vo !== prevVo) {
-    shouldUpdate = true
+  // Sync active video (same as before)
+  if (activeScene.value && videoEls.value[activeLayer.value]) {
+    const video = videoEls.value[activeLayer.value]
+    const expected = currentTime.value - activeScene.value.start_time
+    if (Math.abs(video.currentTime - expected) > 0.1) {
+      video.currentTime = expected
+    }
+    if (video.paused && layerReady.value[activeLayer.value]) {
+      video.play().catch(() => {})
+    }
   }
-
-  // 2. Scene change detection
-  const prevScene = previousActiveScene
-  if (scene !== prevScene) {
-    shouldUpdate = true
-  }
-
-  // 3. Near boundary fallback (for safety)
-  if (scene) {
-    const localTime = time - scene.start_time
-    const nearEnd = scene.duration - localTime < 0.15
-    const nearStart = localTime < 0.1
-    if (nearEnd || nearStart) shouldUpdate = true
-  }
-
-  // 4. Drift correction
-  if (scene && Math.abs(videoEl.value.currentTime - (time - scene.start_time)) > 0.15) {
-    shouldUpdate = true
-  }
-
-  if (shouldUpdate) {
-    updateSourcesAtTime(time)
-  }
-
-  // Store for next frame
-  previousActiveScene = scene
-  previousActiveVoiceover = vo
 
   rafId.value = requestAnimationFrame(tick)
 }
+
 // ================ CONTROLS ================
 const play = async () => {
   if (isPlaying.value) return
 
   playbackStartTime = currentTime.value
   playbackStartTimestamp = performance.now()
-
   isPlaying.value = true
 
-  // Start both if possible
-  const videoPlay = videoEl.value.src ? videoEl.value.play() : null
-  const audioPlay = audioEl.value.src ? audioEl.value.play() : null
+  await updateVideoLayers(currentTime.value)
+  updateAudioLayers(currentTime.value)  // preloads current VO
 
-  await Promise.allSettled([videoPlay, audioPlay].filter(Boolean))
+  // Play active ones
+  if (videoEls.value[activeLayer.value]?.src) {
+    videoEls.value[activeLayer.value].play().catch(() => {})
+  }
+  if (audioEls.value[activeAudioLayer.value]?.src) {
+    audioEls.value[activeAudioLayer.value].play().catch(() => {})
+  }
+
   rafId.value = requestAnimationFrame(tick)
 }
 
 const pause = () => {
-  if (!isPlaying.value) return
-
   isPlaying.value = false
-  videoEl.value.pause()
-  audioEl.value.pause()
+  videoEls.value.forEach(v => v.pause())
+  audioEls.value.forEach(a => a.pause())
+  cancelAnimationFrame(rafId.value)
+}
 
-  if (rafId.value) {
-    cancelAnimationFrame(rafId.value)
-    rafId.value = null
-  }
+const seekTo = async (time) => {
+  currentTime.value = Math.max(0, time)
+  pause()
+  
+  // Reset everything
+  layerReady.value = [false, false, false]
+  layerSources.value = ['', '', '']
+  audioReady.value = [false, false]
+  audioSources.value = ['', '']
+
+  await updateVideoLayers(currentTime.value)
+  updateAudioLayers(currentTime.value)
+
+  playbackStartTime = currentTime.value
+  playbackStartTimestamp = performance.now()
 }
 
 const togglePlay = () => {
   isPlaying.value ? pause() : play()
 }
 
-const seekTo = async (time) => {
-  currentTime.value = Math.max(0, time)
-  pause()
-  await updateSourcesAtTime(currentTime.value)
+const reset = () => seekTo(0)
 
-  // Sync playback start point
-  playbackStartTime = currentTime.value
-  playbackStartTimestamp = performance.now()
-}
-
-const reset = () => {
-  seekTo(0)
-}
-
-// ================ EVENT LISTENERS ================
-// Attach events
 // ================ LIFECYCLE ================
+onMounted(() => {
+  // Initial load after mount
+  setTimeout(() => {
+    updateVideoLayers(0)
+  }, 500)
+})
+
 onBeforeUnmount(() => {
   pause()
-  if (rafId.value) cancelAnimationFrame(rafId.value)
+  cancelAnimationFrame(rafId.value)
 })
-
-onMounted(()=>{
-  setTimeout(()=>{
-    updateSourcesAtTime(0)
-  }, 1000)
-})
-
 
 // SAVE
 const saveProjectChanges = async () => {
@@ -859,7 +988,6 @@ onMounted(async () => {
     containerRef.value.addEventListener('wheel', handleWheel, { passive: false })
   }
   nextTick()
-  updateSourcesAtTime(0)
 
 });
 
@@ -886,6 +1014,9 @@ onBeforeUnmount(() => {
 
 div[ref="containerRef"] > div {
   transition: transform 0.1s ease-out;
+}
+video {
+  transition: opacity 0.2s ease;
 }
 
 </style>
