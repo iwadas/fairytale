@@ -5,14 +5,40 @@ from sqlalchemy import update, delete
 from sqlalchemy.orm import selectinload
 import uuid
 from sqlalchemy.sql import func
+from datetime import datetime
+from copy import deepcopy
 
 import os
-from typing import List, Dict, Tuple, Set
+from typing import List, Dict, Tuple, Set, Any
 from db import get_session, Project, Scene, Voiceover, Place, Character
 from schemas import ProjectBasicOutput, ProjectOutput
+from .translations import get_translated_voiceovers
 from moviepy import VideoFileClip, concatenate_videoclips, AudioFileClip, CompositeAudioClip
 
 router = APIRouter(prefix="/projects", tags=["projects"])
+
+
+router.post("/download/{project_id}")
+async def download_project(project_id: str, session: AsyncSession = Depends(get_session)):
+    
+    result = await session.execute(
+        select(Project)
+        .where(Project.id == project_id)
+        .options(
+            selectinload(Project.scenes),
+            selectinload(Project.voiceovers),
+        )
+    )
+    project_orm = result.scalars().first()
+    if not project_orm:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    # project in python - dicts, lists, etc
+    project = serialize_project(project_orm)
+
+
+
+
 
 @router.post("/add-scene/{project_id}")
 async def add_scene_to_project(
@@ -52,75 +78,8 @@ async def add_scene_to_project(
         "scene": new_scene
     }
 
-@router.post("/download/{project_id}")
-async def download_project(project_id: str, session: AsyncSession = Depends(get_session)):
-    return
-    
-    result = await session.execute(
-        select(Project)
-        .where(Project.id == project_id)
-        .options(
-            selectinload(Project.scenes).selectinload(Scene.characters),
-            selectinload(Project.scenes).selectinload(Scene.places),
-            selectinload(Project.places),
-            selectinload(Project.characters),
-            selectinload(Project.voiceovers),
-        )
-    )
-    project = result.scalars().first()
-    if not project:
-        raise HTTPException(status_code=404, detail="Project not found")
-
-    # Define output directory and ensure it exists
-    output_dir = "videos"
-    os.makedirs(output_dir, exist_ok=True)
-    output_filename = "combined_video.mp4"
-    output_path = os.path.join(output_dir, output_filename)
-
-    # ✅ Step 1: Sort scenes by scene_number and concatenate videos
-    ordered_scenes = sorted(
-        [scene for scene in project.scenes if scene.video_src],
-        key=lambda s: s.scene_number
-    )
-    video_clips = [VideoFileClip(scene.video_src) for scene in ordered_scenes]
-    final_video = concatenate_videoclips(video_clips)
-
-    # ✅ Calculate total project duration
-    total_duration = sum(scene.duration for scene in project.scenes if scene.duration)
-
-    # ✅ Step 2: Add background music (clipped to match project duration)
-    music_path = "./static/default/sounds/13_angels.mp3"
-    if os.path.exists(music_path):
-        print("Adding background music")
-        background_music = AudioFileClip(music_path).subclipped(0, total_duration)
-    else:
-        print("Background music file not found, skipping")
-        background_music = None
-
-    # Step 3: Prepare voiceover audio clips with start times
-    voiceover_clips = []
-    for vo in project.voiceovers:
-        if vo.src:
-            clip = AudioFileClip(vo.src).with_start(vo.start_time)
-            voiceover_clips.append(clip)
-
-    # Step 4: Combine all audio sources
-    video_audio = final_video.audio if final_video.audio else None
-    all_audios = [a for a in [video_audio, background_music] if a] + voiceover_clips
-    composite_audio = CompositeAudioClip(all_audios)
-
-    # Step 5: Combine video with composite audio
-    final_clip = final_video.with_audio(composite_audio)
-
-    # Step 6: Write the final video to file
-    final_clip.write_videofile(output_path, codec="libx264", audio_codec="aac")
-
-    # Clean up to free memory
-    final_clip.close()
-    for clip in video_clips + voiceover_clips + [c for c in [video_audio, background_music] if c]:
-        clip.close()
-
-    return {"message": f"Download for project {project_id} completed"}
+@
+ 
 
 @router.post("")
 async def create_project(name: str = Body(...), session: AsyncSession = Depends(get_session)):
@@ -147,6 +106,46 @@ async def list_projects(session: AsyncSession = Depends(get_session)):
     return [ProjectBasicOutput.model_validate(p).model_dump() for p in projects]
 
 
+@router.post("/add-translations/{project_id}")
+async def add_translations(
+    project_id: str,
+    session: AsyncSession = Depends(get_session)
+):
+    result = await session.execute(
+        select(Project)
+        .where(Project.id == project_id)
+        .options(
+            selectinload(Project.scenes).selectinload(Scene.characters),
+            selectinload(Project.scenes).selectinload(Scene.places),
+            selectinload(Project.places),
+            selectinload(Project.characters),
+            selectinload(Project.voiceovers),
+        )
+    )
+    if not result:
+        raise HTTPException(status_code=404, detail="Project not found")
+        
+    source_project = serialize_project(result.scalars().first())
+    
+    language_index = 0
+    while True:
+        translated_voiceovers = get_translated_voiceovers(language_index, source_project["voiceovers"])
+        if translated_voiceovers == None:
+            break
+        
+        translated_source_project = deepcopy(source_project)
+        translated_source_project["voiceovers"] = translated_voiceovers
+        
+
+        await db_copy_project(source_project=translated_source_project, suffix=f" (PL)", session=session)
+        language_index += 1
+    
+    return {"message": "success"}
+
+
+
+
+    
 @router.post("/copy/{project_id}")
 async def copy_project(
     project_id: str,
@@ -164,15 +163,83 @@ async def copy_project(
             selectinload(Project.voiceovers),
         )
     )
-    original_project = result.scalars().first()
-    
-    if not original_project:
+    if not source_project:
         raise HTTPException(status_code=404, detail="Project not found")
+        
+    source_project = serialize_project(result.scalars().first())
+    new_project_id = await db_copy_project(source_project=source_project, suffix=" (Copy)", session=session)
+    
+    return {
+        "success": True,
+        "new_project_id": new_project_id,
+        "message": "Project copied successfully"
+    }
 
-    # 2. Create new Project instance
+
+def _to_dict(obj: Any, visited: set | None = None) -> Any:
+    if visited is None:
+        visited = set()
+
+    if obj is None:
+        return None
+
+    # Handle lists/sets/tuples
+    if isinstance(obj, (list, tuple, set)):
+        return [_to_dict(item, visited) for item in obj]
+
+    obj_id = id(obj)
+    if obj_id in visited:
+        return None  # or {"__ref__": str(obj_id)} if you want to debug
+    visited.add(obj_id)
+
+    # Skip non-ORM objects early
+    if not hasattr(obj, "__table__") and not hasattr(obj, "__mapper__"):
+        # Handle primitives
+        if isinstance(obj, (str, int, float, bool, uuid.UUID)):
+            return obj
+        if isinstance(obj, datetime):
+            return obj.isoformat()
+        return str(obj)
+
+    data: dict[str, Any] = {}
+
+    # 1. Copy scalar columns
+    for col in obj.__table__.columns:
+        val = getattr(obj, col.name)
+        if isinstance(val, datetime):
+            data[col.name] = val.isoformat()
+        elif isinstance(val, uuid.UUID):
+            data[col.name] = str(val)
+        else:
+            data[col.name] = val
+
+    # 2. Copy relationships (without double-list)
+    for name, rel in obj.__mapper__.relationships.items():
+        related_objs = getattr(obj, name)
+
+        if related_objs is None:
+            data[name] = None
+        elif rel.uselist:
+            # related_objs is already a list → just recurse
+            data[name] = [_to_dict(item, visited) for item in related_objs]
+        else:
+            # to-one
+            data[name] = _to_dict(related_objs, visited)
+
+    return data
+
+
+def serialize_project(project_orm) -> dict | None:
+    if project_orm is None:
+        return None
+    if not hasattr(project_orm, "__table__"):
+        raise TypeError(f"Expected ORM instance, got {type(project_orm)}")
+    return _to_dict(project_orm)
+
+async def db_copy_project(source_project=None, suffix=" (Copy)", session=None):
     new_project = Project(
         id=str(uuid.uuid4()),
-        name=f"{original_project.name} (Copy)",  # You can customize the name
+        name=f"{source_project["name"]}"+suffix,  # You can customize the name
         created_at=func.now()
     )
     session.add(new_project)
@@ -182,66 +249,63 @@ async def copy_project(
     place_old_to_new = {}
 
     # 4. Copy Characters (if any)
-    for orig_char in original_project.characters:
+    for orig_char in source_project["characters"]:
         new_char = Character(
             id=str(uuid.uuid4()),
-            name=orig_char.name,
-            prompt=orig_char.prompt,
-            src=orig_char.image_url,
+            name=orig_char["name"],
+            prompt=orig_char["prompt"],
+            src=orig_char["image_url"],
         )
         session.add(new_char)
         new_project.characters.append(new_char)
         character_old_to_new[orig_char.id] = new_char
 
     # 5. Copy Places (if any)
-    for orig_place in original_project.places:
+    for orig_place in source_project["places"]:
         new_place = Place(
             id=str(uuid.uuid4()),
-            name=orig_place.name,
-            prompt=orig_place.prompt,
-            src=orig_place.image_url,
+            name=orig_place["name"],
+            prompt=orig_place["prompt"],
+            src=orig_place["image_url"],
         )
         session.add(new_place)
         new_project.places.append(new_place)
         place_old_to_new[orig_place.id] = new_place
 
     # 6. Copy Scenes + their relationships
-    for orig_scene in original_project.scenes:
+    for orig_scene in source_project["scenes"]:
         new_scene = Scene(
             id=str(uuid.uuid4()),
-            duration=orig_scene.duration,
-            start_time=orig_scene.start_time,
-            image_prompt=orig_scene.image_prompt,
-            video_prompt=orig_scene.video_prompt,
-            project_id=new_project.id,
-            image_src=orig_scene.image_src,
-            video_src=orig_scene.video_src
-            # copy other fields if exist: background_music, etc.
+            duration=orig_scene["duration"],
+            start_time=orig_scene["start_time"],
+            image_prompt=orig_scene["image_prompt"],
+            video_prompt=orig_scene["video_prompt"],
+            image_src=orig_scene["image_src"],
+            video_src=orig_scene["video_src"]
         )
         session.add(new_scene)
         new_project.scenes.append(new_scene)
 
         # Re-link characters
-        for orig_char in orig_scene.characters:
+        for orig_char in orig_scene["characters"]:
             if orig_char.id in character_old_to_new:
-                new_scene.characters.append(character_old_to_new[orig_char.id])
+                new_scene.characters.append(character_old_to_new[orig_char["id"]])
 
         # Re-link places (if scene has places)
-        for orig_place in orig_scene.places:
+        for orig_place in orig_scene["places"]:
             if orig_place.id in place_old_to_new:
-                new_scene.places.append(place_old_to_new[orig_place.id])
+                new_scene.places.append(place_old_to_new[orig_place["id"]])
 
     # 7. Copy Voiceovers
-    for orig_vo in original_project.voiceovers:
+    for orig_vo in source_project["voiceovers"]:
         new_vo = Voiceover(
             id=str(uuid.uuid4()),
-            text=orig_vo.text,
-            text_with_pauses=orig_vo.text_with_pauses,
-            project_id=new_project.id,
-            start_time=orig_vo.start_time,
-            duration=orig_vo.duration,
-            timestamps=orig_vo.timestamps, 
-            src=orig_vo.src
+            text=orig_vo["text"],
+            text_with_pauses=orig_vo["text_with_pauses"],
+            start_time=orig_vo["start_time"],
+            duration=orig_vo["duration"],
+            timestamps=orig_vo["timestamps"], 
+            src=orig_vo["src"]
         )
         session.add(new_vo)
         new_project.voiceovers.append(new_vo)
@@ -249,11 +313,7 @@ async def copy_project(
     # 8. Commit everything
     await session.commit()
 
-    return {
-        "success": True,
-        "new_project_id": new_project.id,
-        "message": "Project copied successfully"
-    }
+    return new_project.id
 
 @router.get("/{project_id}")
 async def get_project(project_id: str, session: AsyncSession = Depends(get_session)):

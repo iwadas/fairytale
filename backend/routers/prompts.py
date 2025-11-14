@@ -188,7 +188,6 @@ def story_split(story: str) -> List[Any]:
                 "duration": float(duration.group(1)),
                 "content_with_pauses": None
             })
-
         else:
             duration = estimate_speech_time(segment)
 

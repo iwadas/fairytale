@@ -26,10 +26,11 @@
           </div>
 
           <video-subtitles 
-            v-if="activeVoiceover"
+            v-if="activeVoiceover && activeVoiceover?.text_with_pauses && voiceoverTimestamps"
             class="absolute top-20 w-[60%] left-1/2 -translate-x-1/2 z-20"
             :timestamps="voiceoverTimestamps"
             :time="currentTime - activeVoiceover?.start_time"
+            :pauses="activeVoiceover?.text_with_pauses"
           />
 
           <!-- Hidden audio for voiceovers -->
@@ -198,7 +199,6 @@
             <textarea class="w-[416px] text-white bg-gray-800 border p-1 rounded-sm h-32" v-model="voiceovers[selectedVoiceoverIndex].text_with_pauses"></textarea>
           </form-input>
 
-          {{ voiceovers[selectedVoiceoverIndex] }}
           <div v-if="voiceovers[selectedVoiceoverIndex].src" class="w-[416px]">
             <form-button  label="Regenrate Voiceover" @clicked="generateVoiceover"/>
             <audio :src="`http://localhost:8000/${voiceovers[selectedVoiceoverIndex].src}?v=${voiceoversVersion[voiceovers[selectedVoiceoverIndex].id]}`" controls class="w-full mt-2"></audio>
@@ -217,46 +217,69 @@
       <div class="overflow-x-auto relative">
         <div class="relative" :style="{ width: `${totalWidth}px`, minWidth: '100%' }">
           <!-- Timeline Background with Time Markers -->
-          <div class="absolute top-0 left-0 w-full h-full bg-gray-800 rounded">
+          <div class="relative w-full h-5 bg-gray-800 rounded">
             <!-- Time Markers -->
-            <div class="flex text-xs text-gray-400 mt-2">
-              <span v-for="tick in timeTicks" :key="tick" class="absolute" :style="{ left: `${tick * pixelsPerSecond}px` }">
+            <div class="flex text-xs text-gray-400">
+              <span v-for="tick in timeTicks" :key="tick" class="absolute " :style="{ left: `${tick * pixelsPerSecond}px` }">
                 {{ formatTime(tick) }}
               </span>
             </div>
           </div>
 
+          <div class="h-3 w-full relative z-20 bg-gray-800">
+            <div class="w-full h-full" @click="handleTimeChange($event)"></div>
+            <div class="absolute h-[400px] z-40 top-0"
+              :style="{ left: `${currentTime * pixelsPerSecond}px` }"
+            >
+              <div class="w-10 h-3 bg-red-500 -ml-5"></div>
+              <div class="h-full bg-red-500 w-1">
+              </div>
+            </div>
+          </div>
+
+
+
+
           <!-- Scenes Track -->
-          <div class="relative h-40" ref="scenesTrack">
+          <div class="relative h-40 mt-1 z-0" ref="scenesTrack">
             <div
               v-for="(scene, index) in scenes"
               :key="scene.id"
-              class="absolute h-full mt-8 bg-blue-500 rounded cursor-move select-none border"
+              class="absolute h-full bg-blue-500 rounded cursor-pointer select-none border flex flex-col justify-between"
               :style="{
                 left: `${scene.start_time * pixelsPerSecond}px`,
                 width: `${scene.duration * pixelsPerSecond}px`,
+                zIndex: Math.round(scene.start_time * 100)
               }"
-              @mousedown="startDragging($event, 'scene', scene, index, $refs.scenesTrack)"
               @click="selectScene(scene.id)"
             >
-              <span class="text-xs text-white">{{ scene.image_prompt }}</span>
+              <span class="text-xs text-white p-2">{{ scene.image_prompt }}</span>
+              <div class="w-full text-center bg-gray-800 z-20 text-white text-xs font-bold cursor-move"
+                @mousedown="startDragging($event, 'scene', scene, index, $refs.scenesTrack)"
+              >
+                move
+              </div>
             </div>
           </div>
 
           <!-- Voiceovers Track -->
-          <div class="relative h-20 mt-4" ref="voiceoversTrack">
+          <div class="relative h-28" ref="voiceoversTrack">
             <div
               v-for="(voiceover, index) in voiceovers"
               :key="voiceover.id"
-              class="absolute h-full mt-6 p-2 bg-green-500 rounded cursor-move select-none"
+              class="absolute h-20 mt-1 bg-green-500 rounded cursor-pointer select-none flex flex-col justify-between border border-white"
               :style="{
                 left: `${voiceover.start_time * pixelsPerSecond}px`,
                 width: `${voiceover.duration * pixelsPerSecond}px`,
               }"
-              @mousedown="startDragging($event, 'voiceover', voiceover, index, $refs.voiceoversTrack)"
               @click="selectVoiceover(voiceover.id)"
             >
-              <span class="text-xs text-white truncate" :style="`max-width: ${voiceover.duration * pixelsPerSecond}px`">{{ voiceover.text }} </span>
+              <span class="text-xs text-white truncate p-2" :style="`max-width: ${voiceover.duration * pixelsPerSecond}px`">{{ voiceover.text }} </span>
+              <div class="w-full text-center bg-gray-800 z-20 text-white text-xs font-bold cursor-move"
+                @mousedown="startDragging($event, 'voiceover', voiceover, index, $refs.voiceoversTrack)"
+              >
+                move
+              </div>
             </div>
           </div>
         </div>
@@ -284,7 +307,7 @@ const scenes = ref([]);
 const voiceovers = ref([]);
 const characters = ref([]);
 
-const timelineDuration = 20; // Total duration of the timeline in seconds (adjust as needed)
+const timelineDuration = 100; // Total duration of the timeline in seconds (adjust as needed)
 const pixelsPerSecond = ref(50); // 100px per second
 const totalWidth = computed(()=>{
   return timelineDuration * pixelsPerSecond.value;
@@ -302,6 +325,26 @@ const getSelectedSceneId = () => {
 const getSelectedVoiceoverId = () => {
   return voiceovers.value[selectedVoiceoverIndex.value].id
 }
+
+// SET TIME
+const handleTimeChange = (event) => {
+  if (!containerRef.value) return;
+
+  const containerRect = containerRef.value.getBoundingClientRect();
+  const scrollLeft = containerRef.value.querySelector('.overflow-x-auto').scrollLeft;
+
+  // Calculate how far from the start of the timeline the user clicked (in pixels)
+  const clickX = event.clientX - containerRect.left + scrollLeft - 12;
+
+  // Convert pixels to seconds
+  const clickedTime = clickX / pixelsPerSecond.value;
+
+  // Clamp to timeline duration
+  const clampedTime = Math.max(0, Math.min(clickedTime, timelineDuration));
+  currentTime.value = clampedTime;
+  seekTo(clampedTime)
+};
+
 
 // DELETE SCENE
 const deleteScene = () => {
@@ -337,11 +380,7 @@ const initializeVersions = (ref, values) => {
 }
 
 
-// TODO
-// TODO
-// TODO
 // PREVIEW LOGIC
-// Preview refs & state
 const videoEls = ref([]) // [video0, video1, video2]
 const isPlaying = ref(false)
 const currentTime = ref(0)
@@ -886,7 +925,7 @@ const generateVoiceover = async () => {
 
 
 // Time markers (every 10 seconds)
-const timeTicks = Array.from({ length: Math.ceil(timelineDuration / 10) + 1 }, (_, i) => i * 10);
+const timeTicks = Array.from({ length: Math.ceil(timelineDuration / 5) + 1 }, (_, i) => i * 5);
 
 // Format time in seconds to MM:SS.ss (with milliseconds if needed, but simplified to seconds)
 const formatTime = (seconds) => {
@@ -902,9 +941,11 @@ const formatTime = (seconds) => {
 // Dragging state
 const dragging = ref(null);
 
+
 // Handle dragging
 const startDragging = (event, type, item, index, trackRef) => {
   event.preventDefault();
+  console.log('start dragging');
   const trackRect = trackRef.getBoundingClientRect();
   dragging.value = { 
     type, 

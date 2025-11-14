@@ -71,7 +71,7 @@ async def generate_voiceover(voiceover_id: str, request: VoiceoverGenerateReques
     audio_path, duration, timestamps = generate_speech(
         text=request.text,
         filename=filename,
-        directory="static/voiceovers"
+        directory="static/voiceovers",
     )
     print("Generating stopped voiceover for text:")
 

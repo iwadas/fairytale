@@ -25,6 +25,12 @@
             Copy project
           </button>
           <button
+            @click="addTranslations(project.id)"
+            class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+          >
+            Add translations
+          </button>
+          <button
             @click="selectProject(project.id)"
             class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
           >
@@ -51,6 +57,11 @@ const selectProject = (projectId) => {
 
 const copyProject = (projectId) => {
   axios.post(`http://localhost:8000/projects/copy/${projectId}`)
+    .then(res => console.log(res))
+}
+
+const addTranslations = (projectId) => {
+  axios.post(`http://localhost:8000/projects/add-translations/${projectId}`)
     .then(res => console.log(res))
 }
 
