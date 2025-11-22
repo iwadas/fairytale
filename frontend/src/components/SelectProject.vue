@@ -31,6 +31,12 @@
             Add translations
           </button>
           <button
+            @click="downloadProject(project.id)"
+            class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+          >
+            Download Project
+          </button>
+          <button
             @click="selectProject(project.id)"
             class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
           >
@@ -67,6 +73,11 @@ const addTranslations = (projectId) => {
 
 const deleteProject = (projectId) => {
   axios.delete(`http://localhost:8000/projects/${projectId}`)
+    .then(res => console.log(res))
+}
+
+const downloadProject = (projectId) => {
+  axios.post(`http://localhost:8000/projects/download/${projectId}`)
     .then(res => console.log(res))
 }
 

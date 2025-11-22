@@ -280,7 +280,27 @@ def alignment_to_words_with_emotion_tags(characters, character_start_times_secon
     return result
 
 
-def generate_speech(text: str, filename="voiceover", directory="static/voiceovers/", voice_id="Cz0K1kOv9tD8l0b5Qu53"):
+LANGUAGES = [
+    {
+        "name": "PL",
+        "voice_id": "o2xdfKUpc1Bwq7RchZuW"
+    },
+    {
+        "name": "EN",
+        "voice_id": "Cz0K1kOv9tD8l0b5Qu53",
+    },
+    {
+        "name": "Spanish",
+        "voice_id": "efcRUax7uSa9kpBwtDPe",
+    },
+    {
+        "name": "German",
+        "voice_id": "kkJxCnlRCckmfFvzDW5Q",
+    }
+]
+
+
+def generate_speech(text: str, filename="voiceover", directory="static/voiceovers/", voice_id="o2xdfKUpc1Bwq7RchZuW"):
     response = eleven_labs_client.text_to_speech.convert_with_timestamps(
         text=text,
         voice_id=voice_id,  # Valid voice ID (Brian)

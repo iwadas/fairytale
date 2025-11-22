@@ -14,18 +14,25 @@ from db import get_session, Project, Scene, Voiceover, Place, Character
 from schemas import ProjectBasicOutput, ProjectOutput
 from .translations import get_translated_voiceovers
 from moviepy import VideoFileClip, concatenate_videoclips, AudioFileClip, CompositeAudioClip
+from generate import generate_mp4
+
+
+import re
 
 router = APIRouter(prefix="/projects", tags=["projects"])
 
-
-router.post("/download/{project_id}")
+@router.post("/download/{project_id}")
 async def download_project(project_id: str, session: AsyncSession = Depends(get_session)):
-    
     result = await session.execute(
         select(Project)
         .where(Project.id == project_id)
         .options(
-            selectinload(Project.scenes),
+            selectinload(Project.scenes)
+                .selectinload(Scene.characters),
+            selectinload(Project.scenes)
+                .selectinload(Scene.places),
+            selectinload(Project.places),
+            selectinload(Project.characters),
             selectinload(Project.voiceovers),
         )
     )
@@ -36,6 +43,20 @@ async def download_project(project_id: str, session: AsyncSession = Depends(get_
     # project in python - dicts, lists, etc
     project = serialize_project(project_orm)
 
+    def get_save_name(name):
+        name = re.sub(r'[\\/:*?"<>|]', '', name)
+        # optionally replace spaces with underscores
+        name = name.replace(" ", "_")
+        return name
+
+    output_dir = "videos"
+    os.makedirs(output_dir, exist_ok=True)
+    output_filename = f"{get_save_name(project["name"])}.mp4"
+    output_path = os.path.join(output_dir, output_filename)
+    print("starting generation")
+    generate_mp4(project, output_path)
+
+    return {"message": "success"}
 
 
 
@@ -78,7 +99,7 @@ async def add_scene_to_project(
         "scene": new_scene
     }
 
-@
+
  
 
 @router.post("")

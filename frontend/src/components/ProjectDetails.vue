@@ -73,8 +73,8 @@
                   
                 </div>
                 <div class="flex flex-col gap-1">
-                  <form-button v-if="scenes[selectedSceneIndex].image_src" label="Generate Image" @clicked="generateImage"/>
-                  <form-button v-else label="Regenerate Image" @clicked="generateImage"/>
+                  <form-button v-if="scenes[selectedSceneIndex].image_src" label="Regenerate Image" @clicked="generateImage"/>
+                  <form-button v-else label="Generate Image" @clicked="generateImage"/>
                   <div class="flex justify-center">
                     <p>Lowkey</p>
                     <input type="checkbox" class="border" v-model="generateImageLowkey">
@@ -104,7 +104,7 @@
                 <p>
                   Image references:
                 </p>
-                <div class="overflow-y-auto flex gap-1">
+                <div class="overflow-y-auto max-w-[300px] flex gap-1">
                   <reference-image
                     v-for="referenceImg in addedReferenceImages"
                     :key="referenceImg.src"
@@ -119,7 +119,7 @@
                 <p>
                   Image references:
                 </p>
-                <div class="overflow-y-auto flex gap-1" v-if="availableReferenceImages.length > 0">
+                <div class="overflow-y-auto max-w-[300px] flex gap-1" v-if="availableReferenceImages.length > 0">
                   <reference-image
                     v-for="refImg in availableReferenceImages"
                     :key="refImg.name"
@@ -185,6 +185,8 @@
           class="flex flex-col gap-6 items-center text-white w-fit mx-auto"
         >
           <div class="flex gap-4 justify-center">
+            s{{ voiceovers[selectedVoiceoverIndex].timestamps }}s
+
             <form-input label="Start Time" class="w-[200px]">
               <input type="text" class="w-[200px] text-white bg-gray-800 border p-1 rounded-sm" v-model="voiceovers[selectedVoiceoverIndex].start_time">
             </form-input>
@@ -253,7 +255,7 @@
               }"
               @click="selectScene(scene.id)"
             >
-              <span class="text-xs text-white p-2">{{ scene.image_prompt }}</span>
+              <span class="text-xs text-white p-2 overflow-hidden" style="max-width: calc(120px)">{{ scene.image_prompt }}</span>
               <div class="w-full text-center bg-gray-800 z-20 text-white text-xs font-bold cursor-move"
                 @mousedown="startDragging($event, 'scene', scene, index, $refs.scenesTrack)"
               >
@@ -421,15 +423,24 @@ let playbackStartTimestamp = 0
 
 // Throttling
 
+const orderedScenes = computed(()=>{
+  return [...scenes.value].sort((a, b) => a.start_time - b.start_time)
+})
+
 // ================ SCENE LOGIC ================
 const activeScene = computed(() => {
   const time = currentTime.value
-  for (let i = scenes.value.length - 1; i >= 0; i--) {
-    const s = scenes.value[i]
+
+  // Since orderedScenes is sorted by start_time (ascending),
+  // iterating backwards finds the most recently started scene that is still active.
+  // This naturally handles overlapping scenes correctly (later-started wins).
+  for (let i = orderedScenes.value.length - 1; i >= 0; i--) {
+    const s = orderedScenes.value[i]
     if (time >= s.start_time && time < s.start_time + s.duration) {
       return s
     }
   }
+
   return null
 })
 
@@ -447,7 +458,7 @@ const nextScene = computed(() => {
   const current = activeScene.value
   if (!current) return null
   const index = scenes.value.findIndex(s => s === current)
-  return scenes.value[index + 1] || null
+  return orderedScenes.value[index + 1] || null
 })
 
 const nextVoiceover = computed(() => {
@@ -461,7 +472,7 @@ const nextNextScene = computed(() => {
   const next = nextScene.value
   if (!next) return null
   const index = scenes.value.findIndex(s => s === next)
-  return scenes.value[index + 1] || null
+  return orderedScenes.value[index + 1] || null
 })
 
 // ================ LAYER MANAGEMENT ================
@@ -757,7 +768,7 @@ const generateVideo = async () => {
       prompt: scene.video_prompt,
     });
     const data = response.data;
-    scene.video_src = data.video_url; // Assuming the backend returns the video URL in 'video_url'
+    scenes.value[selectedSceneIndex.value].video_src = data.video_url; // Assuming the backend returns the video URL in 'video_url'
     alert('Video generation started. It may take a few minutes to complete. Please refresh the page after some time to see the updated video.');
 
   } catch (error) {
@@ -920,6 +931,8 @@ const generateVoiceover = async () => {
     text: voiceover.text
   });
   voiceovers.value[selectedVoiceoverIndex.value].src = voiceoverResponse.data.voiceover_src
+  voiceovers.value[selectedVoiceoverIndex.value].duration = voiceoverResponse.data.duration
+  voiceovers.value[selectedVoiceoverIndex.value].timestamps = voiceoverResponse.data.timestamps
   voiceoversVersion.value[voiceover.id]++
 }
 

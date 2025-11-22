@@ -20,6 +20,7 @@ backend/build/
 backend/static/images/*
 backend/static/videos/*
 backend/static/voiceovers/*
+backend/videos/*
 
 # Backend - Environment variables
 backend/.env

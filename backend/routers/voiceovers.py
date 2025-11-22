@@ -79,7 +79,11 @@ async def generate_voiceover(voiceover_id: str, request: VoiceoverGenerateReques
     voiceover.duration = duration
     voiceover.text = request.text
     voiceover.timestamps = json.dumps(timestamps)
+    print(timestamps)
+    print(json.dumps(timestamps))
+    print("Before commit - timestamps:", voiceover.timestamps)
+
     session.add(voiceover)
     await session.commit()
     await session.refresh(voiceover)
-    return {"message": "Voiceover generated successfully", "voiceover_id": voiceover_id, "voiceover_src": audio_path, "duration": duration}
+    return {"message": "Voiceover generated successfully", "voiceover_id": voiceover_id, "voiceover_src": audio_path, "duration": duration, "timestamps": voiceover.timestamps}

@@ -245,7 +245,7 @@ async def generate_scene_video(
     # Optionally refresh scene/video
     await session.refresh(scene)
 
-    return {"message": "Scene video generated successfully", "scene_id": scene_id}
+    return {"message": "Scene video generated successfully", "scene_id": scene_id, "video_url": video_path}
 
 
 @router.post("/add-character-to-scene")

@@ -7,7 +7,7 @@ from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
 import json  # Added for debug logging
 import re
-
+import time
 
 load_dotenv()
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
@@ -41,7 +41,7 @@ def gather_story_data(topic: str) -> GatheredStoryData:
 class Story(BaseModel):
     script: str
 
-def generate_story(topic: str, word_limit: int, story_data: str, reference_stories: str) -> Story:
+def generate_story(topic: str, word_limit: int, story_data: str, reference_stories: str, persistant_characters: bool) -> Story:
     messages = [
         {
             "role": "system",
@@ -63,13 +63,14 @@ def generate_story(topic: str, word_limit: int, story_data: str, reference_stori
                 f"Data:\n{story_data}\n\n"
                 f"Example reference stories about the topic: \n{reference_stories}\n\n"
                 f"Guidelines:\n"
+                f"{'-' if persistant_characters else 'Do not include any persistant characters in the story.'}\n"
                 f"- Vocabulary: 7th-grade reading level.\n"
                 f"- Style: Conversational, suspenseful, and easy to follow.\n"
                 f"- Structure: Intro hook (CRUTIAL) → Main events → Reflection.\n"
-                f"- Length: Around {word_limit} words (not counting tags).\n\n"
+                f"- Length: Around {word_limit} words (try to not go over 20 more than limit) (not counting tags).\n\n"
                 f"- Use **rolling hooks** throughout: each time you resolve part of the story, spark a new sense of curiosity. "
                 f"Example: answer one mystery but introduce another question, emotion, or twist. "
-                f"Keep the audience emotionally or intellectually invested — never fully satisfied until the very end.\n"
+                f"Keep the audience emotionally or intellectually invested — never fully satisfied until the very end but give them something to hold onto.\n"
                 f"- Structure your pacing like this:\n"
                 f"  1. **Intro Hook:** Grab attention instantly with emotion, curiosity, or tension.\n"
                 f"  2. **Setup:** Build context quickly — who, where, what’s at stake.\n"
@@ -244,7 +245,118 @@ class SegmentWithScenes(BaseModel):
 class StoryWithScenes(BaseModel):
     story: List[SegmentWithScenes]
 
+
 def add_scenes_to_story(splitted_story: List[Any]) -> List[Any]:
+    # Step 1: Filter and reformat
+    filtered_story = [{
+        "duration": float(seg["duration"]) + 2,
+        "content": seg["content"],
+    } for seg in splitted_story if seg.get("type") == "text"]
+
+    total_segments = len(filtered_story)
+
+    def generate_missing_scenes(segment_miss_scenes_indices) -> Dict[int, List[Scene]]:
+        if(len(segment_miss_scenes_indices) == 0):
+            return
+        
+        messages = [
+            {
+                "role": "system",
+                "content": "You are an expert film director and visual storyteller."
+            },
+            {
+                "role": "user",
+                "content": (
+                    "You are an expert film director and visual storyteller specializing in cinematic scene breakdowns "
+                    "for AI-generated films. You deeply understand pacing, composition, and emotional continuity. "
+                    "Your task is to transform a text-based story into a sequence of visually engaging scenes **for every single segment**.\n\n"
+
+                    "⚠️ CRITICAL ENFORCEMENT RULES:\n"
+                    "- Each segment in the input MUST appear in the output.\n"
+                    "- Each segment MUST have a non-empty 'scenes' array.\n"
+                    "- If a segment is very short, still create at least one valid scene.\n"
+                    "- Never skip any segment.\n\n"
+
+                    "Each scene must include:\n"
+                    "- 'image_prompt': a vivid, cinematic description of the static frame, optimized for AI image generation.\n"
+                    "- 'video_prompt': a concise description of motion (camera moves, character gestures, lighting, or environmental effects).\n"
+                    "- 'duration': an integer between 4–7 seconds.\n\n"
+
+                    "The total duration of all scenes in each segment must **cover the segment’s duration** "
+                    "and may exceed it by at most 2 seconds.\n\n"
+
+                    "Scene design rules:\n"
+                    "- The number of scenes depends on the segment’s duration.\n"
+                    "- Each scene should align with a meaningful change in the story — a new action, mood, or visual element.\n"
+                    "- Avoid overly complex choreography or abstract imagery.\n"
+                    "- If a montage or quick transition fits naturally, break it into several shorter scenes instead of one.\n"
+                    "- Maintain smooth pacing, emotional tone, and visual diversity.\n\n"
+
+                    "OUTPUT FORMAT (strict JSON):\n"
+                    "{\n"
+                    "  'story': [\n"
+                    "     {\n"
+                    "       'content': '...',\n"
+                    "       'scenes': [\n"
+                    "          {\n"
+                    "            'image_prompt': '...',\n"
+                    "            'video_prompt': '...',\n"
+                    "            'duration': int (4–7)\n"
+                    "          }\n"
+                    "          ...\n"
+                    "        ]\n"
+                    "     },\n"
+                    "     ...\n"
+                    "  ]\n"
+                    "}\n\n"
+
+
+                    f"The story has {len(filtered_story)} segments in total. Therefore, the final output MUST include exactly {len(filtered_story)} segments — each with its own scenes.\n\n"
+
+                    "Story segments:\n"
+                    f"{json.dumps(filtered_story, indent=2)}"
+                    "\n\n"
+                    f"{"I've already filled some sgments" if len(segment_miss_scenes_indices) else "None of the segments have been filled yet."} "
+                    f"You need to fill the missing ones (with indices: {segment_miss_scenes_indices.__str__()}). "
+                )
+            }
+        ]
+        try:
+            response = open_ai_client.chat.completions.create(
+                model="gpt-4o-mini",
+                response_model=StoryWithScenes,
+                messages=messages,
+                temperature=0.7,
+            )
+            return response.model_dump()["story"]
+           
+        except Exception as e:
+            print(f"Error in scene generation: {e}")
+            return {}
+
+    # === Main Loop: Try up to 3 times to fill all segments ===
+    max_attempts = 3
+    segment_miss_scenes_indices = list(range(filtered_story.__len__()))
+    for attempt in range(max_attempts):
+        filtered_story = generate_missing_scenes(segment_miss_scenes_indices)
+        # Check if there are still segments without scenes
+
+        segment_miss_scenes_indices = []
+        for idx, segment in enumerate(filtered_story):
+            if not segment["scenes"] or len(segment["scenes"]) == 0:
+                segment_miss_scenes_indices.append(idx)
+
+        print("-----------------------")
+        print(json.dumps(filtered_story, indent=2))
+        print("-----------------------")
+        print(f"Attempt {attempt + 1}: Missing scenes for segments {segment_miss_scenes_indices}")
+
+        if(len(segment_miss_scenes_indices) == 0):
+            break
+
+    return filtered_story
+
+def add_scenes_to_story_old(splitted_story: List[Any]) -> List[Any]:
     # TODO
     # Reformat the story for better prompt engineering
     # Changes for the prompt:

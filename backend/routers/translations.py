@@ -16,18 +16,22 @@ open_ai_client = instructor.from_openai(OpenAI(api_key=OPENAI_API_KEY))
 LANGUAGES = [
     {
         "name": "Polish",
+        "code": "PL",
         "voice_id": "o2xdfKUpc1Bwq7RchZuW"
     },
     # {
     #     "name": "English",
+    #     "code": "EN",
     #     "voice_id": "Cz0K1kOv9tD8l0b5Qu53",
     # },
-    # {
-    #     "name": "Spanish",
-    #     "voice_id": "efcRUax7uSa9kpBwtDPe",
-    # },
+    {
+        "name": "Spanish",
+        "code": "ES",
+        "voice_id": "efcRUax7uSa9kpBwtDPe",
+    },
     # {
     #     "name": "German",
+    #     "code": "DE",
     #     "voice_id": "kkJxCnlRCckmfFvzDW5Q",
     # }
 ]
