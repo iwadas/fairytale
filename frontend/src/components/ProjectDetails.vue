@@ -185,7 +185,6 @@
           class="flex flex-col gap-6 items-center text-white w-fit mx-auto"
         >
           <div class="flex gap-4 justify-center">
-            s{{ voiceovers[selectedVoiceoverIndex].timestamps }}s
 
             <form-input label="Start Time" class="w-[200px]">
               <input type="text" class="w-[200px] text-white bg-gray-800 border p-1 rounded-sm" v-model="voiceovers[selectedVoiceoverIndex].start_time">
@@ -766,6 +765,7 @@ const generateVideo = async () => {
 
     const response = await axios.post(`http://localhost:8000/scenes/generate-scene-video/${scene.id}`, {
       prompt: scene.video_prompt,
+      duration: scene.duration,
     });
     const data = response.data;
     scenes.value[selectedSceneIndex.value].video_src = data.video_url; // Assuming the backend returns the video URL in 'video_url'

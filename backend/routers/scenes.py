@@ -204,8 +204,12 @@ async def upload_scene_image(
 async def generate_scene_video(
     scene_id: str,
     prompt: str = Body(..., embed=True),
+    duration: float = Body(5.0, embed=True),
     session: AsyncSession = Depends(get_session),
 ):
+    
+
+    
     # 1. Get scene image path from DB using ORM
     scene = await session.get(Scene, scene_id)
     print("Scene ID for video generation:", scene_id)
@@ -223,7 +227,7 @@ async def generate_scene_video(
     print("Scene ID:", scene_id)
     print("Generating video with prompt:", prompt)
     print("Using scene image:", scene.image_src)
-    print("Scene duration:", scene.duration)
+    print("Scene duration:", duration)
     print("Generating video...")
 
     video_path = generate_video(
@@ -232,12 +236,13 @@ async def generate_scene_video(
         prompt=prompt,
         negative_prompt="",  # Default to empty string, adjust if needed
         image_path=scene.image_src,
-        duration=scene.duration  # Default duration, adjust as needed
+        duration=duration  # Default duration, adjust as needed
     )
 
     # 4. Store or update scene video in DB (attach to scene)
     scene.video_src = video_path
     scene.video_prompt = prompt
+    scene.duration = duration
     session.add(scene)
 
     await session.commit()

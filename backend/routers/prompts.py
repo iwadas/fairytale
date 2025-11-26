@@ -1,5 +1,6 @@
 from math import floor
-import os  # Added missing import
+import os
+import random  # Added missing import
 from openai import OpenAI
 import instructor
 from dotenv import load_dotenv
@@ -38,6 +39,9 @@ def gather_story_data(topic: str) -> GatheredStoryData:
 
     return response
 
+
+
+
 class Story(BaseModel):
     script: str
 
@@ -46,43 +50,41 @@ def generate_story(topic: str, word_limit: int, story_data: str, reference_stori
         {
             "role": "system",
             "content": (
-                "You are an expert storyteller and viral scriptwriter for short-form social media videos (TikTok, Reels, YouTube Shorts). "
-                "You write engaging, voice-ready narratives that feel *spoken*, not written. "
-                "Your goal is to capture attention immediately and sustain it with curiosity-driven pacing. "
-                "You use emotional delivery and natural rhythm, making the listener *feel* the story as it unfolds. "
-                "Every section of the story should have a small curiosity loop — when one mystery is resolved, introduce a new question or emotional shift that keeps the listener hooked. "
-                "You are excellent at structuring content with 'hook → payoff → new hook' to ensure viewers watch until the end. "
-                "The narration must sound natural and cinematic, not like a list of hooks. Blend tension and emotion smoothly."
+                "You are an expert short-form storyteller for TikTok/Reels/Shorts. "
+                "You write gripping, spoken-word narratives that hook instantly and never let go. "
+                "Your style is conversational, emotional, and packed with rolling curiosity: "
+                "every time you answer one question or resolve tension, you immediately open a new one. "
+                "The listener should always be leaning in, desperate to hear what happens next."
             )
         },
         {
             "role": "user",
             "content": (
-                f"Create a captivating story about '{topic}'.\n\n"
-                f"Base the story entirely on reference storie and gathered data:"
-                f"Data:\n{story_data}\n\n"
-                f"Example reference stories about the topic: \n{reference_stories}\n\n"
+                f"Write a captivating spoken story about: {topic}\n\n"                
+                f"{
+                    (
+                        f"Base the story entirely on reference stories and gathered data:"
+                        f"Data:\n{story_data}\n\n" 
+                        f"Example reference stories about the topic: \n{reference_stories}\n\n"
+                    )
+                    if story_data else 
+                    (
+                        f"Try to combine reference stories to make something engaging for viewer, use most interesting parts but make sure it flows well together."
+                        f"\nReference Stories:\n{reference_stories}\n\n"
+                    )
+                }"
+
                 f"Guidelines:\n"
                 f"{'-' if persistant_characters else 'Do not include any persistant characters in the story.'}\n"
                 f"- Vocabulary: 7th-grade reading level.\n"
                 f"- Style: Conversational, suspenseful, and easy to follow.\n"
-                f"- Structure: Intro hook (CRUTIAL) → Main events → Reflection.\n"
-                f"- Length: Around {word_limit} words (try to not go over 20 more than limit) (not counting tags).\n\n"
+                f"- IMPORTANT: Length: Around {word_limit} (+/- 20) words (not counting tags).\n\n"
                 f"- Use **rolling hooks** throughout: each time you resolve part of the story, spark a new sense of curiosity. "
-                f"Example: answer one mystery but introduce another question, emotion, or twist. "
-                f"Keep the audience emotionally or intellectually invested — never fully satisfied until the very end but give them something to hold onto.\n"
-                f"- Structure your pacing like this:\n"
-                f"  1. **Intro Hook:** Grab attention instantly with emotion, curiosity, or tension.\n"
-                f"  2. **Setup:** Build context quickly — who, where, what’s at stake.\n"
-                f"  3. **Conflict or Twist:** Raise tension or surprise the listener.\n"
-                f"  4. **Mini-Payoffs + New Hooks:** Each emotional or story beat should answer one question but open another.\n"
-                f"  5. **Final Payoff + Reflection:** End with emotional closure or a thought-provoking takeaway.\n"
-                f"- Use natural **spoken rhythm**: short sentences, occasional repetition, rhetorical questions, and brief pauses for dramatic tension.\n"
+                f"- Use natural **spoken rhythm**: (WHEN SUITABLE) use short sentences, occasional repetition, rhetorical questions, and brief pauses for dramatic tension.\n"
                 f"- End with a **satisfying resolution** — either emotional (makes the listener feel) or reflective (makes them think)."
                 f"🎭 **Emotion and pacing:**\n"
                 f"Use the following tags to make the story sound like spoken performance — not too often, but enough to make it expressive.\n"
                 f"- Alternate emotional tones (curiosity → excitement → tension → relief → reflection) to create an emotional rhythm that feels like a story, not a lecture.\n"
-                f"- Occasionally hint at what’s *coming next* using foreshadowing or small teasers like: ‘But then... something happened that changed everything.’"
                 f"- **SSML breaks (MANDATORY):** Use `<break time=\"1s\"/>` or `<break time=\"2s\"/>` to separate story beats. "
                 f"Think of them as moments where a narrator would naturally pause — for suspense, reflection, or emotional shift. "
                 f"Include at least **one break every 2–4 sentences**, and always after a major event, twist, or emotional moment. "
@@ -101,7 +103,7 @@ def generate_story(topic: str, word_limit: int, story_data: str, reference_stori
         }
     ]
     response = open_ai_client.chat.completions.create(
-        model="gpt-4o-mini",
+        model=random.choice(["gpt-4o-mini", "gpt-5-mini"]),
         response_model=Story,
         messages=messages
     )
@@ -287,10 +289,14 @@ def add_scenes_to_story(splitted_story: List[Any]) -> List[Any]:
 
                     "Scene design rules:\n"
                     "- The number of scenes depends on the segment’s duration.\n"
-                    "- Each scene should align with a meaningful change in the story — a new action, mood, or visual element.\n"
-                    "- Avoid overly complex choreography or abstract imagery.\n"
-                    "- If a montage or quick transition fits naturally, break it into several shorter scenes instead of one.\n"
-                    "- Maintain smooth pacing, emotional tone, and visual diversity.\n\n"
+                    "- Each scene = exactly ONE continuous shot or one simple, static visual idea.\n"
+                    "- NEVER create montages, photo collages, split-screens, parallel editing, or any scene that consists of multiple images/clips shown at the same time or in quick succession to convey one idea.\n"
+                    "- Strictly forbidden: 'montage of X doing Y', 'series of shots showing the passage of time', 'several angles of the same action', 'before-and-after split', 'parallel action in two locations', etc.\n"
+                    "- If the script calls for something that would normally be a montage (e.g. training sequence, journey, many days passing, character learning a skill), break it into individual, separate, full-length scenes — each showing only one single moment or one single action.\n"
+                    "- Each scene must feel complete on its own; do not rely on rapid cutting or juxtaposition for effect.\n"
+                    "- Avoid overly complex choreography, fast cuts, or abstract multi-image compositions.\n"
+                    "- Prioritize simplicity: one clear subject, one emotion, one action per scene.\n"
+                    "- Maintain smooth pacing, consistent emotional tone within a scene, and strong visual contrast between consecutive scenes.\n\n"
 
                     "OUTPUT FORMAT (strict JSON):\n"
                     "{\n"
@@ -484,24 +490,12 @@ def prepare_story_for_db(story_with_scenes, splitted_story):
     voiceovers = []
     for segment in splitted_story:
         if segment["type"] == 'text':
-            
             voiceovers.append({
                 'content': segment['content'],
                 'content_with_pauses': segment['content_with_pauses'],
                 'duration': segment['duration'],
                 'start_time': segment['start_time']
             })
-
-
-    voiceovers = [
-        {
-            "content_with_pauses": None,
-            'content': segment['content'],
-            'duration': segment['duration'],
-            'start_time': segment['start_time']
-        }
-        for segment in splitted_story if segment["type"] == 'text'
-    ]
 
     # Step 3: Create scenes list with calculated start times
     scenes = []

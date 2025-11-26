@@ -11,7 +11,7 @@ import os
 
 from db import Place, get_session, Project, Scene, Character, Voiceover
 
-from .prompts import gather_story_data, generate_story, story_split, add_scenes_to_story, prepare_story_for_db, get_persistant_characters, add_character_changes
+from .prompts import gather_story_data, generate_story, story_split, add_scenes_to_story, prepare_story_for_db, get_persistant_characters, add_character_changes, estimate_speech_time
 
 from schemas import PromptRequest, FixedPromptResponse
 from pydantic import BaseModel
@@ -174,27 +174,110 @@ async def fix_scene_video_prompt(request: FixVideoPrompt):
     return {"fixed_prompt": fixed_prompt}
 
 
+
 class ProjectIn(BaseModel):
+    title: str
+    story: Optional[str]
+
+@router.post("/create-project")
+async def create_project(request: ProjectIn, session: AsyncSession = Depends(get_session)):
+    try:
+        splitted_story = story_split(request.story)
+        print("-----story--------")
+        print(json.dumps(splitted_story))
+
+        story_with_scenes = add_scenes_to_story(splitted_story)
+        print(json.dumps(story_with_scenes, indent=2))
+
+        story_database_data = prepare_story_for_db(story_with_scenes, splitted_story)
+        print("-----story for database--------")
+        print(json.dumps(story_database_data, indent=2))
+
+        print("-----story with scenes and characters--------")
+        print(json.dumps(story_database_data, indent=2))
+
+        project = Project(
+            id=str(uuid.uuid4()),
+            name=request.title,
+            created_at=func.now()
+        )
+
+        session.add(project)
+
+        print("added project")
+        # if(request.persistant_characters):
+        #     characters_map = {}
+        #     for character in story_database_data["characters"]:
+        #         character_db = Character(
+        #             id=str(uuid.uuid4()),
+        #             prompt = character["image_prompt"],
+        #             name = character["name"]
+        #         )
+        #         session.add(character_db)
+        #         characters_map[character["name"]] = character_db
+        #         project.characters.append(character_db)
+        # print("added characters")
+
+        for scene in story_database_data["scenes"]:
+            scene_db = Scene(
+                id=str(uuid.uuid4()),
+                duration=scene["duration"],
+                start_time=scene["start_time"],
+                image_prompt=scene["image_prompt"],
+                video_prompt=scene["video_prompt"],
+                project_id=project.id
+            )
+            session.add(scene_db)
+
+            # if "characters" in scene:
+            #     for char_name in scene["characters"]:
+            #         if char_name in characters_map:
+            #             scene_db.characters.append(characters_map[char_name])
+
+
+        print("added scenes")
+        for voiceover in story_database_data["voiceovers"]:
+            voiceover_db = Voiceover(
+                id=str(uuid.uuid4()),
+                text=voiceover["content"],
+                text_with_pauses=voiceover["content_with_pauses"],
+                project_id=project.id,
+                start_time=voiceover["start_time"],  # Adjust based on scene timing if needed
+                duration=voiceover["duration"],
+                timestamps=None
+            )
+            session.add(voiceover_db)
+
+        print("added voiceovers")
+
+
+        await session.commit()
+
+        return {"success": True, "project_id": project.id}
+
+
+    except Exception as e:
+        await session.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    
+
+class ScriptIn(BaseModel):
     title: str
     duration: int
     data: Optional[str]
-    use_data: bool
+    gather_data: bool
     persistant_characters: bool
     reference_stories: Optional[str]
 
 @router.post("/generate-script")
-async def generate_script(request: ProjectIn, session: AsyncSession = Depends(get_session)):
-    print("hello")
-    print("Received project input:", request)
-    
-    
-    # word_count = estimated word count approximating to 2 words per second.
-    word_count = request.duration * 150 / 60
+async def generate_script(request: ScriptIn, session: AsyncSession = Depends(get_session)):
+    # word_count = estimated word count approximating to 110 words per minute.
+    word_count = request.duration * 80 / 60
 
     try:
         if request.data:
             story_data = request.data
-        elif request.use_data:
+        elif request.gather_data:
             story_data = gather_story_data(request.title).model_dump()
         else:
             story_data = None
@@ -202,8 +285,19 @@ async def generate_script(request: ProjectIn, session: AsyncSession = Depends(ge
         print("-----story data--------")
         print(json.dumps(story_data, indent=2))
 
-        story = generate_story(request.title, word_count, story_data, request.reference_stories, request.persistant_characters).model_dump()["script"]
+        STORY_SAMPLES_COUNT = 3
+        story_samples = []
 
+        for i in range(STORY_SAMPLES_COUNT):
+            story = generate_story(request.title, word_count, story_data, request.reference_stories, request.persistant_characters).model_dump()["script"]
+            story_samples.append({
+                "story": story,
+                "estimated_time": estimate_speech_time(story)
+            })
+            print(f"-----story sample {i+1}--------")
+
+        return {"story_samples": story_samples}
+    
         splitted_story = story_split(story)
         print("-----story--------")
         print(json.dumps(splitted_story))
@@ -215,12 +309,12 @@ async def generate_script(request: ProjectIn, session: AsyncSession = Depends(ge
         print("-----story for database--------")
         print(json.dumps(story_database_data, indent=2))
 
-        if request.persistant_characters:
-            scene_image_prompts = [scene["image_prompt"] for scene in story_database_data["scenes"]]
-            character_changes = get_persistant_characters(scene_image_prompts, story_data)
-            print("-----character changes-------")
-            print(json.dumps(character_changes, indent=2))
-            add_character_changes(story_database_data, character_changes)
+        # if request.persistant_characters:
+        #     scene_image_prompts = [scene["image_prompt"] for scene in story_database_data["scenes"]]
+        #     character_changes = get_persistant_characters(scene_image_prompts, story_data)
+        #     print("-----character changes-------")
+        #     print(json.dumps(character_changes, indent=2))
+        #     add_character_changes(story_database_data, character_changes)
     
 
         print("-----story with scenes and characters--------")

@@ -1,7 +1,7 @@
 
 import os
 import tempfile
-from PIL import Image, ImageFilter, ImageEnhance, ImageOps
+from PIL import Image, ImageFilter
 import uuid
 from pydub import AudioSegment
 
@@ -9,7 +9,7 @@ from typing import List, Dict, Tuple, Any
 
 from moviepy import VideoFileClip, TextClip, CompositeVideoClip, AudioFileClip, ColorClip, VideoClip, ImageClip
 from moviepy.video.VideoClip import ImageClip
-from moviepy.video.fx import CrossFadeIn
+from moviepy.video.fx import FadeIn, HeadBlur
 import json
 from scipy.ndimage import gaussian_filter
 
@@ -22,19 +22,19 @@ FONTSIZE = 32
 COLOR_INACTIVE = "white"                    # colour of words that have not appeared yet
 # COLOR_ACTIVE   = "#ffdd00"                # colour of the word that is currently sung
 BORDER_COLOR   = None                       # optional outline
-STROKE_COLOR   = "black"                    # outline colour (None = no outline)
-STROKE_WIDTH   = 0
+# STROKE_COLOR   = "black"                    # outline colour (None = no outline)
+# STROKE_WIDTH   = 3
 ALIGN = "center"                            # alignment inside the 500 px box
 VALIGN = "bottom"                           # vertical alignment of the whole block
 POS_Y = 800                                 # top coordinate of the *first* line
 LINE_SPACING = 10
-FADE_IN_DURATION = 0.4
-DROP_DURATION = 0.4
+FADE_IN_DURATION = 0.2
+DROP_DURATION = 0.2
 DROP_OFFSET = 0
 # FONT = 'backend/static/default/fonts/bahnschrift.ttf'
 # FONT = 'static/default/fonts/DMSerifText-Regular.ttf'
-FONT = 'static/default/fonts/Unna-Regular.ttf'
-WORD_GAP_PX = 6
+FONT = 'static/default/fonts/ZalandoSansExpanded-VariableFont_wght.ttf'
+WORD_GAP_PX = 4
 BG_MUSIC_PATH = 'static/default/sounds/'
 GLUE_PUNCTUATION = {",", ".", "?", "!", ":", ";"}
 
@@ -46,118 +46,14 @@ def word_pixel_size(word: str) -> Tuple[int, int]:
         font=FONT,
         font_size=FONTSIZE,
         color=COLOR_INACTIVE,
-        stroke_color=STROKE_COLOR,
-        stroke_width=STROKE_WIDTH,
+        # stroke_color=STROKE_COLOR,
+        # stroke_width=STROKE_WIDTH,
         method='label',
     )
     w, h = tmp.size
     tmp.close()
 
     return w, h
-
-
-def moviepy_to_pillow(clip) -> Image:
-    temp_file = tempfile.NamedTemporaryFile(suffix=".png").name
-    clip.save_frame(temp_file)
-    image = Image.open(temp_file)
-    return image
-
-def blur_text_clip(text_clip: TextClip, blur_radius: int, pos: Tuple[int, int], start: float, duration: float) -> VideoClip:
-    # Convert TextClip to PIL
-    pil_img = moviepy_to_pillow(text_clip)
-
-    # === THIS IS THE KEY CHANGE ===
-    # Force the text to be bright white (ignoring original color)
-    # Convert to grayscale then threshold to pure white text on transparent bg
-    pil_img = pil_img.convert("L")                     # grayscale
-    pil_img = pil_img.point(lambda p: 255 if p > 50 else 0)  # make text pure white
-    pil_img = pil_img.convert("RGBA")
-    data = pil_img.getdata()
-    new_data = []
-    for item in data:
-        # Keep white pixels white, make dark pixels transparent
-        if item[0] == 255:  # white
-            new_data.append((255, 255, 255, 255))   # bright white
-        else:
-            new_data.append((0, 0, 0, 0))           # transparent
-    pil_img.putdata(new_data)
-    # ===============================
-
-    # Offset for centered blur
-    offset = int(blur_radius * 0.6)
-
-    # Pad for blur
-    pil_img_padded = Image.new("RGBA", (pil_img.width + blur_radius * 3, pil_img.height + blur_radius * 3), (0,0,0,0))
-    pil_img_padded.paste(pil_img, (blur_radius + offset, blur_radius + offset), pil_img)
-
-    # Apply strong Gaussian blur → creates bright glow
-    pil_img_padded = pil_img_padded.filter(ImageFilter.GaussianBlur(radius=blur_radius))
-
-    # Optional: make it even brighter (boost intensity)
-    enhancer = ImageEnhance.Brightness(pil_img_padded)
-    pil_img_padded = enhancer.enhance(4)  # increase if you want stronger glow
-
-    # Convert back to MoviePy clip
-    text_clip = ImageClip(np.array(pil_img_padded))
-    final_pos = (pos[0] - 2*offset, pos[1] - 2*offset)
-    text_clip = text_clip.with_duration(duration).with_start(start).with_position(final_pos).with_effects([CrossFadeIn(FADE_IN_DURATION)])
-
-    return text_clip
-
-def shadow_text_clip(text_clip: TextClip, blur_radius: int, pos: Tuple[int, int], start: float, duration: float) -> VideoClip:
-    # Convert TextClip to PIL
-    pil_img = moviepy_to_pillow(text_clip)
-
-    # === THIS IS THE KEY CHANGE ===
-    # Force the text to be bright white (ignoring original color)
-    # Convert to grayscale then threshold to pure white text on transparent bg
-    pil_img = pil_img.convert("L")                     # grayscale
-    pil_img = pil_img.point(lambda p: 255 if p > 50 else 0)  # make text pure white
-    pil_img = pil_img.convert("RGBA")
-    data = pil_img.getdata()
-    new_data = []
-    for item in data:
-        # Keep white pixels white, make dark pixels transparent
-        if item[0] == 255:  # white
-            new_data.append((0, 0, 0, 255))   # black
-        else:
-            new_data.append((0, 0, 0, 0))     # transparent
-    pil_img.putdata(new_data)
-    # ===============================
-
-    # Offset for centered blur
-    offset = int(blur_radius * 0.6)
-
-    # Pad for blur
-    pil_img_padded = Image.new("RGBA", (pil_img.width + blur_radius * 3, pil_img.height + blur_radius * 3), (0,0,0,0))
-    pil_img_padded.paste(pil_img, (blur_radius + offset, blur_radius + offset), pil_img)
-
-    # Apply strong Gaussian blur → creates bright glow
-    pil_img_padded = pil_img_padded.filter(ImageFilter.GaussianBlur(radius=blur_radius))
-
-
-    darkness_factor = 3.0
-
-    arr = np.array(pil_img_padded)                    # shape (H, W, 4), uint8
-    alpha = arr[:, :, 3].astype(np.float32) / 255.0   # 0.0 – 1.0
-
-    # Multiply opacity (you asked for ×2, clamped)
-    alpha *= darkness_factor
-    alpha = np.clip(alpha, 0.0, 1.0)
-
-    # Put stronger alpha back, keep black color
-    arr[:, :, 3] = (alpha * 255).astype(np.uint8)
-
-    # Convert back to MoviePy clip
-    text_clip = ImageClip(arr)
-    final_pos = (pos[0] - 2*offset, pos[1] - 2*offset)
-    text_clip = text_clip.with_duration(duration).with_start(start).with_position(final_pos).with_effects([CrossFadeIn(FADE_IN_DURATION)])
-
-    return text_clip
-
-
-
-
 
 def make_word_clip(txt: str,
                    color: str,
@@ -171,9 +67,6 @@ def make_word_clip(txt: str,
         font_size=FONTSIZE,
         color=color,
         font=FONT,
-        stroke_color=STROKE_COLOR,
-        stroke_width=STROKE_WIDTH,
-        bg_color=(0,0,0,0),
         margin=(0, 30),
         method='label',               # <-- exact bbox
         size=(width, None),  # give some breathing room
@@ -189,27 +82,25 @@ def make_word_clip(txt: str,
         clip = ColorClip(size=(width, FONTSIZE+10), color=color).with_duration(end-start)
         w, h = clip.size
 
+    clip = clip.with_opacity(1.0)
+
     # keep the clip inside the video frame
     x = max(0, min(pos[0], VIDEO_W - w))
     y = max(0, min(pos[1], VIDEO_H - h))
 
-    def make_drop_position(t):
-        if t < DROP_DURATION:
-            progress = t / DROP_DURATION
-            # Ease-out quadratic for smooth landing
-            eased = 1 - (1 - progress) ** 2
-            y_offset = DROP_OFFSET * (1 - eased)
-        else:
-            y_offset = 0
-        return (x, y + y_offset)
+    clip = clip.with_start(start).with_position((x, y))
+
+    def fixed_x(t): return x + w / 2  # Center X of text (static)
+    def fixed_y(t): return y + h / 2  # Center Y of text (static)
+
+    blur_radius = 15,
+    blur_intensity = 50.0
+
+    blurred_clip = clip.with_effects([HeadBlur(fx=fixed_x, fy=fixed_y, radius=blur_radius, intensity=blur_intensity)])
     
+    return blurred_clip
+    return clip
 
-    # clip = clip.with_position(make_drop_position).with_start(start).with_duration(end - start).with_effects([FadeIn(FADE_IN_DURATION)])
-    blurred_clip = blur_text_clip(text_clip = clip.copy(), blur_radius=5, pos=(x, y), start=start, duration = end-start)
-    shadow_clip = shadow_text_clip(text_clip = clip.copy(), blur_radius=12, pos=(x, y), start=start, duration = end-start)
-    clip = clip.with_start(start).with_position((x, y)).with_duration(end - start).with_effects([CrossFadeIn(FADE_IN_DURATION)])
-
-    return (clip, blurred_clip, shadow_clip)
 
 def prepare_segments(timestamps: List[Dict[str, Any]], text_with_pauses: str, segment_start_time: float = None) -> List[Dict[str, Any]]:
     """
@@ -252,7 +143,7 @@ def prepare_segments(timestamps: List[Dict[str, Any]], text_with_pauses: str, se
             # Start new segment
             if current_segment is not None:
                 # Set end_time for previous segment
-                time_between = max(last_word_time + 0.5, (new_segment_start_time + last_word_time) / 2 - 0.1)
+                time_between = max(last_word_time + 0.3, (new_segment_start_time + last_word_time) / 2 - 0.1)
                 current_segment["end_time"] = time_between
                 segments.append(current_segment)
             
@@ -392,7 +283,7 @@ def add_karaoke_subtitles(
             appear_at = word_obj["time"]
 
             try:
-                word_clip, blurred_clip, shadow_clip = make_word_clip(
+                word_clip = make_word_clip(
                     txt=word_obj["word"],
                     width=word_width,
                     color=COLOR_INACTIVE,
@@ -400,11 +291,19 @@ def add_karaoke_subtitles(
                     end=seg_end,
                     pos=(final_x, final_y)
                 )
-        
-                clips.append(shadow_clip)
-                clips.append(blurred_clip)
-                clips.append(word_clip)
 
+                glow_word_clip = make_blurred_word_clip(
+                    txt=word_obj["word"],
+                    width=word_width,
+                    color=COLOR_INACTIVE,
+                    start=appear_at,
+                    end=seg_end,
+                    pos=(final_x, final_y),
+                    blur_sigma=5.0
+                )
+                clips.append(glow_word_clip)
+
+                clips.append(word_clip)
 
             except Exception as e:
                 print(f"Failed to create TextClip for word: '{word}' | Error: {e}")
@@ -413,6 +312,8 @@ def add_karaoke_subtitles(
     # ------------------------------------------------------------------
     # 4. Composite everything on top of the original video
     # ------------------------------------------------------------------
+    print(":)")
+    return
     final = CompositeVideoClip([background] + clips)
     return final
 

@@ -623,7 +623,7 @@ def generate_video(directory="static/videos/", filename="video", prompt="Generat
         task_uuid = result["data"][0]["taskUUID"]
         print(f"Extracted task UUID: {task_uuid}")
         poll_url = "https://api.runware.ai/v1/task"  # Use base task endpoint
-        max_attempts = 15
+        max_attempts = 90
         poll_interval = 5
 
         poll_headers = {
