@@ -14,6 +14,16 @@ class VoiceoverUpdate(BaseModel):
     start_time: float
 
 
+
+@router.post("/{project_id}")
+async def create_voiceover(project_id: str, session: AsyncSession = Depends(get_session)):
+    
+    new_voiceover = Voiceover(project_id=project_id, duration=5.0, start_time=0.0, text="DEFAULT TEXT")
+    session.add(new_voiceover)
+    await session.commit()
+    await session.refresh(new_voiceover)
+    return new_voiceover
+
 @router.delete("/{voiceover_id}")
 async def delete_voiceover(
     voiceover_id: str,

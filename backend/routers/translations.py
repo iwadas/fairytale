@@ -24,11 +24,11 @@ LANGUAGES = [
     #     "code": "EN",
     #     "voice_id": "Cz0K1kOv9tD8l0b5Qu53",
     # },
-    {
-        "name": "Spanish",
-        "code": "ES",
-        "voice_id": "efcRUax7uSa9kpBwtDPe",
-    },
+    # {
+    #     "name": "Spanish",
+    #     "code": "ES",
+    #     "voice_id": "efcRUax7uSa9kpBwtDPe",
+    # },
     # {
     #     "name": "German",
     #     "code": "DE",

@@ -285,22 +285,22 @@ LANGUAGES = [
         "name": "PL",
         "voice_id": "o2xdfKUpc1Bwq7RchZuW"
     },
-    {
-        "name": "EN",
-        "voice_id": "Cz0K1kOv9tD8l0b5Qu53",
-    },
-    {
-        "name": "Spanish",
-        "voice_id": "efcRUax7uSa9kpBwtDPe",
-    },
-    {
-        "name": "German",
-        "voice_id": "kkJxCnlRCckmfFvzDW5Q",
-    }
+    # {
+    #     "name": "EN",
+    #     "voice_id": "Cz0K1kOv9tD8l0b5Qu53",
+    # },
+    # {
+    #     "name": "Spanish",
+    #     "voice_id": "efcRUax7uSa9kpBwtDPe",
+    # },
+    # {
+    #     "name": "German",
+    #     "voice_id": "kkJxCnlRCckmfFvzDW5Q",
+    # }
 ]
 
 
-def generate_speech(text: str, filename="voiceover", directory="static/voiceovers/", voice_id="o2xdfKUpc1Bwq7RchZuW"):
+def generate_speech(text: str, filename="voiceover", directory="static/voiceovers/", voice_id="Cz0K1kOv9tD8l0b5Qu53"):
     response = eleven_labs_client.text_to_speech.convert_with_timestamps(
         text=text,
         voice_id=voice_id,  # Valid voice ID (Brian)
@@ -500,7 +500,7 @@ async def generate_image_runware(directory="static/images/default/", filename="i
 def generate_image_banana(directory="static/images/default/", filename="image", prompt="Generate", content_images: dict = {}):
     contents = []
     for name, upload_file  in content_images.items():
-        contents.append(f"This is {name}:")
+        contents.append(f"This is reference image: {name}:")
         contents.append(file_to_part(upload_file))
 
     # Add final instruction

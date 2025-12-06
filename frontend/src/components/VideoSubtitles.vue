@@ -67,7 +67,7 @@ const props = defineProps({
   pauses: String
 });
 
-const SYMBOLS = [",", ".", "?", ":"]
+const SYMBOLS = [",", ".", "?", ":", '"']
 
 const shouldHaveMargin = (word) => {
   return !SYMBOLS.includes(word);

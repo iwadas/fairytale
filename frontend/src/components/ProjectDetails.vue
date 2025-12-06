@@ -96,6 +96,7 @@
                 <div class="flex flex-col gap-1">
                   <form-button v-if="scenes[selectedSceneIndex].video_src" label="Regenerate Video" @click="generateVideo"/>
                   <form-button v-else label="Generate Video" @click="generateVideo"/>
+                  <input type="file" class="w-[200px] text-white bg-gray-800 border p-1 rounded-sm text-xs" @input="handleSceneVideoUpload">
                 </div>
               </div>
             </div>
@@ -214,72 +215,77 @@
     </div>
 
     <!-- Timeline Section -->
-    <div class="timeline bg-gray-900 rounded-lg p-4" ref="containerRef"> 
-      <div class="overflow-x-auto relative">
-        <div class="relative" :style="{ width: `${totalWidth}px`, minWidth: '100%' }">
-          <!-- Timeline Background with Time Markers -->
-          <div class="relative w-full h-5 bg-gray-800 rounded">
-            <!-- Time Markers -->
-            <div class="flex text-xs text-gray-400">
-              <span v-for="tick in timeTicks" :key="tick" class="absolute " :style="{ left: `${tick * pixelsPerSecond}px` }">
-                {{ formatTime(tick) }}
-              </span>
-            </div>
-          </div>
-
-          <div class="h-3 w-full relative z-20 bg-gray-800">
-            <div class="w-full h-full" @click="handleTimeChange($event)"></div>
-            <div class="absolute h-[400px] z-40 top-0"
-              :style="{ left: `${currentTime * pixelsPerSecond}px` }"
-            >
-              <div class="w-10 h-3 bg-red-500 -ml-5"></div>
-              <div class="h-full bg-red-500 w-1">
+    <div class="bg-gray-900 rounded-lg p-4">
+      <div class="mb-2 flex justify-end *:w-32 gap-2">
+          <form-button label="Add scene" @clicked="addScene"/>
+          <form-button label="Add voiceover" @clicked="addVoiceover"/>
+      </div>
+      <div class="timeline " ref="containerRef"> 
+        <div class="overflow-x-auto relative">
+          <div class="relative" :style="{ width: `${totalWidth}px`, minWidth: '100%' }">
+            <!-- Timeline Background with Time Markers -->
+            <div class="relative w-full h-5 bg-gray-800 rounded">
+              <!-- Time Markers -->
+              <div class="flex text-xs text-gray-400">
+                <span v-for="tick in timeTicks" :key="tick" class="absolute " :style="{ left: `${tick * pixelsPerSecond}px` }">
+                  {{ formatTime(tick) }}
+                </span>
               </div>
             </div>
-          </div>
-
-
-
-
-          <!-- Scenes Track -->
-          <div class="relative h-40 mt-1 z-0" ref="scenesTrack">
-            <div
-              v-for="(scene, index) in scenes"
-              :key="scene.id"
-              class="absolute h-full bg-blue-500 rounded cursor-pointer select-none border flex flex-col justify-between"
-              :style="{
-                left: `${scene.start_time * pixelsPerSecond}px`,
-                width: `${scene.duration * pixelsPerSecond}px`,
-                zIndex: Math.round(scene.start_time * 100)
-              }"
-              @click="selectScene(scene.id)"
-            >
-              <span class="text-xs text-white p-2 overflow-hidden" style="max-width: calc(120px)">{{ scene.image_prompt }}</span>
-              <div class="w-full text-center bg-gray-800 z-20 text-white text-xs font-bold cursor-move"
-                @mousedown="startDragging($event, 'scene', scene, index, $refs.scenesTrack)"
+  
+            <div class="h-3 w-full relative z-20 bg-gray-800">
+              <div class="w-full h-full" @click="handleTimeChange($event)"></div>
+              <div class="absolute h-[400px] z-40 top-0"
+                :style="{ left: `${currentTime * pixelsPerSecond}px` }"
               >
-                move
+                <div class="w-10 h-3 bg-red-500 -ml-5"></div>
+                <div class="h-full bg-red-500 w-1">
+                </div>
               </div>
             </div>
-          </div>
-
-          <!-- Voiceovers Track -->
-          <div class="relative h-28" ref="voiceoversTrack">
-            <div
-              v-for="(voiceover, index) in voiceovers"
-              :key="voiceover.id"
-              class="absolute h-20 mt-1 bg-green-500 rounded cursor-pointer select-none flex flex-col justify-between border border-white"
-              :style="{
-                left: `${voiceover.start_time * pixelsPerSecond}px`,
-                width: `${voiceover.duration * pixelsPerSecond}px`,
-              }"
-              @click="selectVoiceover(voiceover.id)"
-            >
-              <span class="text-xs text-white truncate p-2" :style="`max-width: ${voiceover.duration * pixelsPerSecond}px`">{{ voiceover.text }} </span>
-              <div class="w-full text-center bg-gray-800 z-20 text-white text-xs font-bold cursor-move"
-                @mousedown="startDragging($event, 'voiceover', voiceover, index, $refs.voiceoversTrack)"
+  
+  
+  
+            <!-- Scenes Track -->
+            <div class="relative h-40 mt-1 z-0" ref="scenesTrack">
+              <div
+                v-for="(scene, index) in scenes"
+                :key="scene.id"
+                class="absolute h-full bg-blue-500 rounded cursor-pointer select-none border flex flex-col justify-between"
+                :style="{
+                  left: `${scene.start_time * pixelsPerSecond}px`,
+                  width: `${scene.duration * pixelsPerSecond}px`,
+                  zIndex: Math.round(scene.start_time * 100)
+                }"
+                @click="selectScene(scene.id)"
               >
-                move
+                <span class="text-xs text-white p-2 overflow-hidden" style="max-width: calc(120px)">{{ scene.image_prompt }}</span>
+                <div class="w-full text-center bg-gray-800 z-20 text-white text-xs font-bold cursor-move"
+                  @mousedown="startDragging($event, 'scene', scene, index, $refs.scenesTrack)"
+                >
+                  move
+                </div>
+              </div>
+            </div>
+  
+            <!-- Voiceovers Track -->
+            <div class="relative h-28" ref="voiceoversTrack">
+              <div
+                v-for="(voiceover, index) in voiceovers"
+                :key="voiceover.id"
+                class="absolute h-20 mt-1 bg-green-500 rounded cursor-pointer select-none flex flex-col justify-between border border-white"
+                :style="{
+                  left: `${voiceover.start_time * pixelsPerSecond}px`,
+                  width: `${voiceover.duration * pixelsPerSecond}px`,
+                }"
+                @click="selectVoiceover(voiceover.id)"
+              >
+                <span class="text-xs text-white truncate p-2" :style="`max-width: ${voiceover.duration * pixelsPerSecond}px`">{{ voiceover.text }} </span>
+                <div class="w-full text-center bg-gray-800 z-20 text-white text-xs font-bold cursor-move"
+                  @mousedown="startDragging($event, 'voiceover', voiceover, index, $refs.voiceoversTrack)"
+                >
+                  move
+                </div>
               </div>
             </div>
           </div>
@@ -308,7 +314,7 @@ const scenes = ref([]);
 const voiceovers = ref([]);
 const characters = ref([]);
 
-const timelineDuration = 100; // Total duration of the timeline in seconds (adjust as needed)
+const timelineDuration = 120; // Total duration of the timeline in seconds (adjust as needed)
 const pixelsPerSecond = ref(50); // 100px per second
 const totalWidth = computed(()=>{
   return timelineDuration * pixelsPerSecond.value;
@@ -326,6 +332,19 @@ const getSelectedSceneId = () => {
 const getSelectedVoiceoverId = () => {
   return voiceovers.value[selectedVoiceoverIndex.value].id
 }
+
+// ADD SCENE
+const addScene = async () => {
+  const response = await axios.post(`${route}scenes/${projectId}`);
+  scenes.value.push(response.data);
+}
+
+// ADD VOICEOVER
+const addVoiceover = async () => {
+  const response = await axios.post(`${route}voiceovers/${projectId}`);
+  voiceovers.value.push(response.data);
+}
+
 
 // SET TIME
 const handleTimeChange = (event) => {
@@ -424,7 +443,7 @@ let playbackStartTimestamp = 0
 
 const orderedScenes = computed(()=>{
   return [...scenes.value].sort((a, b) => a.start_time - b.start_time)
-})
+}, {deep: true})
 
 // ================ SCENE LOGIC ================
 const activeScene = computed(() => {
@@ -858,18 +877,31 @@ const generateImage = async () => {
 };
 
 // MANUAL SCENE LOAD
-const handleSceneImageUpload = (event) => {
+const handleSceneImageUpload = async (event) => {
   const img = event.target.files[0];
   const url = URL.createObjectURL(img);
-  console.log(url)
   scenes.value[selectedSceneIndex.value].image_src = url;
 
   const formData = new FormData();
   formData.append('image', img);
 
-  axios.put(`${route}scenes/upload-image/${scenes.value[selectedSceneIndex.value].id}`, formData, {
+  const response = await axios.put(`${route}scenes/upload-image/${scenes.value[selectedSceneIndex.value].id}`, formData, {
     headers: { 'Content-Type': 'multipart/form-data' }
   });
+  scenes.value[selectedSceneIndex.value].image_src = response.data.image_url;
+}
+
+const handleSceneVideoUpload = async (event) => {
+  const video = event.target.files[0];
+  const formData = new FormData();
+  formData.append('video', video);
+
+  const response = await axios.put(`${route}scenes/upload-video/${scenes.value[selectedSceneIndex.value].id}`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  });
+
+  scenes.value[selectedSceneIndex.value].video_src = response.data.video_url;
+
 }
 
 // REFERENCE IMAGES

@@ -9,6 +9,7 @@ from typing import List, Optional, Dict, Any
 import json  # Added for debug logging
 import re
 import time
+import copy
 
 load_dotenv()
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
@@ -69,15 +70,17 @@ def generate_story(topic: str, word_limit: int, story_data: str, reference_stori
                     )
                     if story_data else 
                     (
-                        f"Try to combine reference stories to make something engaging for viewer, use most interesting parts but make sure it flows well together."
+                        f"Try to combine reference stories to make something engaging for viewer, use most interesting parts but make sure it flows well together and gives good information about topic."
                         f"\nReference Stories:\n{reference_stories}\n\n"
                     )
                 }"
 
                 f"Guidelines:\n"
+                f"- Make the first 6 seconds extremely engaging to hook the listener immediately.\n"
                 f"{'-' if persistant_characters else 'Do not include any persistant characters in the story.'}\n"
                 f"- Vocabulary: 7th-grade reading level.\n"
                 f"- Style: Conversational, suspenseful, and easy to follow.\n"
+                f"- Start with a strong hook in the first 1-2 sentences to grab attention immediately.\n"
                 f"- IMPORTANT: Length: Around {word_limit} (+/- 20) words (not counting tags).\n\n"
                 f"- Use **rolling hooks** throughout: each time you resolve part of the story, spark a new sense of curiosity. "
                 f"- Use natural **spoken rhythm**: (WHEN SUITABLE) use short sentences, occasional repetition, rhetorical questions, and brief pauses for dramatic tension.\n"
@@ -342,15 +345,23 @@ def add_scenes_to_story(splitted_story: List[Any]) -> List[Any]:
 
     # === Main Loop: Try up to 3 times to fill all segments ===
     max_attempts = 3
+    initial_filtered_story = copy.deepcopy(filtered_story)
     segment_miss_scenes_indices = list(range(filtered_story.__len__()))
     for attempt in range(max_attempts):
         filtered_story = generate_missing_scenes(segment_miss_scenes_indices)
         # Check if there are still segments without scenes
 
         segment_miss_scenes_indices = []
+        
+        if(initial_filtered_story.__len__() != filtered_story.__len__()):
+            for i in range(initial_filtered_story.__len__()):
+                if(i >= filtered_story.__len__()):
+                    filtered_story.append(initial_filtered_story[i])
+        
         for idx, segment in enumerate(filtered_story):
-            if not segment["scenes"] or len(segment["scenes"]) == 0:
+            if not segment.get("scenes") or len(segment["scenes"]) == 0:
                 segment_miss_scenes_indices.append(idx)
+
 
         print("-----------------------")
         print(json.dumps(filtered_story, indent=2))

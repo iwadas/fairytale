@@ -68,8 +68,8 @@ styles = {
         "Extreme photorealism with razor-sharp details on the main subject, cinematic shallow depth of field "
         "creating creamy bokeh in the blurred background. Dramatic low-key lighting: a strong, focused key light "
         "sculpting the subject, subtle cool rim light, and faint warm fill for perfect skin tones and texture clarity. "
-        "Subtle scientific holographic overlays float gently in the space around the subject: "
-        "translucent glowing globes with soft descriptive labels, faint orbital paths, delicate molecular structures, "
+        "(OPTIONAL) Subtle scientific holographic overlays float gently in the space around the subject: "
+        "translucent descriptive labels, faint orbital paths, delicate molecular structures, "
         "and light data visualizations. These elements emit their own soft glow, enhancing the dark atmosphere "
         "without overpowering the subject. Deep volumetric light rays cut through the darkness, "
         "creating an immersive, high-tech aura. Clean, modern aesthetic, perfect color grading with deep blacks, "
@@ -94,6 +94,7 @@ async def fix_scene_image_prompt(request: FixImagePrompt):
     style = styles.get(request.style, False)    
     
     style_prompt = (
+        f"Try to adjust my current image description to be enchanced by fitting elements from description. Make sure the style elements fit naturally into the scene and do not overpower it.\n\n"
         f"Style description:\n"
         f"{style}\n\n"
         f"For the style: blend your expert creative judgment with the provided style description. "
@@ -149,6 +150,7 @@ async def fix_scene_video_prompt(request: FixVideoPrompt):
                     "Create the perfect short motion prompt.\n"
                     f"Reference image (you can see this perfectly — NEVER describe anything in it):\n{request.image_prompt}\n\n"
                     f"Rough video idea (turn this into smooth, natural motion ONLY — no new elements):\n{request.video_prompt}\n\n"
+                    "Try to add interesting camera movement. Try to make it more than just zoom, use something appropriate but interesting.\n\n"
                     "Output ONLY the motion prompt, nothing else."
                     "PURE MOTION AND CHANGE ONLY — nothing else.\n\n"
                     "STRICT RULES (never break them):\n"
@@ -199,7 +201,7 @@ async def create_project(request: ProjectIn, session: AsyncSession = Depends(get
         project = Project(
             id=str(uuid.uuid4()),
             name=request.title,
-            created_at=func.now()
+            created_at=func.now(),
         )
 
         session.add(project)
@@ -285,7 +287,7 @@ async def generate_script(request: ScriptIn, session: AsyncSession = Depends(get
         print("-----story data--------")
         print(json.dumps(story_data, indent=2))
 
-        STORY_SAMPLES_COUNT = 3
+        STORY_SAMPLES_COUNT = 2
         story_samples = []
 
         for i in range(STORY_SAMPLES_COUNT):
@@ -297,88 +299,6 @@ async def generate_script(request: ScriptIn, session: AsyncSession = Depends(get
             print(f"-----story sample {i+1}--------")
 
         return {"story_samples": story_samples}
-    
-        splitted_story = story_split(story)
-        print("-----story--------")
-        print(json.dumps(splitted_story))
-
-        story_with_scenes = add_scenes_to_story(splitted_story)
-        print(json.dumps(story_with_scenes, indent=2))
-
-        story_database_data = prepare_story_for_db(story_with_scenes, splitted_story)
-        print("-----story for database--------")
-        print(json.dumps(story_database_data, indent=2))
-
-        # if request.persistant_characters:
-        #     scene_image_prompts = [scene["image_prompt"] for scene in story_database_data["scenes"]]
-        #     character_changes = get_persistant_characters(scene_image_prompts, story_data)
-        #     print("-----character changes-------")
-        #     print(json.dumps(character_changes, indent=2))
-        #     add_character_changes(story_database_data, character_changes)
-    
-
-        print("-----story with scenes and characters--------")
-        print(json.dumps(story_database_data, indent=2))
-
-        project = Project(
-            id=str(uuid.uuid4()),
-            name=request.title,
-            created_at=func.now()
-        )
-
-        session.add(project)
-
-        print("added project")
-        if(request.persistant_characters):
-            characters_map = {}
-            for character in story_database_data["characters"]:
-                character_db = Character(
-                    id=str(uuid.uuid4()),
-                    prompt = character["image_prompt"],
-                    name = character["name"]
-                )
-                session.add(character_db)
-                characters_map[character["name"]] = character_db
-                project.characters.append(character_db)
-
-        print("added characters")
-        for scene in story_database_data["scenes"]:
-            scene_db = Scene(
-                id=str(uuid.uuid4()),
-                duration=scene["duration"],
-                start_time=scene["start_time"],
-                image_prompt=scene["image_prompt"],
-                video_prompt=scene["video_prompt"],
-                project_id=project.id
-            )
-            session.add(scene_db)
-
-            if "characters" in scene:
-                for char_name in scene["characters"]:
-                    if char_name in characters_map:
-                        scene_db.characters.append(characters_map[char_name])
-
-
-        print("added scenes")
-        for voiceover in story_database_data["voiceovers"]:
-            voiceover_db = Voiceover(
-                id=str(uuid.uuid4()),
-                text=voiceover["content"],
-                text_with_pauses=voiceover["content_with_pauses"],
-                project_id=project.id,
-                start_time=voiceover["start_time"],  # Adjust based on scene timing if needed
-                duration=voiceover["duration"],
-                timestamps=None
-            )
-            session.add(voiceover_db)
-
-        print("added voiceovers")
-
-
-        await session.commit()
-
-        return {"Success": True}
-
 
     except Exception as e:
         await session.rollback()

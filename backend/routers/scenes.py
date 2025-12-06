@@ -47,6 +47,15 @@ async def generate_typing_scene(
     return {"message": "Typing effect video generated successfully", "scene_id": scene_id, "video_url": output_filename}
 
 
+@router.post("/{project_id}")
+async def create_scene(project_id: str, session: AsyncSession = Depends(get_session)):
+    
+    new_scene = Scene(project_id=project_id, duration=5.0, start_time=0.0)
+    session.add(new_scene)
+    await session.commit()
+    await session.refresh(new_scene)
+    return new_scene
+
 @router.delete("/{scene_id}")
 async def delete_scene(scene_id: str, session: AsyncSession = Depends(get_session)):
     # 1. Get scene from DB using ORM
@@ -106,7 +115,7 @@ async def generate_scene_image(
         directory="static/images/scenes",
         filename=filename,
         prompt=image_prompt,
-        content_images={},
+        content_images=ref_images_dict,
     )
 
     scene = await session.get(Scene, scene_id)
@@ -165,6 +174,43 @@ async def generate_scene_image(
     await session.refresh(scene)
     return {"message": "Scene image generated successfully", "scene_id": scene_id, "image_url": image_path}
 
+
+
+@router.put("/upload-video/{scene_id}")
+async def upload_scene_video(
+    scene_id: str,
+    video: UploadFile = File(...),
+    session: AsyncSession = Depends(get_session),
+):
+    # 1. Get scene from DB using ORM
+    scene = await session.get(Scene, scene_id)
+    if not scene:
+        raise HTTPException(status_code=404, detail="Scene not found")
+
+    # 2. Generate filename for scene
+    filename = filename_from_name(f"scene_{scene_id}")
+
+    # 3. Save uploaded video to disk
+    output_dir = "static/videos/scenes"
+    os.makedirs(output_dir, exist_ok=True)
+    video_path = os.path.join(output_dir, f"{filename}.mp4")  # Safer path construction
+    try:
+        with open(video_path, "wb") as f:
+            f.write(video.file.read())
+        print(f"Saved uploaded video to: {video_path}")
+    except Exception as e:
+        print(f"Error saving uploaded video to {video_path}: {e}")
+        raise HTTPException(status_code=500, detail="Failed to save uploaded video")
+
+    # 4. Store or update scene video in DB (attach to scene)
+    scene.video_src = video_path
+    session.add(scene)
+
+    await session.commit()
+    await session.refresh(scene)  # Refresh to confirm the update
+
+    return {"message": "Scene video uploaded successfully", "scene_id": scene_id, "video_url": video_path}
+
 @router.put("/upload-image/{scene_id}")
 async def upload_scene_image(
     scene_id: str,
@@ -207,9 +253,6 @@ async def generate_scene_video(
     duration: float = Body(5.0, embed=True),
     session: AsyncSession = Depends(get_session),
 ):
-    
-
-    
     # 1. Get scene image path from DB using ORM
     scene = await session.get(Scene, scene_id)
     print("Scene ID for video generation:", scene_id)

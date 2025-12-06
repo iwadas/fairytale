@@ -1,6 +1,7 @@
 <template>
   <div>
     <h2 class="text-2xl font-semibold text-gray-800 mb-4">Create New Project</h2>
+    {{ projectPrompt.title }}
     <div v-if="storySamples.length" class="flex flex-col gap-4">
       <h2 class="font-bold text-2xl">Select story</h2>
       <div class="flex flex-col gap-2">
@@ -29,7 +30,7 @@
         <div>
           <label class="block text-sm font-medium text-gray-600">Topic</label>
           <input
-            v-model="projectPrompt.title"
+            v-model="scriptPrompt.title"
             type="text"
             class="w-full mt-1 p-2 border rounded-md focus:ring-2 focus:ring-blue-500"
             placeholder="Enter topic..."
@@ -109,6 +110,7 @@ const projectPrompt = reactive({
 })
 
 const createProject = async () => {
+  console.log(projectPrompt);
   console.log('Creating project with:', projectPrompt);
   await axios.post('http://localhost:8000/generators/create-project', projectPrompt)
     .then(response => {
@@ -124,9 +126,7 @@ const createProject = async () => {
 const selectStory = (index) => {
   projectPrompt.story = storySamples.value[index].story;
   projectPrompt.title = scriptPrompt.title;
-
   console.log('Selected story:', projectPrompt);
-
   createProject();
 };
 
