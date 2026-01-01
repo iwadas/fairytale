@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+
+  backend:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - redis
+      - worker # Wait for worker to be ready (optional but good practice)
+
+  # --- NEW SERVICE: THE WORKER ---
+  worker:
+    build: ./backend  # Builds the exact same image as the backend
+    command: celery -A celery_worker.celery_app worker --loglevel=info
+    volumes:
+      - ./backend:/app # Hot reload for worker code too!
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - redis
+  # -------------------------------
+
+  frontend:
+    build: ./frontend
+    container_name: vue_app
+    ports:
+      - "8080:8080"  # <--- Make sure this is updated from 5173
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      # If you are calling the backend, use the container URL here too if doing SSR, 
+      # but for standard client-side Vue, localhost:8000 usually works because the *browser* makes the call.
+      - VUE_APP_API_URL=http://localhost:8000

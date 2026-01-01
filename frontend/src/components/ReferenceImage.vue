@@ -1,18 +1,13 @@
 <template>
-    <div class="p-2 border rounded w-[100px]">
-        <p class="text-xs truncate">{{ name }}</p>
-        <div class="size-[82px] bg-gray-200">
+    <div class="border rounded min-w-[45px] w-[45px] h-[80px]">
+        <div class="w-full h-full  bg-gray-200 cursor-pointer" @click="toggleAdded">
             <img v-if="src" class="w-full h-full object-contain" :src="getSrc(src)" alt="">
         </div>
-        <form-button v-if="added" label="Remove" @clicked="removeReferenceImage"/>
-        <form-button v-else label="Add" @clicked="addReferenceImage"/>
     </div>
 </template>
 
 
 <script setup>
-
-    import FormButton from './FormButton.vue';
     import getSrc from '../utils/getSrc.js'
 
     const props = defineProps({
@@ -22,6 +17,14 @@
     })
 
     const emit = defineEmits(['remove', 'add'])
+
+    const toggleAdded = () => {
+        if(props.added) {
+            removeReferenceImage();
+        } else {
+            addReferenceImage();
+        }
+    }
 
     const removeReferenceImage = () => {
         emit('remove', props.src)

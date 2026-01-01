@@ -10,7 +10,8 @@ from db import (
     Character,
     Scene,
     Voiceover,
-    Place,  # new
+    Place,
+    SceneImage,
 )
 
 async def create_tables(drop_all: bool = False):
@@ -25,233 +26,132 @@ async def seed_database():
     async with async_session_maker() as session:
         async with session.begin():
             # ---------- PROJECT ----------
-            project_id = "f445ea30-b133-4d0a-9e2c-d9e4bd19eb33"
+            project_id = "cb65c0db-a844-4ede-8b4e-4d5ebe391716"
             project = Project(
                 id=project_id,
-                name="Test2",
-                created_at=datetime.datetime.fromisoformat("2025-09-30T14:45:09")
+                name="Rare Human Super Powers",
             )
+            session.add(project)
 
-            # ---------- CHARACTERS ----------
-            characters = [
-                Character(
-                    id="0z1a2b3c-4d5e6f7g-8h9i0j1k-2l3m4n5o6p7",
-                    name="Nature Wizard",
-                    prompt="A mystical character adorned with leaves and flowers, wielding a magical staff that resonates with nature.",
-                    src="static/images/characters/nature_wizard.png"
-                ),
-                Character(
-                    id="7h8i9j0k-1l2m3n4o-5p6q7r8s-t9u0v1w2x3y4",
-                    name="Mega Knight",
-                    prompt="A large, muscular character in shiny armor, holding a massive sword, embodying bravery and strength.",
-                    src="static/images/characters/mega_knight.png"
-                ),
-                Character(
-                    id="3q4r5s6t-7u8v9w0x-1y2z3a4b-5c6d7e8f9g0",
-                    name="Stone Golem",
-                    prompt="A towering golem made of rocks and minerals, with a fierce expression and a protective stance.",
-                    src="static/images/characters/stone_giant.png"
-                ),
-                Character(
-                    id="1a2b3c4d-5e6f-7g8h-9i0j-k1l2m3n4o5p6",
-                    name="Ojciec Mateusz",
-                    prompt="A dark character dressed in dark robes, with piercing eyes and an aura of mystery, standing beside a fearsome dragon.",
-                    src="static/images/characters/ojciec_mateusz.png"
-                ),
-                Character(
-                    id="9f8e7d6c-5b4a-3c2d-1e0f-9a8b7c6d5e4f",
-                    name="Dragon",
-                    prompt="A mystical dragon soaring through the skies, its scales shimmering in the sunlight.",
-                    src="static/images/characters/dragon.jpg"
-                ),
+            # ---------- SCENES + SCENE IMAGES ----------
+            scenes_data = [
+                # (scene_id, start_time, duration, video_prompt, video_src, image_prompt, image_src)
+                ("35bf14f9-44f5-41a3-80af-44e752b64471", 0,      5, "Camera pans across the crowd, focusing on the excited individual as they gesture animatedly, conveying a sense of wonder.", None,
+                 "A lively crowd of diverse people in a vibrant city square, with one person dramatically pointing upwards, eyes wide with excitement. The sky is bright blue with fluffy clouds.", None),
+
+                ("4418b8ba-6a7c-4cb8-b3fd-06c09b8a0235", 3.8,   6, "The camera slowly zooms in on the figure, highlighting their confident stance as people walk by, oblivious to their extraordinary presence.", None,
+                 "A superhero-like figure standing confidently in a park, wearing a casual outfit yet emanating a powerful aura. Sunlight filters through the trees, creating a magical atmosphere.", None),
+
+                ("1e899c88-5626-42f7-86a3-ac1224e8e0b5", 8.3,   6, "The camera slowly circles around the person, emphasizing their stillness and the stark contrast of the broken toy on the floor.", None,
+                 "A person sitting alone in a dimly lit room, staring blankly at a broken toy soldier on the floor, their expression devoid of emotion.", None),
+
+                ("705064a2-88e5-4d4c-a3ea-6b62c2633e32", 14.3,  6, "The camera focuses on the hand, then gently pulls back to reveal the person's face, still void of emotion as they glance at their injury.", None,
+                 "A close-up shot of a hand gripping a broken bone, a dull ache of emptiness in the expression, contrasting with the vivid colors around them.", None),
+
+                ("d50bad77-d752-4ad4-afa7-995c2ef17216", 19.4,  7, "The camera tracks the person’s gaze, revealing their confusion as they attempt to connect with those around them.", None,
+                 "A person standing in a crowded café, looking around with a puzzled expression as familiar faces pass by without recognition.", None),
+
+                ("f102e7aa-846d-4a7d-8a11-05f0f40ac115", 26.8,  8, "The camera follows the person as they walk into the room, with laughter and chatter echoing, intensifying their feeling of isolation.", None,
+                 "An open door leading to a crowded party, with one person hesitantly stepping inside, their face filled with uncertainty.", None),
+
+                ("f43ad9de-b7db-4659-91a3-97206fd3c8af", 34.2,  6, "The camera follows the runner from the side, capturing their powerful stride and the beauty of nature surrounding them, emphasizing their endurance.", None,
+                 "A lone runner racing through a scenic forest trail, determination etched on their face as they push their limits, sweat glistening in the sunlight.", None),
+
+                ("1ed5afc0-3ff5-46b4-b90c-e8a86ae0c07e", 40.2,  6, "The camera shifts focus to the feet, then tilts up to reveal the runner's fierce expression, embodying relentless energy.", None,
+                 "A close-up of the runner's feet pounding against the ground, dirt flying up, showcasing their speed and stamina.", None),
+
+                ("d85b06d5-00e9-487b-968a-e20d5a1eaff7", 46.7,  6, "The camera sweeps through the flowers, capturing the brightness and variety of colors, then focuses on the person's amazed expression.", None,
+                 "A vibrant, colorful landscape filled with flowers of every hue, with a person standing in the center, eyes wide with awe.", None),
+
+                ("6b00c9ae-f5d2-4143-8a12-ec7b8be7eb9d", 52.7,  6, "The camera zooms in on their eyes, then pans out to showcase the rainbow of colors enveloping them.", None,
+                 "A close-up of the person's eyes reflecting the vivid colors around them, showing a sense of wonder and joy.", None),
+
+                ("4883c7f5-5b84-42f8-a255-363c5c317a21", 57.5,  6, "The camera focuses tightly on the wound, capturing the healing process, then shifts to the person's astonished face.", None,
+                 "A hand with a fresh cut, blood trickling down but visibly healing before our eyes, as the person watches in amazement.", None),
+
+                ("c4c087da-a292-43c8-8536-6dd7c22971a6", 63.5,  6, "The camera slowly pulls back, capturing the peaceful surroundings as the person admires their flawless skin.", None,
+                 "A serene setting with the person smiling, showcasing their unblemished skin and vibrant health, bringing a sense of wonder.", None),
+
+                ("d5804ee2-a7f2-4545-94ee-1b6521ea1ee0", 67.2,  7, "The camera captures a wide shot of the person at the edge, then zooms in on their face, showing tranquility amidst danger.", None,
+                 "A person standing on the edge of a tall building, looking down with a calm and fearless expression, the city sprawling beneath them.", None),
+
+                ("703e450d-a66c-4007-8493-9d34ab24e261", 74.2,  7, "The camera follows closely behind, capturing the person’s fearless strides as they navigate the darkness, oblivious to potential threats.", None,
+                 "A scene of the person walking through a dark alley, shadows lurking, yet they stride confidently, unbothered by the surroundings.", None),
+
+                ("f40c9c8a-e53b-46dc-bfda-392ef0251838", 80.6,  6, "The camera follows the person as they move fluidly, showcasing their unique ability to perceive details in the dark.", None,
+                 "A person in a dimly lit room, eyes glowing softly as they navigate effortlessly through the shadows, with an air of confidence.", None),
+
+                ("93a314b1-f4df-4b2f-8783-cbe1081ba208", 86.6,  6, "The camera zooms in on their eyes, then pulls back to reveal them smiling, reveling in their extraordinary power.", None,
+                 "A close-up of the person’s eyes, reflecting the faint light of the room, highlighting their night vision abilities.", None),
+
+                ("3e001c99-b966-437b-bbee-9bc02acce740", 90.4,  6, "The camera slowly pans out from the figure, capturing the serene beauty of the landscape, emphasizing the weight of their thoughts.", None,
+                 "A somber yet hopeful landscape at dusk, with a solitary figure gazing into the distance, reflecting on the reality of human mutations.", None),
+
+                ("58164fa4-334f-484d-9fa8-ac4e07c7ed4d", 95.8,  7, "The camera captures snippets of joy and inspiration as each person performs their extraordinary feats, highlighting the beauty of human potential.", None,
+                 "A montage of diverse people showcasing their unique abilities in everyday settings, smiling and inspiring others around them.", None),
+
+                ("45fcd51c-a544-429b-aa2c-824d3fb93403", 103.3, 2, "The camera slowly pulls back to reveal the horizon, leaving a sense of hope and wonder in the air.", None,
+                 "A tranquil sunset with silhouettes of people standing together, united in their diversity and uniqueness.", None),
             ]
 
-            # ---------- SCENES ----------
-            scenes = [
-                Scene(
-                    id="c4e404e8-48a1-42d7-a843-c190c4e26162",
-                    scene_number=1,
-                    duration=4,
-                    image_prompt="A peaceful village scene with the characters Mega Knight, Nature Wizard, and Stone Golem playing together in a sunny meadow.\r\nImportant: The final image/scene should reflect the realm of the characters. If the characters are cartoonish, the environment should also be in a cartoonish style. The goal is for the scene and characters to feel like they naturally belong together, in the same artistic world.",
-                    video_prompt="Camera pans across the meadow, showing the characters laughing and playing, with a bright and vibrant color palette.",
-                    project=project,
-                    image_src="static/images/scenes/scene_c4e404e8-48a1-42d7-a843-c190c4e26162.png",
-                    video_src="static/videos/scenes/scene_c4e404e8-48a1-42d7-a843-c190c4e26162.mp4"
-                ),
-                Scene(
-                    id="a7c88a8c-42d2-4012-8b39-6fca019dd7f0",
-                    scene_number=2,
-                    duration=3,
-                    image_prompt="A menacing dark cliff where Ojciec Mateusz appears, casting a shadow across the land.",
-                    video_prompt="The camera zooms in on Ojciec Mateusz, with storm clouds gathering in the background, intensifying the atmosphere.",
-                    project=project,
-                    image_src="static/images/scenes/scene_d79a2d02-f185-4848-a312-5c30db385b81.png",
-                    video_src="static/videos/scenes/scene_d79a2d02-f185-4848-a312-5c30db385b81.mp4"
-                ),
-                Scene(
-                    id="b1234567-89ab-cdef-0123-456789abcdef",
-                    scene_number=3,
-                    duration=4,
-                    image_prompt="Ojciec Mateusz summons the Dragon, which bursts forth in flames, creating a terrifying scene of destruction.",
-                    video_prompt="Dragon roars with fire engulfing the sky, Ojciec Mateusz stands with arms raised triumphantly.",
-                    project=project,
-                    image_src="static/images/scenes/scene_5dd4f6f6-0c24-4bda-acb2-e6181a2b1483.png",
-                    video_src="static/videos/scenes/scene_5dd4f6f6-0c24-4bda-acb2-e6181a2b1483.mp4"
-                ),
-                Scene(
-                    id="c2345678-90ab-cdef-1234-567890abcdef",
-                    scene_number=4,
-                    duration=4,
-                    image_prompt="The Dragon attacks the peaceful village, breathing fire on houses as villagers run in panic.",
-                    video_prompt="The camera shows the Dragon swooping over the village, fire engulfing rooftops, and chaos spreading everywhere.",
-                    project=project,
-                    image_src="static/images/scenes/scene_1494d543-5e7c-4135-99b6-b39b736b7a4c.png",
-                    video_src="static/videos/scenes/scene_1494d543-5e7c-4135-99b6-b39b736b7a4c.mp4"
-                ),
-                Scene(
-                    id="d3456789-01ab-cdef-2345-678901abcdef",
-                    scene_number=5,
-                    duration=3,
-                    image_prompt="Mega Knight stands tall, his sword glowing, rallying the villagers to stand against the Dragon.",
-                    video_prompt="Close-up of Mega Knight lifting his sword, determination in his eyes as the camera zooms dramatically.",
-                    project=project,
-                    image_src="static/images/scenes/scene_f12e0e98-5982-4a87-b38d-4d35aba6354b.png",
-                    video_src="static/videos/scenes/scene_f12e0e98-5982-4a87-b38d-4d35aba6354b.mp4"
-                ),
-                Scene(
-                    id="e4567890-12ab-cdef-3456-789012abcdef",
-                    scene_number=6,
-                    duration=3,
-                    image_prompt="Nature Wizard summons vines and flowers that rise to defend the villagers, forming a magical shield.",
-                    video_prompt="Magical vines grow rapidly around the village, creating barriers of glowing nature energy.",
-                    project=project,
-                    image_src="static/images/scenes/scene_3ebaaf52-78af-4809-b06d-829c87e1b655.png",
-                    video_src=None
-                ),
-                Scene(
-                    id="f5678901-23ab-cdef-4567-890123abcdef",
-                    scene_number=7,
-                    duration=3,
-                    image_prompt="Stone Golem rises from the earth, his rocky fists ready to strike against the Dragon.",
-                    video_prompt="The ground shakes as Stone Golem emerges, raising his fists with dust and debris falling around.",
-                    project=project,
-                    image_src=None,
-                    video_src=None
-                ),
-                Scene(
-                    id="g6789012-34ab-cdef-5678-901234abcdef",
-                    scene_number=8,
-                    duration=5,
-                    image_prompt="All heroes unite, standing together in front of the Dragon with determination and courage.",
-                    video_prompt="Camera circles around the heroes as they stand in unity, their powers glowing against the looming Dragon.",
-                    project=project,
-                    image_src=None,
-                    video_src=None
-                ),
-                Scene(
-                    id="h7890123-45ab-cdef-6789-012345abcdef",
-                    scene_number=9,
-                    duration=6,
-                    image_prompt="An epic battle ensues, with the heroes clashing against the Dragon, fire and magic filling the battlefield.",
-                    video_prompt="Dynamic shots of the battle: Mega Knight swings his sword, Nature Wizard casts spells, Stone Golem punches the Dragon, Dragon breathes fire.",
-                    project=project,
-                    image_src=None,
-                    video_src=None
-                ),
-                Scene(
-                    id="i8901234-56ab-cdef-7890-123456abcdef",
-                    scene_number=10,
-                    duration=5,
-                    image_prompt="The Dragon is defeated, Ojciec Mateusz is banished, and peace returns to the village with the heroes celebrated.",
-                    video_prompt="The Dragon falls, Ojciec Mateusz disappears in shadows, villagers cheer and lift the heroes in joy.",
-                    project=project,
-                    image_src=None,
-                    video_src=None
-                ),
-            ]
+            for scene_id, start_time, duration, video_prompt, video_src, image_prompt, image_src in scenes_data:
+                scene = Scene(
+                    id=scene_id,
+                    project_id=project_id,
+                    start_time=start_time,
+                    duration=duration,
+                    video_prompt=video_prompt,
+                    video_src=video_src,
+                )
+                session.add(scene)
+
+                # One image per scene (time = "start" by default, as in your original data)
+                scene_image = SceneImage(
+                    id=str(uuid.uuid4()),  # generate new ID, old one is gone anyway
+                    scene_id=scene_id,
+                    time="start",
+                    prompt=image_prompt,
+                    src=image_src,
+                )
+                session.add(scene_image)
 
             # ---------- VOICEOVERS ----------
-            voiceovers = [
-                Voiceover(
-                    id="abcd1234-efgh-5678-ijkl-91011mnop",
-                    project=project,
-                    text="In a land where joy reigned and laughter filled the air, our heroes enjoyed their time in peace.",
-                    start_time=1,
-                    duration=5,
-                    src="static/voiceovers/voiceover_abcd1234-efgh-5678-ijkl-91011mnop.mp3"
-                ),
-                Voiceover(
-                    id="bcde2345-fghi-6789-jklm-101112nopq",
-                    project=project,
-                    text="But darkness loomed on the horizon, as Ojciec Mateusz revealed his sinister plan.",
-                    start_time=6,
-                    duration=4,
-                    src="static/voiceovers/voiceover_qrst1234-uvwx-5678-yzcd-91011mnop.mp3"
-                ),
-                Voiceover(
-                    id="cdef3456-ghij-7890-klmn-111213opqr",
-                    project=project,
-                    text="With a mighty roar, the Dragon emerged, striking fear into the hearts of the villagers.",
-                    start_time=10,
-                    duration=5,
-                    src="static/voiceovers/voiceover_ghij1234-klmn-5678-opqr-91011stuv.mp3"
-                ),
-                Voiceover(
-                    id="defg4567-hijk-8901-lmno-121314pqrs",
-                    project=project,
-                    text="Yet, courage sparked in the hearts of our heroes, who rose to defend their home.",
-                    start_time=15,
-                    duration=5,
-                    src=None
-                ),
-                Voiceover(
-                    id="efgh5678-ijkl-9012-mnop-131415qrst",
-                    project=project,
-                    text="The battle shook the land, but unity and bravery lit their path forward.",
-                    start_time=20,
-                    duration=6,
-                    src=None
-                ),
-                Voiceover(
-                    id="fghi6789-jklm-0123-nopq-141516rstu",
-                    project=project,
-                    text="At last, victory was theirs, and peace returned, stronger than ever before.",
-                    start_time=26,
-                    duration=5,
-                    src=None
-                ),
+            voiceovers_data = [
+                ("417f8a4c-25c3-4d1d-95b2-f8f5f6c9e9cc", 0,    2.8, "[excited] Think humans are average? Think again.", "[excited] Think humans are average? Think again"),
+                ("6c6b4033-ef5a-427f-a987-53c70b012375", 3.8,  3.5, "Some people walk around with real-life superpowers.", "Some people walk around with real-life superpowers"),
+                ("1ff3ab08-1d8a-4a5f-8411-454942c3c338", 8.3, 10.1, " Imagine feeling absolutely no pain. That’s the reality for those with CIP pain insensitivity — 1 in 125,000! Break a bone? Still nothing.", "Imagine feeling absolutely no pain|That’s the reality for those with|CIP pain insensitivity — 1 in 125|000! Break a bone? Still nothing"),
+                ("4dedf854-7fca-4c1c-b219-a069a990d79b", 19.4, 5.4, " \nBut what about those with prosopamnesia? [curious] They remember everything, except faces!", "But what about those with|prosopamnesia? [curious] They remember everything|except faces!"),
+                ("bb8836b4-61e9-4f41-ad38-4f3dfe69d31c", 26.8, 6.4, "Can you imagine walking into a room full of people, but knowing none of them?", "Can you imagine walking into|a room full of people|but knowing none of them?"),
+                ("43014aa0-2ab1-47cf-b05d-85f6a9dfc301", 34.2,10.5, "  \nThen there are ultra-endurance mutants, 1 in 20,000. They can run almost forever. Their bodies barely produce lactate. [shout] How do they keep going?", "Then there are ultra-endurance mutants|1 in 20000|They can run almost forever|Their bodies barely produce lactate|[shout] How do they keep going?"),
+                ("5480751c-ef98-468c-8c26-28a10717d712", 46.7, 9.8, "  \nAnd let’s not forget tetrachromacy! With these extra color cones, they see up to 100 million colors! What must that look like?", "And let’s not forget tetrachromacy!|With these extra color cones|they see up to 100 million|colors! What must that look like?"),
+                ("a2d9346a-afb6-46c4-9abd-bce3fff344f6", 57.5, 8.7, "  \nUltra-fast healers are out there too — 1 in 10,000. Cuts close fast. Barely any scars. [whisper] How incredible is that?", "Ultra-fast healers are out there|too — 1 in 10000|Cuts close fast|Barely any scars|[whisper] How incredible is that?"),
+                ("1700e89a-f2ea-4abe-a7f9-d7905bde0d4a", 67.2,11.4, "  \nThen, there’s the fearlessness mutation — 1 in 100,000. Their amygdala barely reacts. Near-zero fear! What would life look like if you were never afraid?", "Then|there’s the fearlessness mutation|— 1 in 100000|Their amygdala barely reacts|Near-zero fear! What would life look|like if you were never afraid?"),
+                ("3e277cad-591f-4dcf-9e11-17d5dc0fa855", 80.6, 8.8, "  \nFinally, night vision mutations! 1 in 10,000 who can see in low light like a cat. [excited] It’s like having superpowers!", "Finally|night vision mutations! 1 in 10000 who can see in|low light like a cat|[excited] It’s like having superpowers!"),
+                ("d02eb5b8-3aea-42f3-aa46-e0c2d09e23ca", 90.4, 4.4, " \n[quietly]These aren’t comic-book tales. They’re mutations, rare and real. ", "[quietly]These aren’t comic-book tales|They’re mutations|rare and real"),
+                ("c1a3e1aa-28ef-44e1-89c7-5c4a58d0a3af", 95.8, 5.5, "\n[curious]What do they teach us? That human limits are wider than we think. ", "[curious]What do they teach us? That|human limits are wider than we think"),
+                ("7c7f6f1e-1774-4d9d-bfd2-dc8290cdcd54",103.3, 0,   "", ""),
             ]
 
-            # ---------- PLACES ----------
-            places = []  # empty for now (can seed later)
+            for vo_id, start_time, duration, text, text_with_pauses in voiceovers_data:
+                vo = Voiceover(
+                    id=vo_id,
+                    project_id=project_id,
+                    start_time=start_time,
+                    duration=duration if duration > 0 else None,
+                    text=text.strip(),
+                    text_with_pauses=text_with_pauses.strip(),
+                    src=None,
+                    timestamps=None,
+                )
+                session.add(vo)
 
-            # ---------- ADD TO SESSION ----------
-            session.add(project)
-            session.add_all(characters)
-            session.add_all(scenes)
-            session.add_all(voiceovers)
-            session.add_all(places)
-
-            # ---------- RELATIONSHIPS ----------
-            project.characters.extend(characters)
-
-            scenes[0].characters.extend([characters[1], characters[0], characters[2]])
-            scenes[1].characters.append(characters[3])
-            scenes[2].characters.extend([characters[3], characters[4]])
-            scenes[3].characters.extend([characters[3], characters[4]])
-            scenes[4].characters.append(characters[1])
-            scenes[5].characters.append(characters[0])
-            scenes[6].characters.append(characters[2])
-            scenes[7].characters.extend(characters)
-            scenes[8].characters.extend(characters)
-            scenes[9].characters.extend([characters[3], characters[4], characters[0]])
-
-    print("Seeding finished.")
+        await session.commit()
+    print("Database seeded successfully with 'Rare Human Super Powers' project!")
 
 async def main(drop_all: bool = True, seed: bool = False):
-    await create_tables(drop_all=drop_all)
-    # if seed:
-    #     await seed_database()
+    await create_tables(drop_all=drop_all,)
+    if seed:
+        await seed_database()
 
 if __name__ == "__main__":
     asyncio.run(main(drop_all=True, seed=True))

@@ -1,0 +1,19 @@
+FRONTEND
+```bash
+PS frontend> 
+py npm run serve
+```
+
+BACKEND
+```bash
+PS backend> 
+py env\Scripts\activate
+uvicorn main:app --reload --port 8000
+```
+
+
+WORKER:
+```bash
+PS backend> 
+py env\Scripts\huey_consumer.py worker.huey
+```

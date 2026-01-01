@@ -8,6 +8,7 @@ from typing import Optional, List, Dict
 from pathlib import Path
 import os
 import re
+from worker import generate_scene_video_task
 
 # MoviePy imports
 from moviepy import ImageClip, VideoClip, vfx, ColorClip, CompositeVideoClip
@@ -15,7 +16,7 @@ import numpy as np
 
 from pydantic import BaseModel
 
-from db import get_session, Scene, Character
+from db import get_session, Scene, Character, SceneImage
 from services import generate_image, generate_image_banana, generate_video, filename_from_name, create_typing_video, height, width
 
 router = APIRouter(prefix="/scenes", tags=["scenes"])
@@ -30,7 +31,6 @@ async def generate_typing_scene(
     payload: TypingSceneRequest,
     session: AsyncSession = Depends(get_session),
 ):
-
     scene = await session.get(Scene, scene_id)
     if not scene:
         raise HTTPException(status_code=404, detail="Scene not found")
@@ -82,7 +82,9 @@ async def generate_scene_image(
     scene_id: str,
     files: Optional[List[UploadFile]] = File(None),  # Catch ALL files
     lowkey: bool = Form(False),
-    image_prompt: str = Form(...),
+    prompt: str = Form(...),
+    scene_image_id: Optional[str] = Form(None),
+    time: Optional[str] = Form(None),
     session: AsyncSession = Depends(get_session),
 ):
     # Now, files[] contains ALL uploaded files
@@ -211,19 +213,49 @@ async def upload_scene_video(
 
     return {"message": "Scene video uploaded successfully", "scene_id": scene_id, "video_url": video_path}
 
+@router.delete("/remove-image/{scene_image_id}")
+async def remove_scene_image(
+    scene_image_id: str,
+    session: AsyncSession = Depends(get_session),
+):
+    # 1. Get scene image from DB using ORM
+    scene_image = await session.get(SceneImage, scene_image_id)
+    if not scene_image:
+        raise HTTPException(status_code=404, detail="Scene image not found")
+
+    # 2. Delete scene image from DB
+    scene_image.src = None
+    await session.commit()
+    return {"message": "Scene image src removed successfully"}
+
 @router.put("/upload-image/{scene_id}")
 async def upload_scene_image(
     scene_id: str,
+    time: str = Body(..., embed=True),
+    scene_image_id: Optional[str] = Body(None, embed=True),
+    scene_image_prompt: Optional[str] = Body(None, embed=True),
     image: UploadFile = File(...),
     session: AsyncSession = Depends(get_session),
 ):
     # 1. Get scene from DB using ORM
-    scene = await session.get(Scene, scene_id)
-    if not scene:
-        raise HTTPException(status_code=404, detail="Scene not found")
+    # scene = await session.get(Scene, scene_id)
+    # if not scene:
+    #     raise HTTPException(status_code=404, detail="Scene not found")
+
+    if(scene_image_id and len(scene_image_id) > 0):
+        print(f"Updating existing scene image ID: {scene_image_id} at time {time}")
+        scene_image = await session.get(SceneImage, scene_image_id)
+        if not scene_image:
+            raise HTTPException(status_code=404, detail="Scene image not found")
+        scene_image.time = time
+        scene_image.prompt = scene_image_prompt
+    else:
+        # Create new SceneImage
+        scene_image = SceneImage(scene_id=scene_id, time=time, prompt=scene_image_prompt)
+
 
     # 2. Generate filename for scene
-    filename = filename_from_name(f"scene_{scene_id}")
+    filename = filename_from_name(f"scene_{scene_id}_{time}")
 
     # 3. Save uploaded image to disk
     output_dir = "static/images/scenes"
@@ -238,15 +270,15 @@ async def upload_scene_image(
         raise HTTPException(status_code=500, detail="Failed to save uploaded image")
 
     # 4. Store or update scene image in DB (attach to scene)
-    scene.image_src = image_path
-    session.add(scene)
+    print(image_path)
+    scene_image.src = image_path
+    session.add(scene_image)
 
     await session.commit()
-    await session.refresh(scene)  # Refresh to confirm the update
+    await session.refresh(scene_image)
+    return {"message": "Scene image uploaded successfully", "scene_image": {"id": scene_image.id, "src": scene_image.src, "time": scene_image.time, "scene_id": scene_image.scene_id, "prompt": scene_image.prompt}}
 
-    return {"message": "Scene image uploaded successfully", "scene_id": scene_id, "image_url": image_path}
-
-@router.post("/generate-scene-video/{scene_id}")
+@router.post("/generate-scene-video-2/{scene_id}")
 async def generate_scene_video(
     scene_id: str,
     prompt: str = Body(..., embed=True),
@@ -259,9 +291,6 @@ async def generate_scene_video(
     if not scene:
         print("Scene not found")
         raise HTTPException(status_code=404, detail="Scene not found")
-    if not scene.image_src or not Path(scene.image_src).exists():
-        print("Scene image not found")
-        raise HTTPException(status_code=400, detail="Scene image not found. Generate scene image first.")
     
     # 2. Generate filename for scene video
     filename = filename_from_name(f"scene_{scene_id}")
@@ -269,16 +298,27 @@ async def generate_scene_video(
     # 3. Call the video generator
     print("Scene ID:", scene_id)
     print("Generating video with prompt:", prompt)
-    print("Using scene image:", scene.image_src)
     print("Scene duration:", duration)
     print("Generating video...")
+
+    scene_images = await session.execute(
+        select(SceneImage).filter_by(scene_id=scene_id)
+    )
+    scene_images_list = scene_images.scalars().all()
+
+    frames = [
+        {"src": img.src, "time": img.time}
+        for img in scene_images_list
+        if img.src and img.time != 'mid'
+    ]
+    print(frames)
 
     video_path = generate_video(
         directory="static/videos/scenes",
         filename=filename,
         prompt=prompt,
         negative_prompt="",  # Default to empty string, adjust if needed
-        image_path=scene.image_src,
+        frames = frames,
         duration=duration  # Default duration, adjust as needed
     )
 
@@ -294,6 +334,77 @@ async def generate_scene_video(
     await session.refresh(scene)
 
     return {"message": "Scene video generated successfully", "scene_id": scene_id, "video_url": video_path}
+
+@router.post("/generate-scene-video/{scene_id}")
+async def generate_scene_video(
+    scene_id: str,
+    prompt: str = Body(..., embed=True),
+    duration: float = Body(5.0, embed=True),
+    session: AsyncSession = Depends(get_session),
+):
+    scene = await session.get(Scene, scene_id)
+    if not scene:
+        raise HTTPException(404, "Scene not found")
+
+    # Enqueue → returns immediately
+    result = generate_scene_video_task(scene_id, prompt, duration)
+
+    return {
+        "status": "enqueued",
+        "task_id": result.id,  # if you want to track later
+        "message": "Video generation started in background"
+    }
+
+    # 1. Get scene image path from DB using ORM
+    scene = await session.get(Scene, scene_id)
+    print("Scene ID for video generation:", scene_id)
+    if not scene:
+        print("Scene not found")
+        raise HTTPException(status_code=404, detail="Scene not found")
+    
+    # 2. Generate filename for scene video
+    filename = filename_from_name(f"scene_{scene_id}")
+
+    # 3. Call the video generator
+    print("Scene ID:", scene_id)
+    print("Generating video with prompt:", prompt)
+    print("Scene duration:", duration)
+    print("Generating video...")
+
+    scene_images = await session.execute(
+        select(SceneImage).filter_by(scene_id=scene_id)
+    )
+    scene_images_list = scene_images.scalars().all()
+
+    frames = [
+        {"src": img.src, "time": img.time}
+        for img in scene_images_list
+        if img.src and img.time != 'mid'
+    ]
+    print(frames)
+
+    video_path = generate_video(
+        directory="static/videos/scenes",
+        filename=filename,
+        prompt=prompt,
+        negative_prompt="",  # Default to empty string, adjust if needed
+        frames = frames,
+        duration=duration  # Default duration, adjust as needed
+    )
+
+    # 4. Store or update scene video in DB (attach to scene)
+    scene.video_src = video_path
+    scene.video_prompt = prompt
+    scene.duration = duration
+    session.add(scene)
+
+    await session.commit()
+
+    # Optionally refresh scene/video
+    await session.refresh(scene)
+
+    return {"message": "Scene video generated successfully", "scene_id": scene_id, "video_url": video_path}
+
 
 
 @router.post("/add-character-to-scene")

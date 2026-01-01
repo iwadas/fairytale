@@ -20,7 +20,6 @@ from generate import generate_mp4
 import re
 
 router = APIRouter(prefix="/projects", tags=["projects"])
-
 @router.post("/download/{project_id}")
 async def download_project(project_id: str, session: AsyncSession = Depends(get_session)):
     result = await session.execute(
@@ -31,6 +30,8 @@ async def download_project(project_id: str, session: AsyncSession = Depends(get_
                 .selectinload(Scene.characters),
             selectinload(Project.scenes)
                 .selectinload(Scene.places),
+            selectinload(Project.scenes)
+                .selectinload(Scene.images),
             selectinload(Project.places),
             selectinload(Project.characters),
             selectinload(Project.voiceovers),
@@ -51,14 +52,12 @@ async def download_project(project_id: str, session: AsyncSession = Depends(get_
 
     output_dir = "videos"
     os.makedirs(output_dir, exist_ok=True)
-    output_filename = f"{get_save_name(project["name"])}.mp4"
+    output_filename = f"{get_save_name(project['name'])}.mp4"
     output_path = os.path.join(output_dir, output_filename)
     print("starting generation")
     generate_mp4(project, output_path)
 
     return {"message": "success"}
-
-
 
 
 @router.post("/add-scene/{project_id}")
@@ -260,7 +259,7 @@ def serialize_project(project_orm) -> dict | None:
 async def db_copy_project(source_project=None, suffix=" (Copy)", session=None):
     new_project = Project(
         id=str(uuid.uuid4()),
-        name=f"{source_project["name"]}"+suffix,  # You can customize the name
+        name=f"{source_project['name']}"+suffix,  # You can customize the name
         created_at=func.now()
     )
     session.add(new_project)
@@ -346,12 +345,14 @@ async def get_project(project_id: str, session: AsyncSession = Depends(get_sessi
                 .selectinload(Scene.characters),
             selectinload(Project.scenes)
                 .selectinload(Scene.places),
+            selectinload(Project.scenes)
+                .selectinload(Scene.images),
             selectinload(Project.places),
             selectinload(Project.characters),
             selectinload(Project.voiceovers),
         )
     )
-    project = result.scalars().first()
+    project = result.scalars().unique().one_or_none()
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
     # serialize with Pydantic
@@ -395,79 +396,96 @@ async def update_project(
     session: AsyncSession = Depends(get_session)
 ):
     # === Load current scenes (only scalar fields for diff) ===
-    result = await session.execute(
-        select(Scene).where(Scene.project_id == project_id)
-    )
-    cur_scenes = result.scalars().all()
-
-    cur_scenes_dict = [
-        {
-            "id": s.id,
-            "project_id": s.project_id,
-            "image_prompt": s.image_prompt,
-            "image_src": s.image_src,
-            "start_time": s.start_time,
-            "duration": s.duration,
-            "video_prompt": s.video_prompt,
-            "video_src": s.video_src,
-        }
-        for s in cur_scenes
-    ]
-
-    # === Load voiceovers ===
-    result = await session.execute(
-        select(Voiceover).where(Voiceover.project_id == project_id)
-    )
-    cur_voiceovers = result.scalars().all()
-    cur_voiceovers_dict = [v.__dict__ for v in cur_voiceovers]
-
-    # === Diff ===
-    del_sc_ids, ins_sc, upd_sc = diff_by_id(cur_scenes_dict, scenes)
-    del_vo_ids, ins_vo, upd_vo = diff_by_id(cur_voiceovers_dict, voiceovers)
-
-    # === DELETE ===
-    if del_sc_ids:
-        await session.execute(
-            delete(Scene).where(Scene.id.in_(del_sc_ids))
-        )
-
-    if del_vo_ids:
-        await session.execute(
-            delete(Voiceover).where(Voiceover.id.in_(del_vo_ids))
-        )
-
-    # === INSERT SCENES (only scalar fields) ===
-    if ins_sc:
-        new_scenes = []
-        for row in ins_sc:
-            # Remove relationship fields
-            row.pop("characters", None)
-            row.pop("places", None)
-            new_scenes.append(Scene(**row, project_id=project_id))
-        session.add_all(new_scenes)
-
-    # === UPDATE SCENES (only scalar fields) ===
-    if upd_sc:
-        for row in upd_sc:
-            # Remove relationship fields
-            row.pop("characters", None)
-            row.pop("places", None)
-            # Create minimal Scene instance with only scalar fields
-            scene = Scene(**row)
-            await session.merge(scene)  # Safe: no relationships touched
-
-    # === VOICEOVERS (no relationships) ===
-    if ins_vo:
-        session.add_all([Voiceover(**row, project_id=project_id) for row in ins_vo])
-
-    if upd_vo:
-        for row in upd_vo:
-            await session.merge(Voiceover(**row))
-
+    
+    for scene in scenes:
+        scene_db = await session.get(Scene, scene["id"])
+        if(scene_db):
+            scene_db.start_time = scene["start_time"]
+            scene_db.duration = scene["duration"]
+        
+    for vo in voiceovers:
+        vo_db = await session.get(Voiceover, vo["id"])
+        if(vo_db):
+            vo_db.start_time = vo["start_time"]
+            vo_db.duration = vo["duration"]
+            vo_db.text = vo["text"]
+            vo_db.text_with_pauses = vo["text_with_pauses"]
+    
     await session.commit()
+    return {"message": "Update successful"}
+    
+    # result = await session.execute(
+    #     select(Scene).where(Scene.project_id == project_id)
+    # )
+    # cur_scenes = result.scalars().all()
 
-    return {
-        "updated": len(upd_sc) + len(upd_vo),
-        "inserted": len(ins_sc) + len(ins_vo),
-        "deleted": len(del_sc_ids) + len(del_vo_ids),
-    }
+
+    
+
+
+    # cur_scenes_dict = [
+    #     {
+    #         "id": s.id,
+    #         "start_time": s.start_time,
+    #         "duration": s.duration,
+    #     }
+    #     for s in cur_scenes
+    # ]
+
+
+    # result = await session.execute(
+    #     select(Voiceover).where(Voiceover.project_id == project_id)
+    # )
+    # cur_voiceovers = result.scalars().all()
+    # cur_voiceovers_dict = [v.__dict__ for v in cur_voiceovers]
+
+    # # === Diff ===
+    # del_sc_ids, ins_sc, upd_sc = diff_by_id(cur_scenes_dict, scenes)
+    # del_vo_ids, ins_vo, upd_vo = diff_by_id(cur_voiceovers_dict, voiceovers)
+
+    # # === DELETE ===
+    # if del_sc_ids:
+    #     await session.execute(
+    #         delete(Scene).where(Scene.id.in_(del_sc_ids))
+    #     )
+
+    # if del_vo_ids:
+    #     await session.execute(
+    #         delete(Voiceover).where(Voiceover.id.in_(del_vo_ids))
+    #     )
+
+    # # === INSERT SCENES (only scalar fields) ===
+    # if ins_sc:
+    #     new_scenes = []
+    #     for row in ins_sc:
+    #         # Remove relationship fields
+    #         row.pop("characters", None)
+    #         row.pop("places", None)
+    #         new_scenes.append(Scene(**row, project_id=project_id))
+    #     session.add_all(new_scenes)
+
+    # # === UPDATE SCENES (only scalar fields) ===
+    # if upd_sc:
+    #     for row in upd_sc:
+    #         # Remove relationship fields
+    #         row.pop("characters", None)
+    #         row.pop("places", None)
+    #         # Create minimal Scene instance with only scalar fields
+    #         scene = Scene(**row)
+    #         await session.merge(scene)  # Safe: no relationships touched
+
+    # # === VOICEOVERS (no relationships) ===
+    # if ins_vo:
+    #     session.add_all([Voiceover(**row, project_id=project_id) for row in ins_vo])
+
+    # if upd_vo:
+    #     for row in upd_vo:
+    #         await session.merge(Voiceover(**row))
+
+    # await session.commit()
+
+    # return {
+    #     "updated": len(upd_sc) + len(upd_vo),
+    #     "inserted": len(ins_sc) + len(ins_vo),
+    #     "deleted": len(del_sc_ids) + len(del_vo_ids),
+    # }

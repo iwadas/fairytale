@@ -94,7 +94,7 @@ def get_translated_voiceovers(language_index, voiceovers):
         {
             "role": "system",
             "content": (
-                f"You are perfect in correcting speech errors and making sure that the text sounds natural in {LANGUAGES[language_index]["name"]}"
+                f"You are perfect in correcting speech errors and making sure that the text sounds natural in {LANGUAGES[language_index]['name']}"
             )
         },
         {

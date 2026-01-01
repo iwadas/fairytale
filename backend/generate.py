@@ -10,15 +10,15 @@ from typing import List, Dict, Tuple, Any
 from moviepy import VideoFileClip, TextClip, CompositeVideoClip, AudioFileClip, ColorClip, VideoClip, ImageClip
 from moviepy.video.VideoClip import ImageClip
 from moviepy.video.fx import CrossFadeIn
+from moviepy import vfx
 import json
-from scipy.ndimage import gaussian_filter
 
-from skimage.filters import gaussian
 import numpy as np
 
 VIDEO_W, VIDEO_H = 704, 1248                # your video resolution
+# VIDEO_W, VIDEO_H = 720, 1280                # your video resolution
 MAX_LINE_WIDTH_PX = 500                     # max width of a *line* in px
-FONTSIZE = 32
+
 COLOR_INACTIVE = "white"                    # colour of words that have not appeared yet
 # COLOR_ACTIVE   = "#ffdd00"                # colour of the word that is currently sung
 BORDER_COLOR   = None                       # optional outline
@@ -33,183 +33,13 @@ DROP_DURATION = 0.4
 DROP_OFFSET = 0
 # FONT = 'backend/static/default/fonts/bahnschrift.ttf'
 # FONT = 'static/default/fonts/DMSerifText-Regular.ttf'
-FONT = 'static/default/fonts/Unna-Regular.ttf'
+# FONT = 'static/default/fonts/Unna-Regular.ttf'
+FONT = 'static/default/fonts/bold.woff2'
+
 WORD_GAP_PX = 6
 BG_MUSIC_PATH = 'static/default/sounds/'
-GLUE_PUNCTUATION = {",", ".", "?", "!", ":", ";"}
+GLUE_PUNCTUATION = {",", ".", "?", "!", ":", ";", "-", "–"}
 
-
-def word_pixel_size(word: str) -> Tuple[int, int]:
-    """Return (width, height) of a single word rendered with the global settings."""
-    tmp = TextClip(
-        text=word,
-        font=FONT,
-        font_size=FONTSIZE,
-        color=COLOR_INACTIVE,
-        stroke_color=STROKE_COLOR,
-        stroke_width=STROKE_WIDTH,
-        method='label',
-    )
-    w, h = tmp.size
-    tmp.close()
-
-    return w, h
-
-
-def moviepy_to_pillow(clip) -> Image:
-    temp_file = tempfile.NamedTemporaryFile(suffix=".png").name
-    clip.save_frame(temp_file)
-    image = Image.open(temp_file)
-    return image
-
-def blur_text_clip(text_clip: TextClip, blur_radius: int, pos: Tuple[int, int], start: float, duration: float) -> VideoClip:
-    # Convert TextClip to PIL
-    pil_img = moviepy_to_pillow(text_clip)
-
-    # === THIS IS THE KEY CHANGE ===
-    # Force the text to be bright white (ignoring original color)
-    # Convert to grayscale then threshold to pure white text on transparent bg
-    pil_img = pil_img.convert("L")                     # grayscale
-    pil_img = pil_img.point(lambda p: 255 if p > 50 else 0)  # make text pure white
-    pil_img = pil_img.convert("RGBA")
-    data = pil_img.getdata()
-    new_data = []
-    for item in data:
-        # Keep white pixels white, make dark pixels transparent
-        if item[0] == 255:  # white
-            new_data.append((255, 255, 255, 255))   # bright white
-        else:
-            new_data.append((0, 0, 0, 0))           # transparent
-    pil_img.putdata(new_data)
-    # ===============================
-
-    # Offset for centered blur
-    offset = int(blur_radius * 0.6)
-
-    # Pad for blur
-    pil_img_padded = Image.new("RGBA", (pil_img.width + blur_radius * 3, pil_img.height + blur_radius * 3), (0,0,0,0))
-    pil_img_padded.paste(pil_img, (blur_radius + offset, blur_radius + offset), pil_img)
-
-    # Apply strong Gaussian blur → creates bright glow
-    pil_img_padded = pil_img_padded.filter(ImageFilter.GaussianBlur(radius=blur_radius))
-
-    # Optional: make it even brighter (boost intensity)
-    enhancer = ImageEnhance.Brightness(pil_img_padded)
-    pil_img_padded = enhancer.enhance(4)  # increase if you want stronger glow
-
-    # Convert back to MoviePy clip
-    text_clip = ImageClip(np.array(pil_img_padded))
-    final_pos = (pos[0] - 2*offset, pos[1] - 2*offset)
-    text_clip = text_clip.with_duration(duration).with_start(start).with_position(final_pos).with_effects([CrossFadeIn(FADE_IN_DURATION)])
-
-    return text_clip
-
-def shadow_text_clip(text_clip: TextClip, blur_radius: int, pos: Tuple[int, int], start: float, duration: float) -> VideoClip:
-    # Convert TextClip to PIL
-    pil_img = moviepy_to_pillow(text_clip)
-
-    # === THIS IS THE KEY CHANGE ===
-    # Force the text to be bright white (ignoring original color)
-    # Convert to grayscale then threshold to pure white text on transparent bg
-    pil_img = pil_img.convert("L")                     # grayscale
-    pil_img = pil_img.point(lambda p: 255 if p > 50 else 0)  # make text pure white
-    pil_img = pil_img.convert("RGBA")
-    data = pil_img.getdata()
-    new_data = []
-    for item in data:
-        # Keep white pixels white, make dark pixels transparent
-        if item[0] == 255:  # white
-            new_data.append((0, 0, 0, 255))   # black
-        else:
-            new_data.append((0, 0, 0, 0))     # transparent
-    pil_img.putdata(new_data)
-    # ===============================
-
-    # Offset for centered blur
-    offset = int(blur_radius * 0.6)
-
-    # Pad for blur
-    pil_img_padded = Image.new("RGBA", (pil_img.width + blur_radius * 3, pil_img.height + blur_radius * 3), (0,0,0,0))
-    pil_img_padded.paste(pil_img, (blur_radius + offset, blur_radius + offset), pil_img)
-
-    # Apply strong Gaussian blur → creates bright glow
-    pil_img_padded = pil_img_padded.filter(ImageFilter.GaussianBlur(radius=blur_radius))
-
-
-    darkness_factor = 3.0
-
-    arr = np.array(pil_img_padded)                    # shape (H, W, 4), uint8
-    alpha = arr[:, :, 3].astype(np.float32) / 255.0   # 0.0 – 1.0
-
-    # Multiply opacity (you asked for ×2, clamped)
-    alpha *= darkness_factor
-    alpha = np.clip(alpha, 0.0, 1.0)
-
-    # Put stronger alpha back, keep black color
-    arr[:, :, 3] = (alpha * 255).astype(np.uint8)
-
-    # Convert back to MoviePy clip
-    text_clip = ImageClip(arr)
-    final_pos = (pos[0] - 2*offset, pos[1] - 2*offset)
-    text_clip = text_clip.with_duration(duration).with_start(start).with_position(final_pos).with_effects([CrossFadeIn(FADE_IN_DURATION)])
-
-    return text_clip
-
-
-
-
-
-def make_word_clip(txt: str,
-                   color: str,
-                   start: float,
-                   width: int,
-                   end: float,
-                   pos: Tuple[int, int]) -> VideoClip:
-    """Return a single-word clip that is guaranteed to have w > 0, h > 0."""
-    clip = TextClip(
-        text =txt,
-        font_size=FONTSIZE,
-        color=color,
-        font=FONT,
-        stroke_color=STROKE_COLOR,
-        stroke_width=STROKE_WIDTH,
-        bg_color=(0,0,0,0),
-        margin=(0, 30),
-        method='label',               # <-- exact bbox
-        size=(width, None),  # give some breathing room
-    )
-
-    w, h = clip.size
-
-    print('clip size')
-    print((w, h))
-    if w == 0 or h == 0:               # <-- safety net
-        # fallback: draw a tiny coloured rectangle so the mask is not empty
-        print("fucking shit")
-        clip = ColorClip(size=(width, FONTSIZE+10), color=color).with_duration(end-start)
-        w, h = clip.size
-
-    # keep the clip inside the video frame
-    x = max(0, min(pos[0], VIDEO_W - w))
-    y = max(0, min(pos[1], VIDEO_H - h))
-
-    def make_drop_position(t):
-        if t < DROP_DURATION:
-            progress = t / DROP_DURATION
-            # Ease-out quadratic for smooth landing
-            eased = 1 - (1 - progress) ** 2
-            y_offset = DROP_OFFSET * (1 - eased)
-        else:
-            y_offset = 0
-        return (x, y + y_offset)
-    
-
-    # clip = clip.with_position(make_drop_position).with_start(start).with_duration(end - start).with_effects([FadeIn(FADE_IN_DURATION)])
-    blurred_clip = blur_text_clip(text_clip = clip.copy(), blur_radius=5, pos=(x, y), start=start, duration = end-start)
-    shadow_clip = shadow_text_clip(text_clip = clip.copy(), blur_radius=12, pos=(x, y), start=start, duration = end-start)
-    clip = clip.with_start(start).with_position((x, y)).with_duration(end - start).with_effects([CrossFadeIn(FADE_IN_DURATION)])
-
-    return (clip, blurred_clip, shadow_clip)
 
 def prepare_segments(timestamps: List[Dict[str, Any]], text_with_pauses: str, segment_start_time: float = None) -> List[Dict[str, Any]]:
     """
@@ -223,85 +53,36 @@ def prepare_segments(timestamps: List[Dict[str, Any]], text_with_pauses: str, se
     Returns:
         List of segments with start_time, end_time, and words with times
     """
-    SYMBOLS = [",", ".", "?", ":"]
-    
-    # Step 1: Normalize and split the text_with_pauses
-    normalized_text = text_with_pauses
-    normalized_text = normalized_text.replace("|", " | ").replace("'", " ' ")
-    for symbol in SYMBOLS:
-        normalized_text = normalized_text.replace(symbol, f" {symbol}")
-    
-    words = [w.strip() for w in normalized_text.split() if w.strip() and not w.startswith("[")]
-    
     # Normalize function
     def normalize(s: str) -> str:
-        return s.strip().lower()  # You can adjust normalization (e.g. remove punctuation)
+        return s.strip().upper()  # You can adjust normalization (e.g. remove punctuation)
 
     # Prepare normalized timestamps for matching
     timestamp_words = [(normalize(ts["word"]), ts["time"]) for ts in timestamps]
     
-    segments = []
-    current_segment = None
-    last_word_time = 0.0
-    timestamps_idx = 0
-    set_times = False
-    new_segment_start_time = segment_start_time
-
-    for word in words:
-        if word == "|":
-            # Start new segment
-            if current_segment is not None:
-                # Set end_time for previous segment
-                time_between = max(last_word_time + 0.5, (new_segment_start_time + last_word_time) / 2 - 0.1)
-                current_segment["end_time"] = time_between
-                segments.append(current_segment)
-            
-            current_segment = {"words": []}
-            set_times = True
+    # add end time to words
+    timestamps_with_end_time = []
+    for i in range(len(timestamp_words) - 1):
+        if timestamp_words[i][0] in GLUE_PUNCTUATION:
             continue
-
-        # Find matching timestamp
-        while timestamps_idx < len(timestamp_words):
-            ts_norm_word, ts_time = timestamp_words[timestamps_idx]
-            if ts_norm_word == normalize(word):
-                current_word_time = ts_time + segment_start_time
-                break
-            timestamps_idx += 1
-        else:
-            # Word not found in timestamps
-            continue
-
-        # If this is first word of new segment, set start_time and previous end_time
-        if set_times and current_segment is not None:
-            new_segment_start_time = current_word_time
-            current_segment["start_time"] = new_segment_start_time
-            set_times = False
-
-        last_word_time = current_word_time
-
-        # Add word to current segment
-        if current_segment is None:
-            current_segment = {"words": [], "start_time": current_word_time}
-        
-        current_segment["words"].append({"word": word, "time": current_word_time})
-
-    # Append the last segment
-    if current_segment is not None:
-        segments.append(current_segment)
-
-    # Post-process: set start_time of first segment and end_time of last
-    if segments and timestamps:
-        segments[0]["start_time"] = timestamps[0]["time"]
-        last_timestamp_time = timestamps[-1]["time"] + segment_start_time
-        if "end_time" not in segments[-1]:
-            segments[-1]["end_time"] = last_timestamp_time + 0.25
-
-    return segments
+        timestamps_with_end_time.append({
+            "word": timestamp_words[i][0],
+            "start_time": segment_start_time + timestamp_words[i][1],
+            "end_time": segment_start_time + min(timestamp_words[i + 1][1], timestamp_words[i][1] + 1.5)
+        })
+    # append last word
+    if timestamp_words[-1][0] not in GLUE_PUNCTUATION:
+        timestamps_with_end_time.append({
+            "word": timestamp_words[-1][0],
+            "start_time": segment_start_time + timestamp_words[-1][1],
+            "end_time": segment_start_time + timestamp_words[-1][1] + 0.75
+        })
+    return timestamps_with_end_time
 
 
 def add_karaoke_subtitles(
     background: VideoClip,
-    segments,
+    words_with_timing,
 ) -> VideoClip:
     """
     background : your original MoviePy clip (or CompositeVideoClip)
@@ -310,111 +91,56 @@ def add_karaoke_subtitles(
     Returns a new clip with the karaoke subtitles composited on top.
     """
 
-    clips = []                     # will hold all individual word TextClips
+    video = background
+    all_knocked_clips = []
 
-    for seg in segments:
-        seg_start = seg["start_time"]
-        seg_end   = seg["end_time"]
-        words     = seg["words"]                # [{word: "...", time: ...}, ...]
+    for item in words_with_timing:
+        txt = item["word"]
+        t_start = item["start_time"]
+        t_end = item["end_time"]
+        duration = t_end - t_start
 
-        # --------------------------------------------------------------
-        # 1. Build the *full* segment text and split it into lines
-        # --------------------------------------------------------------
-        # textwrap uses characters, not pixels → we have to iterate
-        lines = []
-        current_line = []
-        current_width = 0
+        FONT_SIZE = 120
+        if(len(txt) >=10):
+            FONT_SIZE = 60
+        elif(len(txt) >=7):
+            FONT_SIZE = 80
+        elif(len(txt) >=5):
+            FONT_SIZE = 100
 
-        for w in words:
-            print("word")
-            print(w)
-            ww, wh = word_pixel_size(w["word"])
-            print("word width:")
-            print(ww)
-            print(wh)
+        text_clip = TextClip(
+            text=txt,
+            font=FONT,
+            font_size=FONT_SIZE,
+            stroke_color='black',
+            stroke_width=2,
+            method='label',
+            margin=(0, 60),
+            size=(video.w, None)
+        )
 
-            if w["word"] in GLUE_PUNCTUATION and current_line:
-                gap_addition = 0
-            else:
-                gap_addition = WORD_GAP_PX
-
-            if current_width + gap_addition + ww > MAX_LINE_WIDTH_PX and current_line:
-                lines.append(current_line)
-                current_line = [w]
-                current_width = ww
-            else:
-                current_line.append(w)
-                current_width += gap_addition + ww
-
-        if current_line:
-            lines.append(current_line)
-
-        print("lines")
-        print(lines)
-
-        # --------------------------------------------------------------
-        # 2. Compute the exact (x, y) position of *every* word in the
-        #     final layout (so that each word appears exactly where it
-        #     will end up when the whole segment is visible)
-        # --------------------------------------------------------------
-        word_positions = []          # list of (word_obj, x, y)
-
-        y = POS_Y
-        for line_idx, line_words in enumerate(lines):
-            # total width of the line (including spaces)
+        # ─── CREATE FULL-SIZE MASK ────────────────────────────────────
+        mask_img = text_clip.mask.get_frame(0)  # numpy array (h, w) float 0-1, 1 at text
+        h, w = mask_img.shape
+        print("Mask size:", w, "x", h)
 
 
-            line_w = sum(word_pixel_size(w["word"])[0] for w in line_words)
-            line_w += (len([w for w in line_words if w["word"] in GLUE_PUNCTUATION]) - 1) * WORD_GAP_PX
+        full_mask_array = np.zeros((video.h, video.w), dtype=float)
 
-            # centre the line inside the 500 px box
-            line_x_start = (VIDEO_W - MAX_LINE_WIDTH_PX) // 2 + \
-                           (MAX_LINE_WIDTH_PX - line_w) // 2
+        # Calculate position (assuming static 'center' for simplicity)
+        pos_x = (VIDEO_W - w) // 2
+        pos_y = (VIDEO_H - h) // 2
 
-            x = line_x_start
-            for i, w in enumerate(line_words):
-                ww, _ = word_pixel_size(w["word"])
-                if i > 0 and w["word"] not in GLUE_PUNCTUATION:
-                    x += WORD_GAP_PX
-                word_positions.append((w, x, y, ww))
-                x += ww
+        full_mask_array[pos_y:pos_y + h, pos_x:pos_x + w] = mask_img
+        # ───────────────────────────────────────────────────────────────
 
-            y += FONTSIZE + LINE_SPACING
+        full_mask_clip = ImageClip(full_mask_array, is_mask=True).with_duration(duration)
 
-        print("word positions")
-        print(word_positions)
+        # Create the inverted piece masked to text area
+        inverted_piece = video.with_effects([vfx.InvertColors()]).subclipped(t_start, t_end).with_mask(full_mask_clip).with_start(t_start)
 
-        # --------------------------------------------------------------
-        # 3. Create a TextClip for *every* word
-        # --------------------------------------------------------------
-        for i, (word_obj, final_x, final_y, word_width) in enumerate(word_positions):
-            word = word_obj["word"]
-            appear_at = word_obj["time"]
-
-            try:
-                word_clip, blurred_clip, shadow_clip = make_word_clip(
-                    txt=word_obj["word"],
-                    width=word_width,
-                    color=COLOR_INACTIVE,
-                    start=appear_at,
-                    end=seg_end,
-                    pos=(final_x, final_y)
-                )
-        
-                clips.append(shadow_clip)
-                clips.append(blurred_clip)
-                clips.append(word_clip)
-
-
-            except Exception as e:
-                print(f"Failed to create TextClip for word: '{word}' | Error: {e}")
-                continue
-
-    # ------------------------------------------------------------------
-    # 4. Composite everything on top of the original video
-    # ------------------------------------------------------------------
-    final = CompositeVideoClip([background] + clips)
-    return final
+        all_knocked_clips.append(inverted_piece)
+    return CompositeVideoClip([background] + all_knocked_clips)
 
 
 def make_background_sound(project_duration: float, sound_name) -> AudioSegment:
@@ -425,18 +151,21 @@ def make_background_sound(project_duration: float, sound_name) -> AudioSegment:
         raise FileNotFoundError(f"Background music not found: {bg_path}")
 
     bg = AudioSegment.from_file(bg_path)          # load once
+    bg = bg.apply_gain(-4)
     bg_ms = len(bg)                               # length in ms
     target_ms = int(project_duration * 1000)
 
     if bg_ms >= target_ms:
         return bg[:target_ms]                     # trim if longer
 
+    
     # repeat full copies
     repeats = target_ms // bg_ms
     remainder = target_ms % bg_ms
     background = bg * repeats
     if remainder:
         background += bg[:remainder]
+
     return background
 
 
@@ -549,7 +278,7 @@ def generate_mp4(project: Dict, output_path: str,
         # determine base size if not set
         base_size = (VIDEO_W, VIDEO_H)
         if (clip.w, clip.h) != base_size:
-            clip = clip.resize(newsize=base_size)
+            clip = clip.resized([VIDEO_W, VIDEO_H])
 
         # ensure clip duration doesn't exceed project duration unnecessarily
         # but CompositeVideoClip will handle it
@@ -576,7 +305,7 @@ def generate_mp4(project: Dict, output_path: str,
     print("prepared segments:")
     print(segments)
 
-    composite = add_karaoke_subtitles(background=composite, segments=segments)
+    composite = add_karaoke_subtitles(background=composite, words_with_timing=segments)
 
     composite = composite.with_fps(target_fps)
 

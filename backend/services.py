@@ -300,6 +300,14 @@ LANGUAGES = [
 ]
 
 
+# Cz0K1kOv9tD8l0b5Qu53
+# gOkFV1JMCt0G0n9xmBwV
+# EkK5I93UQWFDigLMpZcX
+# Z3R5wn05IrDiVCyEkUrK
+# dPah2VEoifKnZT37774q
+# NtSmOMyr386gAQrqbQcB
+
+
 def generate_speech(text: str, filename="voiceover", directory="static/voiceovers/", voice_id="Cz0K1kOv9tD8l0b5Qu53"):
     response = eleven_labs_client.text_to_speech.convert_with_timestamps(
         text=text,
@@ -308,9 +316,11 @@ def generate_speech(text: str, filename="voiceover", directory="static/voiceover
         voice_settings = VoiceSettings(
             stability=0.5,  # For emotional expressiveness
             similarity_boost=0.8,
-            style_exaggeration=0.6
+            style_exaggeration=0.6,
+            speed=1.1,
         )
     )
+    
 
     # Make sure the directory exists
     os.makedirs(directory, exist_ok=True)
@@ -555,7 +565,7 @@ def generate_image_banana(directory="static/images/default/", filename="image", 
     return f"{directory}/{filename}.png"
 
 
-def generate_video(directory="static/videos/", filename="video", prompt="Generate", negative_prompt="", image_path=None, duration: int = 3):
+def generate_video(directory="static/videos/", filename="video", prompt="Generate", negative_prompt="", frames=[], duration: int = 3):
     os.makedirs(directory, exist_ok=True)
     output_path = os.path.join(directory, f"{filename}.mp4")
 
@@ -565,32 +575,51 @@ def generate_video(directory="static/videos/", filename="video", prompt="Generat
         "Content-Type": "application/json",
     }
 
+    FPS = 24
+
     payload = {
         "taskType": "videoInference",
         "taskUUID": str(uuid.uuid4()),
         "model": "bytedance:1@1",
+        # "model": "bytedance:seedance@1.5-pro",
         "positivePrompt": prompt,
         "duration": duration,
-        "outputType": "URL",       # ✅ only URL allowed
+        "outputType": "URL", 
         "outputFormat": "mp4",
         "height": height,
         "width": width,
+        "fps": FPS,
         "deliveryMethod": "async",
+        # "providerSettings": {
+        #     "bytedance": {
+        #         "cameraFixed": False,
+        #         "audio": False
+        #     }
+        # },
     }
 
-    image_data_uri = None
-    if image_path:
-        if not os.path.exists(image_path):
-            raise ValueError(f"Image path not found: {image_path}")
+    payload["frameImages"] = []
+
+    for frame in frames:
+        if not os.path.exists(frame["src"]):
+            raise ValueError(f'Image path not found: {frame["src"]}')
         
-        with open(image_path, "rb") as f:
+        with open(frame["src"], "rb") as f:
             img_bytes = f.read()
         
+        def get_frame_index(time):
+            if time == "start":
+                return "first"
+            elif time == "mid":
+                return "last"
+            elif time == "end":
+                return "last"
+
         # Detect MIME type
-        mime_type, _ = mimetypes.guess_type(image_path)
+        mime_type, _ = mimetypes.guess_type(frame["src"])
         if mime_type is None:
             # Fallback to extension
-            ext = os.path.splitext(image_path)[1].lower()
+            ext = os.path.splitext(frame["src"])[1].lower()
             if ext == '.png':
                 mime_type = 'image/png'
         
@@ -600,7 +629,35 @@ def generate_video(directory="static/videos/", filename="video", prompt="Generat
         # Construct data URI with detected MIME type
         image_data_uri = f"data:{mime_type};base64,{base64.b64encode(img_bytes).decode('utf-8')}"
         print("Including image in payload")
-        payload["frameImages"] = [{"inputImage": image_data_uri}]
+        if(len(frames) == 1):
+            frame_image = {"inputImage": image_data_uri}
+        else:
+            frame_image = {"inputImage": image_data_uri, "frame": get_frame_index(frame["time"])}
+        payload["frameImages"].append(frame_image)
+
+    # image_data_uri = None
+    # if image_path:
+    #     if not os.path.exists(image_path):
+    #         raise ValueError(f"Image path not found: {image_path}")
+        
+    #     with open(image_path, "rb") as f:
+    #         img_bytes = f.read()
+        
+    #     # Detect MIME type
+    #     mime_type, _ = mimetypes.guess_type(image_path)
+    #     if mime_type is None:
+    #         # Fallback to extension
+    #         ext = os.path.splitext(image_path)[1].lower()
+    #         if ext == '.png':
+    #             mime_type = 'image/png'
+        
+    #     if not mime_type.startswith('image/') or mime_type.split('/')[-1] not in ['png', 'jpeg', 'webp']:
+    #         raise ValueError(f"Unsupported image MIME type: {mime_type}")
+        
+    #     # Construct data URI with detected MIME type
+    #     image_data_uri = f"data:{mime_type};base64,{base64.b64encode(img_bytes).decode('utf-8')}"
+    #     print("Including image in payload")
+    #     payload["frameImages"] = [{"inputImage": image_data_uri}]
 
     # Wrap in array as required by Runware
     request_body = [payload]

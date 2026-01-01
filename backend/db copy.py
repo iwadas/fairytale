@@ -1,11 +1,12 @@
 import uuid
 
-from sqlalchemy import Column, Integer, String, Text, ForeignKey, DateTime, Table, Float, create_engine
+from sqlalchemy import Column, Integer, String, Text, ForeignKey, DateTime, Table, Float
 from sqlalchemy.sql import func
 from sqlalchemy.orm import declarative_base, relationship, sessionmaker
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 
 DATABASE_URL = "sqlite+aiosqlite:///./film.db"
+
 
 # Async engine
 engine = create_async_engine(DATABASE_URL, echo=True, future=True)
@@ -87,7 +88,7 @@ class Scene(Base):
     video_src = Column(String, nullable=True)
     project_id = Column(String(36), ForeignKey("projects.id"))
     project = relationship("Project", back_populates="scenes")
-    images = relationship("SceneImage", back_populates="scene", cascade="all, delete-orphan")
+    images = relationship("SceneImage", back_populates="scene")
     characters = relationship(
         "Character",
         secondary=scene_character_association,
@@ -126,6 +127,6 @@ class SceneImage(Base):
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     scene_id = Column(String(36), ForeignKey("scenes.id"), nullable=False, index=True)
     time = Column(String(20), nullable=False, default="start")
-    prompt = Column(Text, nullable=True)
-    src = Column(String, nullable=True)
+    prompt = Column(Text, nullable=False)
+    src = Column(String, nullable=False)
     scene = relationship("Scene", back_populates="images")

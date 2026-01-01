@@ -12,9 +12,13 @@ import time
 import copy
 
 load_dotenv()
-OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
-open_ai_client = instructor.from_openai(OpenAI(api_key=OPENAI_API_KEY))
 
+OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
+XAI_API_KEY = os.getenv('XAI_API_KEY')
+
+open_ai_client = instructor.from_openai(OpenAI(api_key=XAI_API_KEY, base_url="https://api.x.ai/v1"))
+
+ai_model = "grok-4-1-fast-reasoning"
 
 class GatheredStoryData(BaseModel):
     gathered_data: str
@@ -33,7 +37,7 @@ def gather_story_data(topic: str) -> GatheredStoryData:
         }
     ]
     response = open_ai_client.chat.completions.create(
-        model="gpt-4o-mini",
+        model=ai_model,
         response_model=GatheredStoryData,
         messages=messages
     )
@@ -47,6 +51,20 @@ class Story(BaseModel):
     script: str
 
 def generate_story(topic: str, word_limit: int, story_data: str, reference_stories: str, persistant_characters: bool) -> Story:
+    if story_data:
+        context_instruction = (
+            f"Base the story entirely on reference stories and gathered data:\n"
+            f"Data:\n{story_data}\n\n"
+            f"Example reference stories about the topic: \n{reference_stories}\n\n"
+        )
+    else:
+        context_instruction = (
+            f"Try to combine reference stories to make something engaging for viewer, "
+            f"use most interesting parts but make sure it flows well together.\n"
+            f"Reference Stories:\n{reference_stories}\n\n"
+        )
+    
+    
     messages = [
         {
             "role": "system",
@@ -62,19 +80,7 @@ def generate_story(topic: str, word_limit: int, story_data: str, reference_stori
             "role": "user",
             "content": (
                 f"Write a captivating spoken story about: {topic}\n\n"                
-                f"{
-                    (
-                        f"Base the story entirely on reference stories and gathered data:"
-                        f"Data:\n{story_data}\n\n" 
-                        f"Example reference stories about the topic: \n{reference_stories}\n\n"
-                    )
-                    if story_data else 
-                    (
-                        f"Try to combine reference stories to make something engaging for viewer, use most interesting parts but make sure it flows well together and gives good information about topic."
-                        f"\nReference Stories:\n{reference_stories}\n\n"
-                    )
-                }"
-
+                f"{context_instruction}"
                 f"Guidelines:\n"
                 f"- Make the first 6 seconds extremely engaging to hook the listener immediately.\n"
                 f"{'-' if persistant_characters else 'Do not include any persistant characters in the story.'}\n"
@@ -106,7 +112,7 @@ def generate_story(topic: str, word_limit: int, story_data: str, reference_stori
         }
     ]
     response = open_ai_client.chat.completions.create(
-        model=random.choice(["gpt-4o-mini", "gpt-5-mini"]),
+        model=ai_model,
         response_model=Story,
         messages=messages
     )
@@ -325,14 +331,14 @@ def add_scenes_to_story(splitted_story: List[Any]) -> List[Any]:
                     "Story segments:\n"
                     f"{json.dumps(filtered_story, indent=2)}"
                     "\n\n"
-                    f"{"I've already filled some sgments" if len(segment_miss_scenes_indices) else "None of the segments have been filled yet."} "
+                    f"{"I\'ve already filled some sgments" if len(segment_miss_scenes_indices) else "None of the segments have been filled yet."} "
                     f"You need to fill the missing ones (with indices: {segment_miss_scenes_indices.__str__()}). "
                 )
             }
         ]
         try:
             response = open_ai_client.chat.completions.create(
-                model="gpt-4o-mini",
+                model=ai_model,
                 response_model=StoryWithScenes,
                 messages=messages,
                 temperature=0.7,
@@ -401,7 +407,66 @@ def add_scenes_to_story_old(splitted_story: List[Any]) -> List[Any]:
         "content": seg["content"],
     } for seg in splitted_story if seg.get("type") == "text"]
 
-    messages = [
+
+    messages = messages = [
+        {
+            "role": "system",
+            "content": (
+                "You are a visionary Director of Photography and Visual Storyteller known for epic, atmospheric, and hyper-realistic cinematography. "
+                "Your visual style is defined by: 'National Geographic meets Ridley Scott'. "
+                "You avoid generic, flatly lit scenes. You prioritize mood, lighting, and environmental texture."
+            )
+        },
+        {
+            "role": "user",
+            "content": (
+                "Transform the provided text-based story into a sequence of visually stunning cinematic scenes.\n\n"
+
+                "### 1. VISUAL STYLE BIBLE (STRICT ADHERENCE REQUIRED)\n"
+                "All `image_prompt` descriptions must adhere to these three pillars:\n"
+                "A. LIGHTING IS KEY: Never describe a scene without describing the light. Use terms like: 'rim-lit', 'volumetric fog', 'firelight glowing on skin', 'moonlight cutting through darkness', 'silhouette against a bright background'.\n"
+                "B. ATMOSPHERE & TEXTURE: The air is never empty. It must contain: falling snow, rising dust, visible breath in cold air, swirling mist, embers, or rain. Textures should be vivid (fur, rust, peeling paint, grime).\n"
+                "C. SCALE & FRAMING: Avoid boring medium shots. Use either:\n"
+                "   - EPIC WIDE SHOTS: Small subject, massive environment (mountains, huge crowds, endless ocean).\n"
+                "   - INTENSE CLOSE-UPS: Focus on eyes, hands, or texture, with a blurred background (bokeh).\n\n"
+
+                "### 2. EXAMPLES OF TRANSFORMATION\n"
+                "❌ BAD (Boring): 'A man looks sad in the snow.'\n"
+                "✅ GOOD (Your Style): 'Extreme close-up profile of a bearded man, his breath visible in the freezing air, illuminated by a harsh blue flare, shallow depth of field.'\n"
+                "❌ BAD (Boring): 'A train moves on the tracks.'\n"
+                "✅ GOOD (Your Style): 'Wide shot of a rusted train cutting through a dark blizzard, headlights beaming through thick heavy fog, cinematic blue tones.'\n\n"
+
+                "### 3. CRITICAL OUTPUT RULES\n"
+                "- Each segment in the input MUST appear in the output.\n"
+                "- Each segment MUST have a non-empty 'scenes' array.\n"
+                "- If a segment is very short, create at least one valid scene.\n"
+                "- 'duration': integer between 4–7 seconds.\n"
+                "- The total duration of scenes must cover the segment's duration.\n\n"
+
+                "### 4. OUTPUT FORMAT (Strict JSON)\n"
+                "{\n"
+                "  'story': [\n"
+                "     {\n"
+                "       'content': '...',\n"
+                "       'scenes': [\n"
+                "           {\n"
+                "            'image_prompt': 'A vivid description focusing on light, atmosphere, and composition...',\n"
+                "            'video_prompt': 'Concise motion description (e.g., Slow push in, rack focus, drone tracking)...',\n"
+                "            'duration': 5\n"
+                "           }\n"
+                "        ]\n"
+                "     }\n"
+                "  ]\n"
+                "}\n\n"
+
+                f"The story has {len(filtered_story)} segments. Generate the JSON output now based on this story:\n"
+                f"{json.dumps(filtered_story, indent=2)}"
+            )
+        }
+    ]
+
+
+    messages_old = [
         {
             "role": "system",
             "content": "You are an expert film director and visual storyteller."
@@ -462,7 +527,7 @@ def add_scenes_to_story_old(splitted_story: List[Any]) -> List[Any]:
     ]
 
     response = open_ai_client.chat.completions.create(
-        model="gpt-4o-mini",
+        model=ai_model,
         response_model=StoryWithScenes,
         messages=messages
     )
@@ -641,7 +706,7 @@ def get_persistant_characters(scenes, gathered_data):
     }
     ]
     response = open_ai_client.chat.completions.create(
-        model="gpt-4o-mini",
+        model=ai_model,
         response_model=CharacterUpdate,
         messages=messages
     )
