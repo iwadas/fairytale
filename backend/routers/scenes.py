@@ -87,12 +87,11 @@ async def generate_scene_image(
     time: Optional[str] = Form(None),
     session: AsyncSession = Depends(get_session),
 ):
+    pass
     # Now, files[] contains ALL uploaded files
     # But we need to know which file belongs to which scene_id
     # → We use the **original filename** or **custom header** to map
-
     ref_images_dict = {}
-
     if files and len(files):
         for file in files:
             # Option 1: Use filename to extract scene_id
@@ -175,8 +174,6 @@ async def generate_scene_image(
     # optionally refresh scene/image
     await session.refresh(scene)
     return {"message": "Scene image generated successfully", "scene_id": scene_id, "image_url": image_path}
-
-
 
 @router.put("/upload-video/{scene_id}")
 async def upload_scene_video(

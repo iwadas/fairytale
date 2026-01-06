@@ -300,15 +300,21 @@ LANGUAGES = [
 ]
 
 
-# Cz0K1kOv9tD8l0b5Qu53
 # gOkFV1JMCt0G0n9xmBwV
 # EkK5I93UQWFDigLMpZcX
 # Z3R5wn05IrDiVCyEkUrK
 # dPah2VEoifKnZT37774q
 # NtSmOMyr386gAQrqbQcB
 
+# GOTO ENGLISH
+# Cz0K1kOv9tD8l0b5Qu53
 
-def generate_speech(text: str, filename="voiceover", directory="static/voiceovers/", voice_id="Cz0K1kOv9tD8l0b5Qu53"):
+
+# EVIL OLEY
+# 2gPFXx8pN3Avh27Dw5Ma
+
+
+def generate_speech(text: str, filename="voiceover", directory="static/voiceovers/", voice_id="2gPFXx8pN3Avh27Dw5Ma"):
     response = eleven_labs_client.text_to_speech.convert_with_timestamps(
         text=text,
         voice_id=voice_id,  # Valid voice ID (Brian)
@@ -317,7 +323,7 @@ def generate_speech(text: str, filename="voiceover", directory="static/voiceover
             stability=0.5,  # For emotional expressiveness
             similarity_boost=0.8,
             style_exaggeration=0.6,
-            speed=1.1,
+            # speed=1.1,
         )
     )
     

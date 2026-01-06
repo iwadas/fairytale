@@ -1,3 +1,4 @@
+import json
 from fastapi import APIRouter, HTTPException, Body, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
@@ -10,11 +11,13 @@ from copy import deepcopy
 
 import os
 from typing import List, Dict, Tuple, Set, Any
-from db import get_session, Project, Scene, Voiceover, Place, Character
+from db import get_session, Project, Scene, Voiceover, Place, Character, ImagesPackage, PhotoDumpImage
 from schemas import ProjectBasicOutput, ProjectOutput
 from .translations import get_translated_voiceovers
 from moviepy import VideoFileClip, concatenate_videoclips, AudioFileClip, CompositeAudioClip
 from generate import generate_mp4
+from generate_photo_dump import generate_photo_dump_mp4
+from services import generate_speech, filename_from_name
 
 
 import re
@@ -59,6 +62,89 @@ async def download_project(project_id: str, session: AsyncSession = Depends(get_
 
     return {"message": "success"}
 
+
+@router.post("/download-photo-dump")
+async def download_photo_dump_project(
+    title: str = Body(..., embed=True),
+    story: str = Body(..., embed=True),
+    images_package_ids: List[str] = Body(..., embed=True),
+    session: AsyncSession = Depends(get_session)
+):
+    # get all images from packages
+
+    # GENERATE VOICEOVER
+
+    project_id = str(uuid.uuid4())
+    voiceover_id = str(uuid.uuid4())
+
+    project = Project(
+        id=project_id,
+        name=f"Photo Dump Project {title}",
+        created_at=func.now()
+    )
+    session.add(project)
+
+
+    # create new voiceover in db
+    voiceover = Voiceover(id=voiceover_id, project_id=project_id, duration=0.0, start_time=0.0, text=story)
+    session.add(voiceover)
+
+    filename = filename_from_name(f"voiceover_{voiceover_id}")
+    print("Generating voiceover for text:")
+    audio_path, duration, timestamps = generate_speech(
+        text=story,
+        filename=filename,
+        directory="static/voiceovers",
+    )
+    print("Generating stopped voiceover for text:")
+
+    voiceover.src = audio_path
+    voiceover.duration = duration
+    voiceover.text = story
+    voiceover.timestamps = json.dumps(timestamps)
+    print(timestamps)
+    print(json.dumps(timestamps))
+    print("Before commit - timestamps:", voiceover.timestamps)
+
+    images = []
+
+    for package_id in images_package_ids:
+        # get photo dump images with given package id, also they must have src
+        result = await session.execute(
+            select(PhotoDumpImage).where(PhotoDumpImage.package_id == package_id).where(PhotoDumpImage.src != None)
+        )
+        package_images = result.scalars().all()
+        images.extend(package_images)
+
+
+    # # FOR TEST JUST SELECT THE LONGEST VOICEOVER (one where duration is the longest)
+    # longest_voiceover = await session.execute(
+    #     select(Voiceover).where(Voiceover.src != None).order_by(Voiceover.duration.desc())
+    # )
+    # longest_voiceover = longest_voiceover.scalars().first()
+    
+    # make the longest voiceover properly formatted dict with like model dump
+    voiceover = {
+        "id": voiceover.id,
+        "text_with_pauses": voiceover.text_with_pauses,
+        "src": voiceover.src,
+        # str -> json
+        "timestamps": json.loads(voiceover.timestamps),
+        "start_time": 0.2,
+        "duration": voiceover.duration
+    }        
+
+    print("Using voiceover:")
+
+    generate_photo_dump_mp4(
+        images=images,
+        title=title,
+        voiceover=voiceover
+    )
+
+    await session.commit()
+
+    return {"message": "success"}
 
 @router.post("/add-scene/{project_id}")
 async def add_scene_to_project(

@@ -52,6 +52,7 @@ from routers.generators import router as generators_router
 from routers.scenes import router as scenes_router
 from routers.voiceovers import router as voiceovers_router
 from routers.tasks import router as tasks_router
+from routers.images_packages import router as images_packages_router
 
 app.include_router(characters_router)
 app.include_router(projects_router)
@@ -59,3 +60,4 @@ app.include_router(generators_router)
 app.include_router(scenes_router)
 app.include_router(voiceovers_router)
 app.include_router(tasks_router)
+app.include_router(images_packages_router)

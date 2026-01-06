@@ -98,7 +98,7 @@ def generate_story(topic: str, word_limit: int, story_data: str, reference_stori
                 f"Think of them as moments where a narrator would naturally pause — for suspense, reflection, or emotional shift. "
                 f"Include at least **one break every 2–4 sentences**, and always after a major event, twist, or emotional moment. "
                 f"These breaks are *required* and used to split the story into segments — so never skip them.\n"
-                f"- **Emotion and tone tags:** Add emotional delivery cues like [happy], [sad], [excited], [fearful], [curious], [quietly], [whisper], [shout], etc. "
+                f"- **Emotion and tone tags (ONLY WHEN SUITABLE - DON'T OVERUSE):** Add emotional delivery cues like [happy], [sad], [excited], [fearful], [curious], [quietly], [whisper], [shout], etc. "
                 f"These control *how* something is said, not *when* to pause. "
                 f"Use them in addition to breaks, not instead of them.\n"
                 f"Example:\n"

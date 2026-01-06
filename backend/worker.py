@@ -39,6 +39,15 @@ async def get_task_session() -> AsyncSession:
     async with async_session_maker() as session:
         yield session
 
+
+@huey.task()
+def generate_text(
+    prompt: str,
+    output_model,
+):
+    return {"status": "success", "prompt": prompt, "output": output}
+
+
 @huey.task()  # add retries=2, retry_delay=30 if you want auto-retry
 def generate_scene_video_task(
     scene_id: str,

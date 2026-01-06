@@ -38,7 +38,7 @@ FONT = 'static/default/fonts/bold.woff2'
 
 WORD_GAP_PX = 6
 BG_MUSIC_PATH = 'static/default/sounds/'
-GLUE_PUNCTUATION = {",", ".", "?", "!", ":", ";", "-", "–"}
+GLUE_PUNCTUATION = {",", ".", "?", "!", ":", ";", "-", "–", "—"}
 
 
 def prepare_segments(timestamps: List[Dict[str, Any]], text_with_pauses: str, segment_start_time: float = None) -> List[Dict[str, Any]]:
@@ -63,7 +63,7 @@ def prepare_segments(timestamps: List[Dict[str, Any]], text_with_pauses: str, se
     # add end time to words
     timestamps_with_end_time = []
     for i in range(len(timestamp_words) - 1):
-        if timestamp_words[i][0] in GLUE_PUNCTUATION:
+        if timestamp_words[i][0] in GLUE_PUNCTUATION or timestamp_words[i][0][0] == '[':
             continue
         timestamps_with_end_time.append({
             "word": timestamp_words[i][0],
@@ -151,7 +151,7 @@ def make_background_sound(project_duration: float, sound_name) -> AudioSegment:
         raise FileNotFoundError(f"Background music not found: {bg_path}")
 
     bg = AudioSegment.from_file(bg_path)          # load once
-    bg = bg.apply_gain(-4)
+    bg = bg.apply_gain(-2)
     bg_ms = len(bg)                               # length in ms
     target_ms = int(project_duration * 1000)
 

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Body
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import func
 import uuid
@@ -128,6 +128,50 @@ async def generate_scene_image_prompt(request: FixVideoPrompt, session: AsyncSes
     return {"new_scene_descriptions": response}
 
 
+
+class NewPhotoDumpImages(BaseModel):
+    options: List[str]
+
+
+@router.post('/generate-photo-dump-images')
+async def generate_scene_image_prompt(
+    story: str = Body(..., embed=True),
+):
+    messages = [
+        {
+            "role": "system",
+            "content": (
+                "You are a specialized Director of Photography AI. "
+                "Your goal is to generate detailed, vivid scene descriptions optimized for AI image generation based on a voiceover script or story. "
+                "Focus on visual elements like subject, environment, atmosphere, composition, lighting, colors, camera angles, and artistic style. "
+                "Ensure the scenes are sequential, impactful, and designed for rapid viewing (e.g., 4 images per second in a photo dump slideshow), "
+                "capturing key moments that visually narrate the story without needing text. Make descriptions concise yet descriptive enough to produce high-quality, engaging images."
+            )
+        },
+        {
+            "role": "user",
+            "content": (
+                f"Give me scene ideas (visual representations for the words) for the story: \"{story}\".\n\n"
+                "The scenes should form a cohesive visual narrative, with each one building on the previous for quick-paced viewing.\n"
+                "Output must be exactly 6 scene descriptions in the following format:\n"
+                "['option 1', 'option 2', 'option 3', 'option 4', 'option 5', 'option 6']\n\n"
+            )
+        }
+    ]
+
+    print("prompt:")
+    print(messages)
+    print("---------")
+
+    response = open_ai_client.chat.completions.create(
+        model=ai_model,
+        response_model=NewPhotoDumpImages,
+        messages=messages
+    )
+    print("Generated scene image prompt:", response)
+    return {"images_prompts": response}
+
+
 class FixImagePrompt(BaseModel):
     prompt: str
     style: Optional[str]
@@ -135,6 +179,30 @@ class FixImagePrompt(BaseModel):
 
 
 styles = {
+    "darkwave_engraving": (
+        "A dramatic 19th-century wood engraving or etching style illustration, reminiscent of Gustave Doré's 'Paradise Lost' "
+        "or 'Divine Comedy' artwork. The visual style is defined by intricate cross-hatching, fine line work, "
+        "and a high-contrast ink-on-paper texture. "
+        "The entire image is washed in a deep, saturated monochromatic purple, violet, or indigo color grade, "
+        "replacing traditional black and white with deep shadows and luminous purple highlights. "
+        "The atmosphere is brooding, ethereal, and gothic, evoking a 'darkwave' or 'phonk' aesthetic. "
+        "Subjects are mythological or biblical (angels, demons, knights) in dynamic, frozen poses. "
+        "Include subtle textural elements like vintage paper grain, slight lo-fi noise, or a vignette to enhance the moody, retro-digital fusion look."
+    ),
+    "byzantine_orthodox": (
+        "traditional Byzantine Orthodox icon of Christ Pantocrator enthroned, Eastern Orthodox iconography style, medieval Byzantine painting, gold halo and accents, flat symbolic perspective, reverse perspective, solemn and majestic"
+    ),
+    "biblical_epic": (
+        "Direct view of a classical High Renaissance religious oil painting itself, filling the entire frame with no borders, no frame, no wall, no canvas edges, "
+        "no photographic realism of a physical artwork on display — we are seeing the painted surface directly. "
+        "In the authentic style of masters like Raphael, Michelangelo, Leonardo da Vinci or Titian: elderly dignified biblical figure (God the Father, prophet, or saint) "
+        "with long flowing white beard, wise serene expression, gentle luminous golden halo, wearing rich flowing robes in warm earth tones (deep red, emerald green, golden ochre). "
+        "Background is soft luminous sky with ethereal clouds and gentle heavenly glow. "
+        "Use classic Renaissance techniques: delicate sfumato blending, soft diffused lighting from above, warm harmonious palette with golden highlights, visible oil paint brushstrokes, "
+        "subtle impasto texture, fine craquelure, and painterly surface qualities throughout. "
+        "Reverent, monumental composition, timeless sacred atmosphere of divine grace and spiritual serenity. "
+        "Strictly 2D painted artwork feel — never a realistic photograph of a framed painting, never show any physical object context, edges, or gallery setting."
+    ),
     "lifelaps": (
         "A cinematic still, presented in a wide aspect ratio with a dark, moody, and highly atmospheric aesthetic. "
         "The lighting is low-key and high-contrast, characterized by deep, crushing shadows and strong, "
