@@ -24,6 +24,10 @@
           </div>
         </div>
 
+        <p>Additional information (style or mood)</p>
+        <textarea v-model="newImagePromptForm.additional_info"></textarea>
+
+
         <form-button label="Generate new prompts" :loading="generatingNewImagePrompts" :show_status="true" @clicked="generateNewImagePrompts"/>
         
         <div v-if="newImagePromptForm.options.length">
@@ -375,6 +379,7 @@
         </div>
       </div>
     </div>
+    <form-button label="Generate one long voiceover" @clicked="combineVoiceovers"/>
     <form-button label="Save project" @clicked="saveProjectChanges"/>
     
   </div>
@@ -398,7 +403,7 @@ const scenes = ref([]);
 const voiceovers = ref([]);
 const characters = ref([]);
 
-const timelineDuration = 120; // Total duration of the timeline in seconds (adjust as needed)
+const timelineDuration = 220; // Total duration of the timeline in seconds (adjust as needed)
 const pixelsPerSecond = ref(50); // 100px per second
 const totalWidth = computed(()=>{
   return timelineDuration * pixelsPerSecond.value;
@@ -422,8 +427,15 @@ const getSelectedVoiceoverId = () => {
 const addScene = async () => {
   const response = await axios.post(`${route}scenes/${projectId}`);
   let newScene = response.data;
+  newScene["start_time"] = currentTime.value;
   newScene["images"] = [{src: '', prompt: ''}, {src: '', prompt: ''}]; // start and end images
+  newScene["characters"] = []; // characters array
   scenes.value.push(newScene);
+}
+
+// COMBINE VOICEOVERS
+const combineVoiceovers = async () => {
+  await axios.post(`${route}voiceovers/combine/${projectId}`);
 }
 
 // ADD VOICEOVER
@@ -855,6 +867,7 @@ const newImagePromptForm = ref({
   scene_id: null,
   scene_image_id: null,
   full_voiceover_text: null,
+  additional_info: null,
   start_word_idx: null,
   end_word_idx: null,
   options: [],
@@ -908,6 +921,7 @@ const generateNewImagePrompts = async () => {
         project_id: projectId,
         full_voiceover_text: newImagePromptForm.value.full_voiceover_text,
         selected_voiceover_text_part: selectedVoiceoverTextPart,
+        additional_info: newImagePromptForm.value.additional_info
       })
       .catch((error) => {
         console.error('Error response from server:', error.response ? error.response.data : error.message);

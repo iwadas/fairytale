@@ -314,7 +314,7 @@ LANGUAGES = [
 # 2gPFXx8pN3Avh27Dw5Ma
 
 
-def generate_speech(text: str, filename="voiceover", directory="static/voiceovers/", voice_id="2gPFXx8pN3Avh27Dw5Ma"):
+def generate_speech(text: str, filename="voiceover", directory="static/voiceovers/", voice_id="Cz0K1kOv9tD8l0b5Qu53"):
     response = eleven_labs_client.text_to_speech.convert_with_timestamps(
         text=text,
         voice_id=voice_id,  # Valid voice ID (Brian)
@@ -744,4 +744,4 @@ def generate_video(directory="static/videos/", filename="video", prompt="Generat
     return output_path
 
 def filename_from_name(name: str) -> str:
-    return name.lower().replace(" ", "_")
+    return name.lower().replace(" ", "_").replace(":", "").replace(",", "").replace("-", "_")

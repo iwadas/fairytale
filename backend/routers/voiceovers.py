@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, Body, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from pydantic import BaseModel
+from sqlalchemy.future import select
 
 import json
 
@@ -16,13 +17,34 @@ class VoiceoverUpdate(BaseModel):
 
 
 @router.post("/{project_id}")
-async def create_voiceover(project_id: str, session: AsyncSession = Depends(get_session)):
-    
+async def create_voiceover(project_id: str, session: AsyncSession = Depends(get_session)):   
     new_voiceover = Voiceover(project_id=project_id, duration=5.0, start_time=0.0, text="DEFAULT TEXT")
     session.add(new_voiceover)
     await session.commit()
     await session.refresh(new_voiceover)
     return new_voiceover
+
+
+@router.post("/combine/{project_id}")
+async def combine_voiceovers(project_id: str, session: AsyncSession = Depends(get_session)):
+    """
+    Combine all voiceovers for a given project into a single voiceover.
+    """
+
+    result = await session.execute(
+        select(Voiceover).where(Voiceover.project_id == project_id)
+    )
+    voiceovers = result.scalars().all()
+
+    combined_text = " ".join([" ".join(vo.text.split(" ")) for vo in voiceovers])
+    # CREATE NEW VOICEOVER (DO NOT GENERATE THE AUDIO YET)
+    new_voiceover = Voiceover(project_id=project_id, duration=0.0, start_time=0.0, text=combined_text)
+    session.add(new_voiceover)
+    await session.commit()
+    await session.refresh(new_voiceover)
+    return new_voiceover
+
+
 
 @router.delete("/{voiceover_id}")
 async def delete_voiceover(

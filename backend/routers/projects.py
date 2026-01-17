@@ -95,6 +95,7 @@ async def download_photo_dump_project(
         text=story,
         filename=filename,
         directory="static/voiceovers",
+        voice_id="2gPFXx8pN3Avh27Dw5Ma"
     )
     print("Generating stopped voiceover for text:")
 

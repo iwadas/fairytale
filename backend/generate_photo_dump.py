@@ -17,7 +17,7 @@ from utils.add_sound_to_video import assemble_audio_replace
 
 import numpy as np
 
-from utils.invert_text_mask import generate_invert_mask_text
+from utils.invert_text_mask_color import generate_neon_text_with_border
 from services import generate_speech, filename_from_name
 
 GLUE_PUNCTUATION = {",", ".", "?", "!", ":", ";", "-", "–", "—"}
@@ -89,26 +89,25 @@ def generate_photo_dump_mp4(
             selected_image = random.choice(images_paths)
         clip = ImageClip(selected_image, duration=DURATION_PER_IMAGE)
         # resize for full hd 9:16
-        clip = clip.resize(height=1920)
+        clip = clip.resized(height=1920, width=1080)
         clips.append(clip)
 
     video = concatenate_videoclips(clips, method='compose')
     
-    video = generate_invert_mask_text(
+    video = generate_neon_text_with_border(
         video_size=(video.w, video.h),
         fonts=[
             'static/default/fonts/bold.woff2', 
-            'static/default/fonts/test/Sarina-Regular.ttf',
-            'static/default/fonts/test/CroissantOne-Regular.ttf'            
         ],
         background=video,
         words_with_timing=words_timings,
     )
 
+
     temp_dir = tempfile.mkdtemp(prefix="proj_render_")
     audio_tmp = os.path.join(temp_dir, f"audio_{uuid.uuid4().hex}.wav")
 
-    final_audio_segment = assemble_audio_replace(total_duration, [voiceover])
+    final_audio_segment = assemble_audio_replace(total_duration, [voiceover], background_sound_name="untitled13.mp3")
     final_audio_segment.export(audio_tmp, format="wav")
 
     final_audio = AudioFileClip(audio_tmp)
@@ -118,6 +117,6 @@ def generate_photo_dump_mp4(
     output_path = f"videos/{filename_from_name(title)}.mp4"
     video.write_videofile(
         output_path,
-        fps=20,
+        fps=48,
         codec="libx264",
     )

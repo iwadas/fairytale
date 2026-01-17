@@ -46,5 +46,9 @@ const tabs = [
   { name: 'Create New Project', path: '/create-project' },
   { name: 'Select Project', path: '/select-project' },
   { name: 'Characters List', path: '/characters-list' },
+  { name: 'Create Photo Dump', path: '/create-photo-dump' },
 ];
+
+
+
 </script>

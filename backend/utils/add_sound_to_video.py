@@ -42,7 +42,7 @@ def make_background_sound(project_duration: float, sound_name: str) -> AudioSegm
 
 
 
-def assemble_audio_replace(project_duration: float, voiceovers: List[Dict], background_sound_name: str = "interstallar.mp3") -> AudioSegment:
+def assemble_audio_replace(project_duration: float, voiceovers: List[Dict], background_sound_name: str = "interstellar.mp3") -> AudioSegment:
     """
     Build final audio track by placing voiceovers onto a silent canvas.
     Overlapping rule: voiceover with later start_time should replace earlier audio in overlapping windows.
@@ -51,8 +51,9 @@ def assemble_audio_replace(project_duration: float, voiceovers: List[Dict], back
     bg_volume_db = 0
     voice_volume_db = 0
     try:
-        background = make_background_sound(project_duration, background_sound_name)
-        background = background + bg_volume_db          # duck the music
+        if(background_sound_name):
+            background = make_background_sound(project_duration, background_sound_name)
+            background = background + bg_volume_db          # duck the music
     except Exception as e:
         print(f"Warning: could not load background ({e}), proceeding with silence")
         background = AudioSegment.silent(duration=int(project_duration * 1000))

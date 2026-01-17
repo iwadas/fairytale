@@ -3,11 +3,15 @@ import os
 import tempfile
 from PIL import Image, ImageFilter, ImageEnhance, ImageOps
 import uuid
+from utils.invert_text_mask import generate_invert_mask_text
+from utils.invert_text_mask_color import generate_neon_text_with_border
+from utils.add_br_vignette import vignette_bottom
 from pydub import AudioSegment
 
 from typing import List, Dict, Tuple, Any
 
 from moviepy import VideoFileClip, TextClip, CompositeVideoClip, AudioFileClip, ColorClip, VideoClip, ImageClip
+
 from moviepy.video.VideoClip import ImageClip
 from moviepy.video.fx import CrossFadeIn
 from moviepy import vfx
@@ -63,7 +67,9 @@ def prepare_segments(timestamps: List[Dict[str, Any]], text_with_pauses: str, se
     # add end time to words
     timestamps_with_end_time = []
     for i in range(len(timestamp_words) - 1):
-        if timestamp_words[i][0] in GLUE_PUNCTUATION or timestamp_words[i][0][0] == '[':
+        # check the type of the 
+        
+        if timestamp_words[i][0] in GLUE_PUNCTUATION or len(timestamp_words[i][0]) == 0 or timestamp_words[i][0][0] == '[':
             continue
         timestamps_with_end_time.append({
             "word": timestamp_words[i][0],
@@ -80,67 +86,67 @@ def prepare_segments(timestamps: List[Dict[str, Any]], text_with_pauses: str, se
     return timestamps_with_end_time
 
 
-def add_karaoke_subtitles(
-    background: VideoClip,
-    words_with_timing,
-) -> VideoClip:
-    """
-    background : your original MoviePy clip (or CompositeVideoClip)
-    segments   : list of dicts exactly as you described
+# def add_karaoke_subtitles(
+#     background: VideoClip,
+#     words_with_timing,
+# ) -> VideoClip:
+#     """
+#     background : your original MoviePy clip (or CompositeVideoClip)
+#     segments   : list of dicts exactly as you described
 
-    Returns a new clip with the karaoke subtitles composited on top.
-    """
+#     Returns a new clip with the karaoke subtitles composited on top.
+#     """
 
-    video = background
-    all_knocked_clips = []
+#     video = background
+#     all_knocked_clips = []
 
-    for item in words_with_timing:
-        txt = item["word"]
-        t_start = item["start_time"]
-        t_end = item["end_time"]
-        duration = t_end - t_start
+#     for item in words_with_timing:
+#         txt = item["word"]
+#         t_start = item["start_time"]
+#         t_end = item["end_time"]
+#         duration = t_end - t_start
 
-        FONT_SIZE = 120
-        if(len(txt) >=10):
-            FONT_SIZE = 60
-        elif(len(txt) >=7):
-            FONT_SIZE = 80
-        elif(len(txt) >=5):
-            FONT_SIZE = 100
+#         FONT_SIZE = 120
+#         if(len(txt) >=10):
+#             FONT_SIZE = 60
+#         elif(len(txt) >=7):
+#             FONT_SIZE = 80
+#         elif(len(txt) >=5):
+#             FONT_SIZE = 100
 
-        text_clip = TextClip(
-            text=txt,
-            font=FONT,
-            font_size=FONT_SIZE,
-            stroke_color='black',
-            stroke_width=2,
-            method='label',
-            margin=(0, 60),
-            size=(video.w, None)
-        )
+#         text_clip = TextClip(
+#             text=txt,
+#             font=FONT,
+#             font_size=FONT_SIZE,
+#             stroke_color='black',
+#             stroke_width=2,
+#             method='label',
+#             margin=(0, 60),
+#             size=(video.w, None)
+#         )
 
-        # ─── CREATE FULL-SIZE MASK ────────────────────────────────────
-        mask_img = text_clip.mask.get_frame(0)  # numpy array (h, w) float 0-1, 1 at text
-        h, w = mask_img.shape
-        print("Mask size:", w, "x", h)
+#         # ─── CREATE FULL-SIZE MASK ────────────────────────────────────
+#         mask_img = text_clip.mask.get_frame(0)  # numpy array (h, w) float 0-1, 1 at text
+#         h, w = mask_img.shape
+#         print("Mask size:", w, "x", h)
 
 
-        full_mask_array = np.zeros((video.h, video.w), dtype=float)
+#         full_mask_array = np.zeros((video.h, video.w), dtype=float)
 
-        # Calculate position (assuming static 'center' for simplicity)
-        pos_x = (VIDEO_W - w) // 2
-        pos_y = (VIDEO_H - h) // 2
+#         # Calculate position (assuming static 'center' for simplicity)
+#         pos_x = (VIDEO_W - w) // 2
+#         pos_y = (VIDEO_H - h) // 2
 
-        full_mask_array[pos_y:pos_y + h, pos_x:pos_x + w] = mask_img
-        # ───────────────────────────────────────────────────────────────
+#         full_mask_array[pos_y:pos_y + h, pos_x:pos_x + w] = mask_img
+#         # ───────────────────────────────────────────────────────────────
 
-        full_mask_clip = ImageClip(full_mask_array, is_mask=True).with_duration(duration)
+#         full_mask_clip = ImageClip(full_mask_array, is_mask=True).with_duration(duration)
 
-        # Create the inverted piece masked to text area
-        inverted_piece = video.with_effects([vfx.InvertColors()]).subclipped(t_start, t_end).with_mask(full_mask_clip).with_start(t_start)
+#         # Create the inverted piece masked to text area
+#         inverted_piece = video.with_effects([vfx.InvertColors()]).subclipped(t_start, t_end).with_mask(full_mask_clip).with_start(t_start)
 
-        all_knocked_clips.append(inverted_piece)
-    return CompositeVideoClip([background] + all_knocked_clips)
+#         all_knocked_clips.append(inverted_piece)
+#     return CompositeVideoClip([background] + all_knocked_clips)
 
 
 def make_background_sound(project_duration: float, sound_name) -> AudioSegment:
@@ -151,7 +157,7 @@ def make_background_sound(project_duration: float, sound_name) -> AudioSegment:
         raise FileNotFoundError(f"Background music not found: {bg_path}")
 
     bg = AudioSegment.from_file(bg_path)          # load once
-    bg = bg.apply_gain(-2)
+    # bg = bg.apply_gain(-2)
     bg_ms = len(bg)                               # length in ms
     target_ms = int(project_duration * 1000)
 
@@ -178,7 +184,7 @@ def assemble_audio_replace(project_duration: float, voiceovers: List[Dict]) -> A
     bg_volume_db = 0
     voice_volume_db = 0
     try:
-        background = make_background_sound(project_duration, "interstallar.mp3")
+        background = make_background_sound(project_duration, "interstellar.mp3")
         background = background + bg_volume_db          # duck the music
     except Exception as e:
         print(f"Warning: could not load background ({e}), proceeding with silence")
@@ -305,9 +311,25 @@ def generate_mp4(project: Dict, output_path: str,
     print("prepared segments:")
     print(segments)
 
-    composite = add_karaoke_subtitles(background=composite, words_with_timing=segments)
+    
+    composite = generate_neon_text_with_border(
+        video_size=(VIDEO_W, VIDEO_H),
+        fonts=[
+            'static/default/fonts/bold.woff2', 
+            # 'static/default/fonts/test/Sarina-Regular.ttf',
+            # 'static/default/fonts/test/CroissantOne-Regular.ttf'            
+        ],
+        background=composite,
+        words_with_timing=segments,
+    )
 
     composite = composite.with_fps(target_fps)
+
+    composite = vignette_bottom(
+        video_size=(VIDEO_W, VIDEO_H),
+        background=composite,
+    )
+
 
 
     # === Build audio by replacing overlapping voiceovers ===

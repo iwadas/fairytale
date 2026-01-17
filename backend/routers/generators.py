@@ -56,6 +56,7 @@ class FixVideoPrompt(BaseModel):
     full_voiceover_text: str
     selected_voiceover_text_part: str
     project_id: str
+    additional_info: Optional[str]
 
 class SceneDescriptoinOption(BaseModel):
     image_description: str
@@ -87,10 +88,11 @@ async def generate_scene_image_prompt(request: FixVideoPrompt, session: AsyncSes
                 "content": (
                     f"Give me scene ideas  (visual representation for the words) for that should appear when those words are spoken: \"{request.selected_voiceover_text_part}.\"\n\n"
                     f"More context of the full sentence (Use when the spoken words don't give you enough information): {request.full_voiceover_text}\n\n"
-                    "Output must be exactly 6 scene descriptions in the following format:\n"
+                    f"{(f"Additional information about the generation (EXTREMELY IMPORTANT): {request.additional_info}\n\n") if request.additional_info else ""}"
                     "['option 1', 'option 2', 'option 3', 'option 4', 'option 5', 'option 6']\n\n"
                     
                     f"CRITICAL INSTRUCTION: You must strictly split the styles of the options (MAKE THEM SUITABLE FOR THE TARGET TEXT: \"{request.selected_voiceover_text_part}\"):\n"
+
                     " - OPTIONS 1-3: Cinematic Realism (Human scale, live-action style, dramatic, emotional).\n"
                     " - OPTIONS 4-6: Scientific/Abstract/Microscopic (Biology, Human parts (f.e brain/eye), neural networks, cellular level, or abstract data visualization).\n\n"
 
@@ -233,7 +235,7 @@ styles = {
         "The image should be hyper-realistic with immense detail on the focal point, "
         "a shallow depth of field creating significant bokeh in the background, and a subtle film grain texture throughout. "
         "The subjects, whether people, animals, or environments, are rendered with a sense of gravity and drama."
-        "(OPTIONAL) Subtle scientific holographic overlays float gently in the space around the subject: "
+        "Subtle scientific holographic overlays float gently in the space around the subject: "
         "translucent descriptive labels, faint orbital paths, delicate molecular structures, "
         "and light data visualizations. These elements emit their own soft glow, enhancing the dark atmosphere "
         "without overpowering the subject. Deep volumetric light rays cut through the darkness, "
