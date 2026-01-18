@@ -2,15 +2,16 @@ import json
 from fastapi import APIRouter, HTTPException, Body, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from sqlalchemy import update, delete
+from sqlalchemy import update, delete, desc, inspect
 from sqlalchemy.orm import selectinload
+
 import uuid
 from sqlalchemy.sql import func
 from datetime import datetime
 from copy import deepcopy
 
 import os
-from typing import List, Dict, Tuple, Set, Any
+from typing import List, Dict, Optional, Tuple, Set, Any
 from db import get_session, Project, Scene, Voiceover, Place, Character, ImagesPackage, PhotoDumpImage
 from schemas import ProjectBasicOutput, ProjectOutput
 from .translations import get_translated_voiceovers
@@ -19,10 +20,155 @@ from generate import generate_mp4
 from generate_photo_dump import generate_photo_dump_mp4
 from services import generate_speech, filename_from_name
 
-
 import re
 
+
 router = APIRouter(prefix="/projects", tags=["projects"])
+
+
+def get_save_name(name):
+        name = re.sub(r'[\\/:*?"<>|]', '', name)
+        # optionally replace spaces with underscores
+        name = name.replace(" ", "_")
+        return name
+
+def serialize_project(project_orm) -> dict | None:
+    if project_orm is None:
+        return None
+    if not hasattr(project_orm, "__table__"):
+        raise TypeError(f"Expected ORM instance, got {type(project_orm)}")
+    return _to_dict(project_orm)
+
+def _to_dict(obj: Any, visited: set | None = None) -> Any:
+    if visited is None:
+        visited = set()
+
+    if obj is None:
+        return None
+
+    # Handle lists/sets/tuples
+    if isinstance(obj, (list, tuple, set)):
+        return [_to_dict(item, visited) for item in obj]
+
+    obj_id = id(obj)
+    if obj_id in visited:
+        return None 
+    visited.add(obj_id)
+
+    # Skip non-ORM objects early
+    if not hasattr(obj, "__table__") and not hasattr(obj, "__mapper__"):
+        if isinstance(obj, (str, int, float, bool, uuid.UUID)):
+            return obj
+        if isinstance(obj, datetime):
+            return obj.isoformat()
+        return str(obj)
+
+    data: dict[str, Any] = {}
+    
+    # Get the state inspector for this object
+    ins = inspect(obj) 
+
+    # 1. Copy scalar columns
+    for col in obj.__table__.columns:
+        val = getattr(obj, col.name)
+        if isinstance(val, datetime):
+            data[col.name] = val.isoformat()
+        elif isinstance(val, uuid.UUID):
+            data[col.name] = str(val)
+        else:
+            data[col.name] = val
+
+    # 2. Copy relationships (CHECK LOADED STATUS FIRST)
+    for name, rel in obj.__mapper__.relationships.items():
+        
+        # 🛑 CRITICAL FIX: Skip if relationship is not loaded
+        if name in ins.unloaded:
+            continue
+            
+        # Now it is safe to access because we know it's in memory
+        related_objs = getattr(obj, name)
+
+        if related_objs is None:
+            data[name] = None
+        elif rel.uselist:
+            data[name] = [_to_dict(item, visited) for item in related_objs]
+        else:
+            data[name] = _to_dict(related_objs, visited)
+
+    return data
+
+
+async def get_full_project(project_id, session):
+    result = await session.execute(
+        select(Project)
+        .where(Project.id == project_id)
+        .options(
+            selectinload(Project.scenes)
+                .selectinload(Scene.characters),
+            selectinload(Project.scenes)
+                .selectinload(Scene.places),
+            selectinload(Project.scenes)
+                .selectinload(Scene.images),
+            selectinload(Project.places),
+            selectinload(Project.characters),
+            selectinload(Project.voiceovers),
+            selectinload(Project.images_packages)
+                .selectinload(ImagesPackage.images)
+        )
+    )
+    project_orm = result.scalars().first()
+    return serialize_project(project_orm)
+
+@router.post("/download-pd/{project_id}")
+async def download_photo_dump_project(
+    project_id: str,
+    session: AsyncSession = Depends(get_session)
+):
+    # fetch project with iamges packages and voiceover
+    result = await session.execute(
+        select(Project)
+        .where(Project.id == project_id)
+        .options(
+            selectinload(Project.scenes)
+                .selectinload(Scene.characters),
+            selectinload(Project.scenes)
+                .selectinload(Scene.places),
+            selectinload(Project.scenes)
+                .selectinload(Scene.images),
+            selectinload(Project.places),
+            selectinload(Project.characters),
+            selectinload(Project.voiceovers),
+            selectinload(Project.images_packages)
+        )
+    )
+    project_orm = result.scalars().first()
+    if not project_orm:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    # project in python - dicts, lists, etc
+    project = serialize_project(project_orm)
+    images = []
+
+    for images_package in project["images_packages"]:
+        result = await session.execute(
+            select(PhotoDumpImage).where(PhotoDumpImage.package_id == images_package["id"]).where(PhotoDumpImage.src != None)
+        )
+        package_images = result.scalars().all()
+        images.extend(package_images)
+
+    voiceover = project["voiceovers"][0] if project["voiceovers"] else None
+    voiceover["timestamps"] = json.loads(voiceover["timestamps"]) if voiceover and voiceover.get("timestamps") else []
+
+    generate_photo_dump_mp4(
+        images=images,
+        title=get_save_name(project["name"]),
+        voiceover=voiceover
+    )
+
+    return {"message": "success"}
+    
+
+
 @router.post("/download/{project_id}")
 async def download_project(project_id: str, session: AsyncSession = Depends(get_session)):
     result = await session.execute(
@@ -38,6 +184,7 @@ async def download_project(project_id: str, session: AsyncSession = Depends(get_
             selectinload(Project.places),
             selectinload(Project.characters),
             selectinload(Project.voiceovers),
+            selectinload(Project.images_packages)
         )
     )
     project_orm = result.scalars().first()
@@ -47,11 +194,7 @@ async def download_project(project_id: str, session: AsyncSession = Depends(get_
     # project in python - dicts, lists, etc
     project = serialize_project(project_orm)
 
-    def get_save_name(name):
-        name = re.sub(r'[\\/:*?"<>|]', '', name)
-        # optionally replace spaces with underscores
-        name = name.replace(" ", "_")
-        return name
+
 
     output_dir = "videos"
     os.makedirs(output_dir, exist_ok=True)
@@ -63,6 +206,47 @@ async def download_project(project_id: str, session: AsyncSession = Depends(get_
     return {"message": "success"}
 
 
+@router.put("/photo-dump/{project_id}")
+async def update_photo_dump_project(
+    project_id: str,
+    name: str = Body(...),
+    images_packages_ids: List[str] = Body(...),
+    session: AsyncSession = Depends(get_session)
+):
+    project = await session.get(Project, project_id, options=[selectinload(Project.images_packages)])
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    project.name = name
+    project.images_packages = []  # Clear existing packages
+
+    for package_id in images_packages_ids:
+        images_package = await session.get(ImagesPackage, package_id)
+        if images_package:
+            project.images_packages.append(images_package)
+
+    await session.commit()
+    return {"message": "Project updated successfully"}
+
+
+
+    images = []
+
+    for images_package in project["images_packages"]:
+        result = await session.execute(
+            select(PhotoDumpImage).where(PhotoDumpImage.package_id == images_package["id"]).where(PhotoDumpImage.src != None)
+        )
+        package_images = result.scalars().all()
+        images.extend(package_images)
+
+    generate_photo_dump_mp4(
+        images=images,
+        title=project["name"],
+        voiceover=project["voiceovers"][0] if project["voiceovers"] else None
+    )
+
+    return {"message": "success"}
+
 @router.post("/download-photo-dump")
 async def download_photo_dump_project(
     title: str = Body(..., embed=True),
@@ -71,9 +255,7 @@ async def download_photo_dump_project(
     session: AsyncSession = Depends(get_session)
 ):
     # get all images from packages
-
     # GENERATE VOICEOVER
-
     project_id = str(uuid.uuid4())
     voiceover_id = str(uuid.uuid4())
 
@@ -83,7 +265,6 @@ async def download_photo_dump_project(
         created_at=func.now()
     )
     session.add(project)
-
 
     # create new voiceover in db
     voiceover = Voiceover(id=voiceover_id, project_id=project_id, duration=0.0, start_time=0.0, text=story)
@@ -111,6 +292,15 @@ async def download_photo_dump_project(
 
     for package_id in images_package_ids:
         # get photo dump images with given package id, also they must have src
+
+        # add package_id to the project db
+        project.images_packages.append(package_id)
+
+        images_package = await session.get(ImagesPackage, package_id)
+        if not images_package:
+            continue
+        project.images_packages.append(images_package)
+
         result = await session.execute(
             select(PhotoDumpImage).where(PhotoDumpImage.package_id == package_id).where(PhotoDumpImage.src != None)
         )
@@ -118,13 +308,6 @@ async def download_photo_dump_project(
         images.extend(package_images)
 
 
-    # # FOR TEST JUST SELECT THE LONGEST VOICEOVER (one where duration is the longest)
-    # longest_voiceover = await session.execute(
-    #     select(Voiceover).where(Voiceover.src != None).order_by(Voiceover.duration.desc())
-    # )
-    # longest_voiceover = longest_voiceover.scalars().first()
-    
-    # make the longest voiceover properly formatted dict with like model dump
     voiceover = {
         "id": voiceover.id,
         "text_with_pauses": voiceover.text_with_pauses,
@@ -208,7 +391,8 @@ async def delete_project(project_id: str, session: AsyncSession = Depends(get_se
 
 @router.get("")
 async def list_projects(session: AsyncSession = Depends(get_session)):
-    result = await session.execute(select(Project))
+    stmt = select(Project).order_by(desc(Project.created_at))
+    result = await session.execute(stmt)
     projects = result.scalars().all()
     return [ProjectBasicOutput.model_validate(p).model_dump() for p in projects]
 
@@ -283,65 +467,8 @@ async def copy_project(
     }
 
 
-def _to_dict(obj: Any, visited: set | None = None) -> Any:
-    if visited is None:
-        visited = set()
-
-    if obj is None:
-        return None
-
-    # Handle lists/sets/tuples
-    if isinstance(obj, (list, tuple, set)):
-        return [_to_dict(item, visited) for item in obj]
-
-    obj_id = id(obj)
-    if obj_id in visited:
-        return None  # or {"__ref__": str(obj_id)} if you want to debug
-    visited.add(obj_id)
-
-    # Skip non-ORM objects early
-    if not hasattr(obj, "__table__") and not hasattr(obj, "__mapper__"):
-        # Handle primitives
-        if isinstance(obj, (str, int, float, bool, uuid.UUID)):
-            return obj
-        if isinstance(obj, datetime):
-            return obj.isoformat()
-        return str(obj)
-
-    data: dict[str, Any] = {}
-
-    # 1. Copy scalar columns
-    for col in obj.__table__.columns:
-        val = getattr(obj, col.name)
-        if isinstance(val, datetime):
-            data[col.name] = val.isoformat()
-        elif isinstance(val, uuid.UUID):
-            data[col.name] = str(val)
-        else:
-            data[col.name] = val
-
-    # 2. Copy relationships (without double-list)
-    for name, rel in obj.__mapper__.relationships.items():
-        related_objs = getattr(obj, name)
-
-        if related_objs is None:
-            data[name] = None
-        elif rel.uselist:
-            # related_objs is already a list → just recurse
-            data[name] = [_to_dict(item, visited) for item in related_objs]
-        else:
-            # to-one
-            data[name] = _to_dict(related_objs, visited)
-
-    return data
 
 
-def serialize_project(project_orm) -> dict | None:
-    if project_orm is None:
-        return None
-    if not hasattr(project_orm, "__table__"):
-        raise TypeError(f"Expected ORM instance, got {type(project_orm)}")
-    return _to_dict(project_orm)
 
 async def db_copy_project(source_project=None, suffix=" (Copy)", session=None):
     new_project = Project(
@@ -422,8 +549,14 @@ async def db_copy_project(source_project=None, suffix=" (Copy)", session=None):
 
     return new_project.id
 
+
+
 @router.get("/{project_id}")
-async def get_project(project_id: str, session: AsyncSession = Depends(get_session)):
+async def get_project(
+        project_id: str, 
+        session: AsyncSession = Depends(get_session)
+    ):
+
     result = await session.execute(
         select(Project)
         .where(Project.id == project_id)
@@ -437,8 +570,10 @@ async def get_project(project_id: str, session: AsyncSession = Depends(get_sessi
             selectinload(Project.places),
             selectinload(Project.characters),
             selectinload(Project.voiceovers),
+            selectinload(Project.images_packages)
         )
     )
+
     project = result.scalars().unique().one_or_none()
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")

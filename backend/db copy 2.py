@@ -25,7 +25,7 @@ project_character_association = Table(
     Column("character_id", String(36), ForeignKey("characters.id"))
 )
 
-project_images_package_association = Table(
+project_character_association = Table(
     "project_images_package_association",
     Base.metadata,
     Column("project_id", String(36), ForeignKey("projects.id")),
@@ -64,11 +64,7 @@ class Project(Base):
     name = Column(String, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     type = Column(String, nullable=True, default="BASIC")  # Add this line; adjust type/default as needed (e.g., String, Integer)
-    images_packages = relationship(
-        "ImagesPackage",
-        secondary=project_images_package_association,
-        back_populates="projects"
-    )
+    images_package_id = Column(String(36), ForeignKey("images_packages.id"), nullable=True)
     scenes = relationship("Scene", back_populates="project")
     characters = relationship(
         "Character",
@@ -77,6 +73,7 @@ class Project(Base):
     )
     voiceovers = relationship("Voiceover", back_populates="project")
     places = relationship("Place", secondary=place_project_association, back_populates="projects")
+    images_package = relationship("ImagesPackage", back_populates="projects")
 
 class ImagesPackage(Base):
     __tablename__ = "images_packages"
@@ -84,11 +81,7 @@ class ImagesPackage(Base):
     name = Column(String, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     images = relationship("PhotoDumpImage", back_populates="package")
-    projects = relationship(
-        "Project",
-        secondary=project_images_package_association,
-        back_populates="images_packages"
-    )
+    projects = relationship("Project", back_populates="images_package")
 
 class PhotoDumpImage(Base):
     __tablename__ = "photo_dump_images"

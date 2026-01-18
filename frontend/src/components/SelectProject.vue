@@ -37,7 +37,7 @@
             Download Project
           </button>
           <button
-            @click="selectProject(project.id)"
+            @click="selectProject(project)"
             class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
           >
             Open
@@ -57,8 +57,13 @@ import axios from 'axios';
 const router = useRouter();
 const projects = ref([]);
 
-const selectProject = (projectId) => {
-  router.push(`/projects/${projectId}`);
+const selectProject = (project) => {
+  
+  if(project.type === 'PHOTO_DUMP' || project.name.toLowerCase().includes('photo dump')){
+    router.push(`/photo-dump-projects/${project.id}`);
+    return;
+  }
+  router.push(`/projects/${project.id}`);
 };
 
 const copyProject = (projectId) => {

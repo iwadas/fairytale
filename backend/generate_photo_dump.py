@@ -18,6 +18,7 @@ from utils.add_sound_to_video import assemble_audio_replace
 import numpy as np
 
 from utils.invert_text_mask_color import generate_neon_text_with_border
+from utils.invert_text_mask import generate_invert_mask_text
 from services import generate_speech, filename_from_name
 
 GLUE_PUNCTUATION = {",", ".", "?", "!", ":", ";", "-", "–", "—"}
@@ -76,7 +77,7 @@ def generate_photo_dump_mp4(
     total_duration = voiceover.get("duration", 0.0)
 
     # 20 extra frames for start (.5s) and end (1.5s)
-    number_of_images_to_show = int(total_duration / DURATION_PER_IMAGE) + 20
+    number_of_images_to_show = int(total_duration / DURATION_PER_IMAGE) + 40
 
     clips = []
     images_paths = [img.src for img in images if img.src]
@@ -94,10 +95,10 @@ def generate_photo_dump_mp4(
 
     video = concatenate_videoclips(clips, method='compose')
     
-    video = generate_neon_text_with_border(
+    video = generate_invert_mask_text(
         video_size=(video.w, video.h),
         fonts=[
-            'static/default/fonts/bold.woff2', 
+            'static/default/fonts/bold.woff2',
         ],
         background=video,
         words_with_timing=words_timings,
@@ -117,6 +118,6 @@ def generate_photo_dump_mp4(
     output_path = f"videos/{filename_from_name(title)}.mp4"
     video.write_videofile(
         output_path,
-        fps=48,
+        fps=20,
         codec="libx264",
     )
