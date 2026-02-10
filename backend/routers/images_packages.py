@@ -8,7 +8,6 @@ from typing import Optional, List, Dict
 from pathlib import Path
 import os
 import re
-from worker import generate_scene_video_task
 
 
 # MoviePy imports

@@ -79,7 +79,6 @@ def generate_photo_dump_mp4(
     # 20 extra frames for start (.5s) and end (1.5s)
     number_of_images_to_show = int(total_duration / DURATION_PER_IMAGE) + 40
 
-    clips = []
     images_paths = [img.src for img in images if img.src]
     clips = []
     previous_image = None

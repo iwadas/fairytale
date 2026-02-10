@@ -86,67 +86,67 @@ def prepare_segments(timestamps: List[Dict[str, Any]], text_with_pauses: str, se
     return timestamps_with_end_time
 
 
-# def add_karaoke_subtitles(
-#     background: VideoClip,
-#     words_with_timing,
-# ) -> VideoClip:
-#     """
-#     background : your original MoviePy clip (or CompositeVideoClip)
-#     segments   : list of dicts exactly as you described
+def add_karaoke_subtitles(
+    background: VideoClip,
+    words_with_timing,
+) -> VideoClip:
+    """
+    background : your original MoviePy clip (or CompositeVideoClip)
+    segments   : list of dicts exactly as you described
 
-#     Returns a new clip with the karaoke subtitles composited on top.
-#     """
+    Returns a new clip with the karaoke subtitles composited on top.
+    """
 
-#     video = background
-#     all_knocked_clips = []
+    video = background
+    all_knocked_clips = []
 
-#     for item in words_with_timing:
-#         txt = item["word"]
-#         t_start = item["start_time"]
-#         t_end = item["end_time"]
-#         duration = t_end - t_start
+    for item in words_with_timing:
+        txt = item["word"]
+        t_start = item["start_time"]
+        t_end = item["end_time"]
+        duration = t_end - t_start
 
-#         FONT_SIZE = 120
-#         if(len(txt) >=10):
-#             FONT_SIZE = 60
-#         elif(len(txt) >=7):
-#             FONT_SIZE = 80
-#         elif(len(txt) >=5):
-#             FONT_SIZE = 100
+        FONT_SIZE = 120
+        if(len(txt) >=10):
+            FONT_SIZE = 60
+        elif(len(txt) >=7):
+            FONT_SIZE = 80
+        elif(len(txt) >=5):
+            FONT_SIZE = 100
 
-#         text_clip = TextClip(
-#             text=txt,
-#             font=FONT,
-#             font_size=FONT_SIZE,
-#             stroke_color='black',
-#             stroke_width=2,
-#             method='label',
-#             margin=(0, 60),
-#             size=(video.w, None)
-#         )
+        text_clip = TextClip(
+            text=txt,
+            font=FONT,
+            font_size=FONT_SIZE,
+            stroke_color='black',
+            stroke_width=2,
+            method='label',
+            margin=(0, 60),
+            size=(video.w, None)
+        )
 
-#         # ─── CREATE FULL-SIZE MASK ────────────────────────────────────
-#         mask_img = text_clip.mask.get_frame(0)  # numpy array (h, w) float 0-1, 1 at text
-#         h, w = mask_img.shape
-#         print("Mask size:", w, "x", h)
+        # ─── CREATE FULL-SIZE MASK ────────────────────────────────────
+        mask_img = text_clip.mask.get_frame(0)  # numpy array (h, w) float 0-1, 1 at text
+        h, w = mask_img.shape
+        print("Mask size:", w, "x", h)
 
 
-#         full_mask_array = np.zeros((video.h, video.w), dtype=float)
+        full_mask_array = np.zeros((video.h, video.w), dtype=float)
 
-#         # Calculate position (assuming static 'center' for simplicity)
-#         pos_x = (VIDEO_W - w) // 2
-#         pos_y = (VIDEO_H - h) // 2
+        # Calculate position (assuming static 'center' for simplicity)
+        pos_x = (VIDEO_W - w) // 2
+        pos_y = (VIDEO_H - h) // 2
 
-#         full_mask_array[pos_y:pos_y + h, pos_x:pos_x + w] = mask_img
-#         # ───────────────────────────────────────────────────────────────
+        full_mask_array[pos_y:pos_y + h, pos_x:pos_x + w] = mask_img
+        # ───────────────────────────────────────────────────────────────
 
-#         full_mask_clip = ImageClip(full_mask_array, is_mask=True).with_duration(duration)
+        full_mask_clip = ImageClip(full_mask_array, is_mask=True).with_duration(duration)
 
-#         # Create the inverted piece masked to text area
-#         inverted_piece = video.with_effects([vfx.InvertColors()]).subclipped(t_start, t_end).with_mask(full_mask_clip).with_start(t_start)
+        # Create the inverted piece masked to text area
+        inverted_piece = video.with_effects([vfx.InvertColors()]).subclipped(t_start, t_end).with_mask(full_mask_clip).with_start(t_start)
 
-#         all_knocked_clips.append(inverted_piece)
-#     return CompositeVideoClip([background] + all_knocked_clips)
+        all_knocked_clips.append(inverted_piece)
+    return CompositeVideoClip([background] + all_knocked_clips)
 
 
 def make_background_sound(project_duration: float, sound_name) -> AudioSegment:

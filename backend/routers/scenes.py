@@ -8,7 +8,8 @@ from typing import Optional, List, Dict
 from pathlib import Path
 import os
 import re
-from worker import generate_scene_video_task
+from tasks.video_tasks import generate_scene_video_task
+from tasks.text_tasks import generate_text_task
 
 # MoviePy imports
 from moviepy import ImageClip, VideoClip, vfx, ColorClip, CompositeVideoClip
@@ -49,7 +50,6 @@ async def generate_typing_scene(
 
 @router.post("/{project_id}")
 async def create_scene(project_id: str, session: AsyncSession = Depends(get_session)):
-    
     new_scene = Scene(project_id=project_id, duration=5.0, start_time=0.0)
     session.add(new_scene)
     await session.commit()
@@ -331,6 +331,8 @@ async def generate_scene_video(
     await session.refresh(scene)
 
     return {"message": "Scene video generated successfully", "scene_id": scene_id, "video_url": video_path}
+
+
 
 @router.post("/generate-scene-video/{scene_id}")
 async def generate_scene_video(

@@ -51,7 +51,6 @@ def word_pixel_size(word: str) -> Tuple[int, int]:
     )
     w, h = tmp.size
     tmp.close()
-
     return w, h
 
 
@@ -153,8 +152,6 @@ def shadow_text_clip(text_clip: TextClip, blur_radius: int, pos: Tuple[int, int]
     text_clip = text_clip.with_duration(duration).with_start(start).with_position(final_pos).with_effects([CrossFadeIn(FADE_IN_DURATION)])
 
     return text_clip
-
-
 
 
 

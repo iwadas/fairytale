@@ -7,7 +7,7 @@ py npm run serve
 BACKEND
 ```bash
 PS backend> 
-py env\Scripts\activate
+env\Scripts\activate
 uvicorn main:app --reload --port 8000
 ```
 

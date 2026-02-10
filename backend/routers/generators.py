@@ -8,7 +8,6 @@ import json
 import os
 
 from db import Place, get_session, Project, Scene, Character, Voiceover, SceneImage
-
 from .prompts import gather_story_data, generate_story, story_split, add_scenes_to_story, prepare_story_for_db, get_persistant_characters, add_character_changes, estimate_speech_time
 
 from schemas import PromptRequest, FixedPromptResponse
@@ -29,10 +28,7 @@ open_ai_client = instructor.from_openai(OpenAI(
 
 router = APIRouter(prefix="/generators", tags=["generators"])
 
-
 ai_model = "grok-4-1-fast-reasoning"
-
-
 
 @router.post('/fix-character-prompt')
 async def fix_character_prompt(request: PromptRequest):

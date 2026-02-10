@@ -5,9 +5,13 @@ import os
 import time
 from pydub import AudioSegment
 from groq import Groq
+import sys
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.dirname(current_dir)
+sys.path.append(project_root)
+
+
 VOICEOVER_DIR = os.path.join(project_root, "static", "voiceovers")
 
 load_dotenv()
@@ -144,10 +148,10 @@ class TTS:
         try:
             tts_payload = {
                 "text": self.text,
-                "voice_id": self.voice_model_id,    # Replace with your chosen voice ID
-                "language": self.language_to_int(self.language),      # English
-                "gender": self.gender_to_int(self.gender),        # Male voice
-                "age": self.age           # Adult voice characteristic
+                "voice_id": self.voice_model_id,
+                "language": self.language_to_int(self.language),
+                "gender": self.gender_to_int(self.gender),
+                "age": self.age
             }
 
             # Set up your API credentials

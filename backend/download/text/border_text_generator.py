@@ -34,7 +34,7 @@ def make_neon_red(frame):
 # ------------------------------------
 
 
-def generate_neon_text_with_border(
+def generate_border_text(
     video_size: Tuple[int, int],
     fonts: Any,
     background: VideoClip,

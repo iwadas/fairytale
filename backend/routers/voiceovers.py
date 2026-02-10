@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from pydantic import BaseModel
 from sqlalchemy.future import select
+from database.crud import create_voiceover_db, get_project_voiceovers_db, remove_voiceover_db
 
 import json
 
@@ -17,33 +18,22 @@ class VoiceoverUpdate(BaseModel):
 
 
 @router.post("/{project_id}")
-async def create_voiceover(project_id: str, session: AsyncSession = Depends(get_session)):   
-    new_voiceover = Voiceover(project_id=project_id, duration=5.0, start_time=0.0, text="DEFAULT TEXT")
-    session.add(new_voiceover)
-    await session.commit()
-    await session.refresh(new_voiceover)
-    return new_voiceover
-
+async def create_voiceover(project_id: str):   
+    return await create_voiceover_db(project_id=project_id)
 
 @router.post("/combine/{project_id}")
-async def combine_voiceovers(project_id: str, session: AsyncSession = Depends(get_session)):
+async def combine_voiceovers(project_id: str):
     """
     Combine all voiceovers for a given project into a single voiceover.
     """
-
-    result = await session.execute(
-        select(Voiceover).where(Voiceover.project_id == project_id)
-    )
-    voiceovers = result.scalars().all()
-
+    voiceovers = await get_project_voiceovers_db(project_id=project_id)
     combined_text = " ".join([" ".join(vo.text.split(" ")) for vo in voiceovers])
-    # CREATE NEW VOICEOVER (DO NOT GENERATE THE AUDIO YET)
-    new_voiceover = Voiceover(project_id=project_id, duration=0.0, start_time=0.0, text=combined_text)
-    session.add(new_voiceover)
-    await session.commit()
-    await session.refresh(new_voiceover)
-    return new_voiceover
 
+    # delete old voiceovers
+    for vo in voiceovers:
+        await remove_voiceover_db(id=vo["id"])
+
+    return await create_voiceover_db(project_id=project_id, text=combined_text)
 
 
 @router.delete("/{voiceover_id}")

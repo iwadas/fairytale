@@ -1,7 +1,7 @@
 from huey.api import Result
 from fastapi import APIRouter, HTTPException
 from typing import Dict, Any
-from worker import generate_scene_video_task   # ← this is key
+from tasks.video_tasks import generate_scene_video_task   # ← this is key
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 
@@ -47,3 +47,5 @@ async def get_task_status(task_id: str) -> Dict[str, Any]:
             status_code=500,
             detail=f"Error checking task status: {str(e)}"
         )
+    
+
