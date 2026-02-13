@@ -4,7 +4,6 @@ from sqlalchemy.sql import func
 import uuid
 
 import json
-
 import os
 
 from db import Place, get_session, Project, Scene, Character, Voiceover, SceneImage
@@ -64,12 +63,6 @@ class NewSceneDescriptions(BaseModel):
 @router.post('/generate-scene-image-prompts')
 async def generate_scene_image_prompt(request: FixVideoPrompt, session: AsyncSession = Depends(get_session)):
 
-    # # Fetch all the voiceovers for the project (id in request)
-    # voiceovers = await session.execute(
-    #     select(Voiceover).where(Voiceover.project_id == request.project_id)
-    # )
-    # voiceover_texts = [vo.text for vo in voiceovers.scalars().all()]
-    # full_voiceover = " ".join(voiceover_texts)
     messages = [
             {
                 "role": "system",

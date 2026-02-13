@@ -1,11 +1,11 @@
-from typing import Any, List, Optional
+from typing import Any, Dict, List, Optional
 import uuid
 from requests import session
 from sqlalchemy import select, delete
-from .models import Project, Voiceover, Place, Scene, Character, ImagesPackage
+from .models import Project, SceneImage, Voiceover, Place, Scene, Character, ImagesPackage
 from .decorators import with_session # Import your new tool
 from sqlalchemy.orm import selectinload
-from .serialization import serialize_project, serialize_voiceover, serialize_scene
+from .serialization import serialize_project, serialize_scene_image, serialize_voiceover, serialize_scene
 import json
 
 # PROJECTS
@@ -43,8 +43,10 @@ async def get_project_db(id: str, serialize: bool=False, session=None):
         return project_orm
     
 @with_session
-async def create_project_db(name: str = "", type: str = "BASIC", session=None):
-    new_project = Project(name=name, type=type)
+async def create_project_db(id: Optional[str] = None, name: str = "", type: str = "BASIC", session=None):
+    if id is None:
+        id = str(uuid.uuid4())
+    new_project = Project(id=id, name=name, type=type)
     session.add(new_project)
     return serialize_project(new_project)
 
@@ -53,6 +55,8 @@ async def remove_project_db(id: str, session=None):
     stmt = delete(Project).where(Project.id == id)
     await session.execute(stmt)
     return {"message": "Project deleted successfully"}
+
+
 
 @with_session
 async def copy_project_db(
@@ -172,7 +176,21 @@ async def update_voiceover_db(id: str, session=None, **kwargs):
         return serialize_voiceover(voiceover)
     else:
         return None
+
+@with_session
+async def get_project_voiceovers_db(project_id: str, session=None):
+    stmt = select(Voiceover).where(Voiceover.project_id == project_id)
+    result = await session.execute(stmt)
+    voiceovers = result.scalars().all()
+    return [serialize_voiceover(vo) for vo in voiceovers]
+
+@with_session
+async def remove_voiceover_db(id: str, session=None):
+    stmt = delete(Voiceover).where(Voiceover.id == id)
+    await session.execute(stmt)
+    return {"message": "Voiceover deleted successfully"}
     
+@with_session
 async def create_voiceover_db(
         id: Optional[str] = None, 
         project_id: str = "", 
@@ -203,19 +221,36 @@ async def create_voiceover_db(
 @with_session
 async def create_scene_db(
     project_id: str,
+    scene_id: Optional[str] = None,
     duration: Optional[float] = 0.0,
     start_time: Optional[float] = 0.0,
     session=None, 
+    images: Optional[List[Dict[str, Any]]] = None,
 ):
+    if scene_id is None:
+        scene_id = str(uuid.uuid4())
+
     new_scene = Scene(
+        id=scene_id,
         project_id=project_id, 
         duration=duration, 
         start_time=start_time
     )
     session.add(new_scene)
+
+    if images:
+        for img in images:
+            new_image = SceneImage(
+                scene_id=scene_id,
+                prompt=img.get("prompt", ""),
+                time=img.get("time", "start"),
+            )
+            session.add(new_image)
+
+
     return serialize_scene(new_scene)
 
-
+@with_session
 async def update_scene_db(id: str, session=None, **kwargs):
     stmt = select(Scene).where(Scene.id == id)
     result = await session.execute(stmt)

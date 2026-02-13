@@ -45,8 +45,6 @@ def gather_story_data(topic: str) -> GatheredStoryData:
     return response
 
 
-
-
 class Story(BaseModel):
     script: str
 

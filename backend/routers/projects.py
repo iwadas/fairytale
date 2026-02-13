@@ -1,6 +1,9 @@
 import json
 from fastapi import APIRouter, HTTPException, Body, Depends
+from pydantic import BaseModel
 from AI.tts import TTS
+from AI.llm import LLM
+from script.generate_scenes import generate_scenes, split_script
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy import update, delete, desc, inspect
@@ -20,9 +23,12 @@ from moviepy import VideoFileClip, concatenate_videoclips, AudioFileClip, Compos
 from generate import generate_mp4
 from generate_photo_dump import generate_photo_dump_mp4
 from services import generate_speech, filename_from_name
-from database.crud import create_voiceover_db, get_projects_db, get_project_db, remove_project_db, update_voiceover_db, update_scene_db, update_pd_project_db, create_project_db, copy_project_db
+from database.crud import create_scene_db, create_voiceover_db, get_projects_db, get_project_db, remove_project_db, update_voiceover_db, update_scene_db, update_pd_project_db, create_project_db, copy_project_db
+
+from script.generate_script import generate_script
 
 import re
+from websocket import socket_manager  # Import the global instance
 
 router = APIRouter(prefix="/projects", tags=["projects"])
 
@@ -33,15 +39,197 @@ def get_save_name(name):
         return name
 
 @router.get("")
-async def projects():
+async def get_projects():
     projects = await get_projects_db()
     return projects
 
 @router.get("/{project_id}")
-async def project(
+async def get_project(
         project_id: str, 
     ):
     return await get_project_db(id=project_id)
+
+class ScriptIn(BaseModel):
+    topic: str
+    duration: int
+    data: Optional[str]
+    gather_data: bool
+    persistant_characters: bool
+    reference_stories: Optional[str]
+
+@router.post("/generate-script")
+async def script_generation(request: ScriptIn, session: AsyncSession = Depends(get_session)):
+    # word_count = estimated word count approximating to 140 words per minute.
+    word_count = request.duration * 140 / 60
+
+    STORY_SAMPLES_COUNT = 3
+
+    try:
+        story_data = None
+        if request.data:
+            story_data = request.data
+        elif request.gather_data:
+            pass
+            # story_data = gather_story_data(request.title)
+
+        llm_client = LLM(
+            provider="xai",
+            ai_model="grok-4-1-fast-reasoning",
+        )
+
+        task_id = str(uuid.uuid4())
+        scripts = []
+
+        await socket_manager.broadcast_json({
+            "type": "script_generation",
+            "status": "init",
+            "task_id": task_id,
+            "message": f"🎬 Initializing script generation for {STORY_SAMPLES_COUNT} story samples..."
+        })
+
+        for i in range(STORY_SAMPLES_COUNT):
+
+            await socket_manager.broadcast_json({
+                "type": "script_generation",
+                "status": "in_progress",
+                "task_id": task_id,
+                "message": f"✅ Generating story sample {i+1} of {STORY_SAMPLES_COUNT}..."
+            })
+
+            script = generate_script(
+                llm_client=llm_client,
+                topic=request.topic,
+                story_data=story_data,
+                reference_stories=request.reference_stories,
+                persistant_characters=request.persistant_characters,
+                word_limit=word_count
+            )
+            scripts.append(script)
+
+            await socket_manager.broadcast_json({
+                "type": "script_generation",
+                "status": "in_progress",
+                "task_id": task_id,
+                "message": f"✅ Finished generating story sample {i+1} of {STORY_SAMPLES_COUNT}."
+            })
+        
+        await socket_manager.broadcast_json({
+            "type": "script_generation",
+            "status": "finished",
+            "task_id": task_id,
+            "message": f"🎉 Finished generating story sample {STORY_SAMPLES_COUNT} of {STORY_SAMPLES_COUNT}."
+        })
+
+        return {
+            "scripts": scripts
+        }
+    
+    except Exception as e:
+        await session.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class ProjectIn(BaseModel):
+    topic: str
+    script: str
+
+@router.post("/create-project")
+async def create_project(
+    project_in: ProjectIn,
+):
+    script = project_in.script
+    topic = project_in.topic
+
+    task_id = str(uuid.uuid4())
+
+    await socket_manager.broadcast_json({
+        "type": "create_project",
+        "status": "init",
+        "task_id": task_id,
+        "message": f"🎬 Initializing project creation for topic: {topic}..."
+    })
+
+    await socket_manager.broadcast_json({
+        "type": "create_project",
+        "status": "in_progress",
+        "task_id": task_id,
+        "message": f"✂️ Splitting script..."
+    })
+
+    splitted_script = split_script(script)
+
+    await socket_manager.broadcast_json({
+        "type": "create_project",
+        "status": "in_progress",
+        "task_id": task_id,
+        "message": f"🖼️ Adding scenes.."
+    })
+
+    script_with_scenes = await generate_scenes(
+        llm_client=LLM(provider="xai", ai_model="grok-4-1-fast-reasoning"),
+        splitted_script=splitted_script,
+        socket_manager=socket_manager,
+        task_id=task_id
+    )
+
+    # prepare data for project creation
+    await socket_manager.broadcast_json({
+        "type": "create_project",
+        "status": "in_progress",
+        "task_id": task_id,
+        "message": f"💾 Saving project to database..."
+    })
+
+    project_id = str(uuid.uuid4())
+    await create_project_db(id=project_id, name=topic, type="BASIC")
+    
+    await socket_manager.broadcast_json({
+        "type": "create_project",
+        "status": "in_progress",
+        "task_id": task_id,
+        "message": f"🔊 Saving voiceovers and scenes..."
+    })
+
+    for script_part in script_with_scenes:
+
+        start_time = float(script_part.get("start_time", 0.0))
+
+        await create_voiceover_db(
+            project_id=project_id,
+            text=script_part["text"],
+            start_time=start_time,
+            duration=script_part.get("duration", 0.0)
+        )
+
+        
+        for i, scene in enumerate(script_part["scenes"]):
+            await create_scene_db(
+                project_id=project_id,
+                start_time=start_time + (i * 4.0),
+                video_prompt=scene["video_prompt"],
+                duration= 4.0,
+                images=[
+                    {
+                        "prompt": scene["image_prompt"],
+                        "time": "start"
+                    }
+                ]
+            )
+
+    await socket_manager.broadcast_json({
+        "type": "create_project",
+        "status": "finished",
+        "task_id": task_id,
+        "message": f"🎉 Project created successfully!"
+    })
+
+    return {
+        "message": "Project created successfully",
+        "project_id": project_id
+    }
+
+
+
 
 @router.delete("/{project_id}")
 async def delete_project(project_id: str):

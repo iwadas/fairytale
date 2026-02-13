@@ -1,5 +1,5 @@
 import time
-from fastapi import FastAPI
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
 from typing import Optional
 from dotenv import load_dotenv
@@ -12,6 +12,8 @@ from typing import List
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from db import async_session_maker, Project, Scene, Character, Voiceover
+
+from websocket import socket_manager  # Import the global instance
 
 # OpenAI
 from openai import OpenAI
@@ -53,6 +55,17 @@ from routers.scenes import router as scenes_router
 from routers.voiceovers import router as voiceovers_router
 from routers.tasks import router as tasks_router
 from routers.images_packages import router as images_packages_router
+
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    await socket_manager.connect(websocket)
+    try:
+        while True:
+            # We must await 'receive' to keep the socket open
+            # even if we aren't using the incoming data for logic
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        socket_manager.disconnect(websocket)
 
 app.include_router(characters_router)
 app.include_router(projects_router)

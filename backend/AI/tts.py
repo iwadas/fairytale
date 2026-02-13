@@ -1,3 +1,4 @@
+import json
 from typing import Any
 import requests
 from dotenv import load_dotenv
@@ -17,7 +18,7 @@ VOICEOVER_DIR = os.path.join(project_root, "static", "voiceovers")
 load_dotenv()
 
 class TTS:
-    def __init__(self, provider: str="camb", text: str=None, voiceover_id: Any=None, **kwargs):
+    def __init__(self, provider: str="camb", text: str=None, voiceover_id: Any=None, project_id: str=None, **kwargs):
         """
         Docstring for __init__
         :param self: Description
@@ -32,6 +33,7 @@ class TTS:
         self.provider = provider
         self.text = text
         self.voiceover_id = voiceover_id
+        self.project_id = project_id
 
         # VOICE SETTINGS
         self.voice_model_id = kwargs.get("voice_model_id", None)
@@ -138,7 +140,8 @@ class TTS:
             "duration": self.duration,
             "text": self.text,
             "id": self.voiceover_id,
-            "timestamps": self.timestamps,
+            "project_id": self.project_id,
+            "timestamps": json.dumps(self.timestamps),
             # FOR NOW EASY WAY
             "text_with_pauses": self.text,
         }

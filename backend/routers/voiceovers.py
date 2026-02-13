@@ -39,33 +39,19 @@ async def combine_voiceovers(project_id: str):
 @router.delete("/{voiceover_id}")
 async def delete_voiceover(
     voiceover_id: str,
-    session: AsyncSession = Depends(get_session)
 ):
-    # Fetch the voiceover
-    voiceover = await session.get(Voiceover, voiceover_id)
-    
-    if not voiceover:
-        raise HTTPException(status_code=404, detail="Voiceover not found")
+    await remove_voiceover_db(id=voiceover_id)
+    return {"message": "Voiceover deleted successfully"}
 
-    # Optional: Add authorization check here if needed
-    # e.g., check if voiceover.project.user_id == current_user.id
 
-    # Delete the voiceover (SQLAlchemy will handle cascade if configured)
-    await session.delete(voiceover)
-    await session.commit()
-
-    return {
-        "success": True,
-        "message": "Voiceover deleted successfully",
-        "voiceover_id": voiceover_id
-    }
-
+# NOT USED
 @router.post("/{voiceover_id}")
 async def update_voiceover_start_time(
     voiceover_id: str,
     payload: VoiceoverUpdate,
     session: AsyncSession = Depends(get_session)
 ):
+    return
     voiceover = await session.get(Voiceover, voiceover_id)
     if not voiceover:
         return {"error": "Voiceover not found"}
@@ -75,12 +61,16 @@ async def update_voiceover_start_time(
     await session.refresh(voiceover)
     return {"message": "Voiceover start time updated", "voiceover_id": voiceover_id, "new_start_time": payload.start_time}
 
-
 class VoiceoverGenerateRequest(BaseModel):
     text: str
 
 @router.post("/generate-voiceover/{voiceover_id}")
-async def generate_voiceover(voiceover_id: str, request: VoiceoverGenerateRequest, session: AsyncSession = Depends(get_session)):
+async def generate_voiceover(
+    voiceover_id: str, 
+    request: VoiceoverGenerateRequest, 
+    session: AsyncSession = Depends(get_session)
+):
+
     voiceover = await session.get(Voiceover, voiceover_id)
 
     if not voiceover:
