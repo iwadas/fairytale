@@ -52,6 +52,7 @@ async def get_project(
 class ScriptIn(BaseModel):
     topic: str
     duration: int
+    description: Optional[str]
     data: Optional[str]
     gather_data: bool
     persistant_characters: bool
@@ -59,8 +60,8 @@ class ScriptIn(BaseModel):
 
 @router.post("/generate-script")
 async def script_generation(request: ScriptIn, session: AsyncSession = Depends(get_session)):
-    # word_count = estimated word count approximating to 140 words per minute.
-    word_count = request.duration * 140 / 60
+    # word_count = estimated word count approximating to 180 words per minute.
+    word_count = request.duration * 180 / 60
 
     STORY_SAMPLES_COUNT = 3
 
@@ -99,6 +100,7 @@ async def script_generation(request: ScriptIn, session: AsyncSession = Depends(g
             script = generate_script(
                 llm_client=llm_client,
                 topic=request.topic,
+                description=request.description,
                 story_data=story_data,
                 reference_stories=request.reference_stories,
                 persistant_characters=request.persistant_characters,
@@ -205,9 +207,9 @@ async def create_project(
         for i, scene in enumerate(script_part["scenes"]):
             await create_scene_db(
                 project_id=project_id,
-                start_time=start_time + (i * 4.0),
+                start_time=start_time + (i * 3.0),
                 video_prompt=scene["video_prompt"],
-                duration= 4.0,
+                duration= 3.0,
                 images=[
                     {
                         "prompt": scene["image_prompt"],

@@ -1,5 +1,5 @@
 import asyncio
-from fastapi import APIRouter, HTTPException, Body, UploadFile, File, Depends, Form, Request
+from fastapi import APIRouter, HTTPException, Body, UploadFile, File, Depends, Form, Request, BackgroundTasks
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
@@ -10,6 +10,8 @@ import os
 import re
 from tasks.video_tasks import generate_scene_video_task
 from tasks.text_tasks import generate_text_task
+
+from database.crud import get_scene_db
 
 # MoviePy imports
 from moviepy import ImageClip, VideoClip, vfx, ColorClip, CompositeVideoClip
@@ -276,7 +278,7 @@ async def upload_scene_image(
     return {"message": "Scene image uploaded successfully", "scene_image": {"id": scene_image.id, "src": scene_image.src, "time": scene_image.time, "scene_id": scene_image.scene_id, "prompt": scene_image.prompt}}
 
 @router.post("/generate-scene-video-2/{scene_id}")
-async def generate_scene_video(
+async def generate_scene_video2(
     scene_id: str,
     prompt: str = Body(..., embed=True),
     duration: float = Body(5.0, embed=True),
@@ -334,8 +336,59 @@ async def generate_scene_video(
 
 
 
-@router.post("/generate-scene-video/{scene_id}")
-async def generate_scene_video(
+@router.post("/generate-video/{scene_id}")
+def generate_scene_video(
+    background_tasks: BackgroundTasks,
+    scene_id: str,
+    prompt: str = Body(..., embed=True),
+    duration: float = Body(3.0, embed=True),
+):
+
+    scene = get_scene_db(scene_id)
+    
+
+
+    # 3. Call the video generator
+    print("Scene ID:", scene_id)
+    print("Generating video with prompt:", prompt)
+    print("Scene duration:", duration)
+    print("Generating video...")
+
+    scene_images = session.execute(
+        select(SceneImage).filter_by(scene_id=scene_id)
+    )
+    scene_images_list = scene_images.scalars().all()
+
+    frames = [
+        {"src": img.src, "time": img.time}
+        for img in scene_images_list
+        if img.src and img.time != 'mid'
+    ]
+    print(frames)
+
+    video_path = generate_video(
+        directory="static/videos/scenes",
+        filename=filename,
+        prompt=prompt,
+        negative_prompt="",  # Default to empty string, adjust if needed
+        frames = frames,
+        duration=duration  # Default duration, adjust as needed
+    )
+
+    # 4. Store or update scene video in DB (attach to scene)
+    scene.video_src = video_path
+    scene.video_prompt = prompt
+    scene.duration = duration
+    session.add(scene)
+
+    session.commit()
+
+    return {"message": "Scene video generated successfully", "scene_id": scene_id, "video_url": video_path}
+
+
+
+@router.post("/generate-scene-video-3/{scene_id}")
+async def generate_scene_video3(
     scene_id: str,
     prompt: str = Body(..., embed=True),
     duration: float = Body(5.0, embed=True),

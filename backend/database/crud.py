@@ -56,8 +56,6 @@ async def remove_project_db(id: str, session=None):
     await session.execute(stmt)
     return {"message": "Project deleted successfully"}
 
-
-
 @with_session
 async def copy_project_db(
     source_project: dict, 
@@ -219,11 +217,23 @@ async def create_voiceover_db(
 
 # SCENES
 @with_session
+async def get_scene_db(id: str, session=None):
+    stmt = select(Scene).where(Scene.id == id)
+    result = await session.execute(stmt)
+    scene = result.scalars().first()
+    if scene:
+        return serialize_scene(scene)
+    else:
+        return None
+
+
+@with_session
 async def create_scene_db(
     project_id: str,
     scene_id: Optional[str] = None,
     duration: Optional[float] = 0.0,
     start_time: Optional[float] = 0.0,
+    video_prompt: Optional[str] = None,
     session=None, 
     images: Optional[List[Dict[str, Any]]] = None,
 ):
@@ -234,7 +244,8 @@ async def create_scene_db(
         id=scene_id,
         project_id=project_id, 
         duration=duration, 
-        start_time=start_time
+        start_time=start_time,
+        video_prompt=video_prompt
     )
     session.add(new_scene)
 

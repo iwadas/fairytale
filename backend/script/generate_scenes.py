@@ -90,6 +90,7 @@ async def generate_scenes(
             "- **Literal:** Use when the script describes a specific, grounded action or biological process (e.g., 'The neurons fire').\n"
             "- **Metaphorical/Abstract:** Use when discussing feelings, concepts, or theories (e.g., 'The mind is a prison').\n"
             "- **Balance:** Do not make the video 100\\% abstract (boring) or 100\\% literal (cheesy). Mix them dynamically."
+            "**NO TEXT ON SCREEN:** Never describe signs, labels, speech bubbles, or UI elements. If the script says 'The data shows...', visualize a 'gold geometric stream', DO NOT visualize a screen with numbers.\n"
         )
     }
 
@@ -114,7 +115,7 @@ async def generate_scenes(
             "role": "user",
             "content": (
                 f"### CURRENT TASK\n"
-                f"**Generate exactly {math.ceil(splitted_script[scene_index]['duration'] / 4)} scenes as a visual representation for sentence: {splitted_script[scene_index]['text']}**\n\n"
+                f"**Generate exactly {math.ceil(splitted_script[scene_index]['duration'] / 3)} scenes as a visual representation for sentence: {splitted_script[scene_index]['text']}**\n\n"
 
                 "### NARATIVE FLOW\n"
                 f"The previous scene ended looking like this:\n"
@@ -138,6 +139,7 @@ async def generate_scenes(
                 "- **Camera:** Use cool camera techniques (e.g., Orbit, Fly to birds view, Shaky camera, Drone camera flying through scene, Pan, Tilt, Zoom, Dolly, Static).\n"
                 "- **Action:** Describe subtle movements (wind, blinking, walking). If no action, use 'Subtle natural movement' and **suitable** for scene context.\n"
                 "- **Feasibility:** Ensure movements are realistic for AI video models.\n\n"
+                "**Avoid repetition:** Each scene should be unique - do not reuse the same central object / same composition / same methaphor. Pivot to a new metaphor for every line.\n"
             )
         }
 

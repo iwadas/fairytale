@@ -5,6 +5,7 @@ from pydantic import BaseModel
 def generate_script(
     llm_client: LLM,
     topic: str = None,
+    description: Optional[str] = None,
     story_data: Optional[str] = None,
     reference_stories: Optional[str] = None,
     persistant_characters: bool = False,
@@ -40,6 +41,7 @@ def generate_script(
         "role": "user",
         "content": (
             f"Write a {int(word_limit) - 10}-{int(word_limit) + 10} word script about: { topic }\n\n"
+            f"{f'The video should be about: {description}\n\n' if description else ''}"
             f"{context_instruction if (story_data or reference_stories) else ''}"
             "**Strictly follow this \"4-Step Structural Formula\":**\n\n"
             "**Step 1: The \"Pattern Interrupt\" Hook (0-5 seconds)**\n"
@@ -54,7 +56,7 @@ def generate_script(
             "- Connect the fact to: Ancient survival, childhood development, deep subconscious protection methods or other psychological mechanisms.\n"
             "- Frame it as: \"Your brain isn't broken; it's protecting you.\"\n"
             "- This section must be empathetic and moody.\n"
-            "**Step 4: Split the script using <br> every 2-4 sentences to create natural pauses for the voiceover.**\n\n"
+            "**Step 4: Split the script using <br> every 2-4 sentences into connected segments.**\n\n"
             "**Tone Guidelines:**\n"
             "- **Voice:** Authoritative, Dark, Moody, Intellectual.\n"
             "- **Rhythm:** Use short sentences. Pause frequently.\n"
@@ -71,7 +73,11 @@ def generate_script(
         response_format=ScriptResponse
     )
     
-    return response.script
+    # normalize script
+    # remove doube <br><br> and replace with singe <br>
+    # remove \n
+    script = response.script.replace("\n", " ").replace("<br><br>", "<br>").strip()
+    return script
 
 
     
