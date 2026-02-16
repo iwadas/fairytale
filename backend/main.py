@@ -57,7 +57,7 @@ from routers.tasks import router as tasks_router
 from routers.images_packages import router as images_packages_router
 
 @app.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket):
+async def global_ws(websocket: WebSocket):
     await socket_manager.connect(websocket)
     try:
         while True:
@@ -66,6 +66,15 @@ async def websocket_endpoint(websocket: WebSocket):
             await websocket.receive_text()
     except WebSocketDisconnect:
         socket_manager.disconnect(websocket)
+
+@app.websocket("/ws/scene/generate-video/{scene_id}")
+async def scene_generation_ws(websocket: WebSocket, scene_id: str):
+    await socket_manager.connect(websocket, type="scene_generation", scene_id=scene_id)
+    try:
+        while True:
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        socket_manager.disconnect(websocket, scene_id=scene_id)
 
 app.include_router(characters_router)
 app.include_router(projects_router)

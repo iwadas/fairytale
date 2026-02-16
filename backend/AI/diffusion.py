@@ -1,14 +1,14 @@
 import string
-import time
-import mimetypes
 from typing import Optional
 import uuid
-import json
 import os
 from pathlib import Path
 import base64
-import aiohttp
 
+from click import prompt
+import aiohttp
+from fastapi.concurrency import run_in_threadpool
+import aiofiles
 
 from fastapi import HTTPException
 from dotenv import load_dotenv
@@ -16,10 +16,6 @@ from dotenv import load_dotenv
 
 from runware import Runware, IVideoInference, IFrameImage, IBytedanceProviderSettings
 
-
-OUTPUT_DIR = Path("static/videos/scenes")
-MAX_ATTEMPTS = 100
-POLL_INTERVAL = 5
 
 class Diffusion:
     def __init__(
@@ -46,12 +42,15 @@ class Diffusion:
         self.client = None
         self.set_client()
 
+
     def set_client(self):
         if self.provider == "runware":
             self.api_key = os.getenv("RUNWARE_API_KEY")
             if not self.api_key:
                 raise ValueError("RUNWARE_API_KEY not found in environment variables.")
-            
+            self.client = Runware(api_key=self.api_key)
+        else:
+            raise ValueError(f"Unsupported diffusion provider: {self.provider}")
 
     # HELPERS
     @staticmethod
@@ -68,14 +67,13 @@ class Diffusion:
             return f"data:{mime_type};base64,{encoded_string}"
 
     @staticmethod
-    def normalize_filename( name: str) -> str:
+    def normalize_filename(name: str) -> str:
         valid_chars = "-_.() %s%s" % (string.ascii_letters, string.digits)
         normalized = ''.join(c for c in name if c in valid_chars)
         normalized = normalized.replace(' ', '_')
         return normalized[:50]
     
-    @staticmethod
-    def get_frames_runware(self, frames: list) -> list:
+    async def get_frames_runware(self, frames: list) -> list:
         """
         Prepares the frame images for the Runware API by encoding them as base64 data URLs and structuring them according to the API's requirements.
         
@@ -88,7 +86,6 @@ class Diffusion:
 
         DB_TO_RUNWARE_FRAME_MAPPING = {
             "start": "first",
-            "middle": "middle",
             "end": "last"
         }
 
@@ -97,12 +94,13 @@ class Diffusion:
             if not os.path.exists(frame["src"]):
                 raise ValueError(f'Image path not found: {frame["src"]}')
             
-            image_data_uri = self.encode_image_to_base64(frame["src"])
+            image_data_uri = await run_in_threadpool(self.encode_image_to_base64, frame["src"])
             print("Including image in payload")
             if(len(frames) == 1):
                 frame_image = IFrameImage(inputImage=image_data_uri)
             else:
-                frame_image = IFrameImage(inputImage=image_data_uri, frame=DB_TO_RUNWARE_FRAME_MAPPING[frame["time"]]) 
+                runware_time = DB_TO_RUNWARE_FRAME_MAPPING.get(frame["time"], "first")
+                frame_image = IFrameImage(inputImage=image_data_uri, frame=runware_time) 
             prepared_frames.append(frame_image)
         
         return prepared_frames
@@ -122,7 +120,7 @@ class Diffusion:
         async with aiohttp.ClientSession(timeout=timeout) as session:
             async with session.get(url) as response:
                 response.raise_for_status()
-                with open(output_path, "wb") as f:
+                async with aiofiles.open(output_path, "wb") as f:
                     while True:
                         chunk = await response.content.read(8192)
                         if not chunk:
@@ -137,22 +135,21 @@ class Diffusion:
 
 
     async def generate_runware(self, prompt: str=None, frames: Optional[list]=None, duration: Optional[int]=3, filename: Optional[str]=None):
-
-
-        if not self.api_key:
-            raise ValueError("Runway API key not set.")
         if not prompt:
             raise ValueError("Prompt is required for video generation.")
+        elif not self.client:
+            raise ValueError("Runware client not initialized.")
 
-        os.makedirs(OUTPUT_DIR, exist_ok=True)
+        os.makedirs(self.output_dir, exist_ok=True)
 
         filename = self.normalize_filename(filename) if filename else str(uuid.uuid4())
-        output_path = os.path.join(OUTPUT_DIR, f"{filename}.mp4") if filename else os.path.join(OUTPUT_DIR, f"{str(uuid.uuid4())}.mp4")
+        output_path = os.path.join(self.output_dir, f"{filename}.mp4") if filename else os.path.join(self.output_dir, f"{str(uuid.uuid4())}.mp4")
 
-        runware = Runware(api_key=self.api_key)
-
+        
         try:
-            await runware.connect()
+            await self.client.connect()
+
+            frames = await self.get_frames_runware(frames) if frames else None
 
             request = IVideoInference(
                 positivePrompt=prompt,
@@ -162,11 +159,10 @@ class Diffusion:
                 fps=self.fps,
                 duration=duration,
                 numberResults=1,
-                frameImages=self.get_frames_runware(frames) if frames else [],
-                # providerSettings=IBytedanceProviderSettings(cameraFixed=False)
+                frameImages=frames,
             )
 
-            videos = await runware.videoInference(requestVideo=request)
+            videos = await self.client.videoInference(requestVideo=request)
             # 1 videos is expected
             if not videos or len(videos) == 0:
                 raise ValueError("No video generated by Runware.")
@@ -176,4 +172,4 @@ class Diffusion:
             print(f"Error during Runware video generation: {e}")
             raise HTTPException(status_code=500, detail=f"Video generation failed: {str(e)}")
         finally:
-            await runware.disconnect()
+            await self.client.disconnect()
