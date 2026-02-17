@@ -10,8 +10,10 @@ async def save_file(file: UploadFile, type: str = "scene"):
     filename = f"scene_{uuid.uuid4()}"
     load_dotenv()
 
-    if type == "scene":
-        output_dir = os.getenv("SCENES_DIR", "static/videos/scenes")
+    if type == "scene_video":
+        output_dir = os.getenv("SCENE_VIDEO_DIR", "static/videos/scenes")
+    elif type == "scene_image":
+        output_dir = os.getenv("SCENE_IMAGE_DIR", "static/images/scenes")
     else:
         raise ValueError(f"Invalid file type: {type}")
 
@@ -20,6 +22,7 @@ async def save_file(file: UploadFile, type: str = "scene"):
         async with aiofiles.open(video_src, "wb") as f:
             f.write(file.file.read())
         print(f"Saved uploaded file to: {video_src}")
+        return video_src
     except Exception as e:
         print(f"Error saving uploaded file to {video_src}: {e}")
         raise HTTPException(status_code=500, detail="Failed to save uploaded file")

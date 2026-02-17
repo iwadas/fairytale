@@ -1,17 +1,8 @@
-import time
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
-from typing import Optional
 from dotenv import load_dotenv
-import time
-from datetime import datetime
 import os
-from pathlib import Path
 from fastapi.middleware.cors import CORSMiddleware
-from typing import List
-
-from sqlalchemy.ext.asyncio import AsyncSession
-from db import async_session_maker, Project, Scene, Character, Voiceover
 
 from websocket import socket_manager  # Import the global instance
 
@@ -44,17 +35,13 @@ class NoCacheStaticFiles(StaticFiles):
 
 app.mount("/static", NoCacheStaticFiles(directory="static"), name="static")
 
-async def get_session() -> AsyncSession:
-    async with async_session_maker() as session:
-        yield session
 
-from routers.characters import router as characters_router
+# from routers.characters import router as characters_router
 from routers.projects import router as projects_router
 from routers.generators import router as generators_router
 from routers.scenes import router as scenes_router
 from routers.voiceovers import router as voiceovers_router
-from routers.tasks import router as tasks_router
-from routers.images_packages import router as images_packages_router
+# from routers.images_packages import router as images_packages_router
 
 @app.websocket("/ws")
 async def global_ws(websocket: WebSocket):
@@ -76,10 +63,9 @@ async def scene_generation_ws(websocket: WebSocket, scene_id: str):
     except WebSocketDisconnect:
         socket_manager.disconnect(websocket, scene_id=scene_id)
 
-app.include_router(characters_router)
+# app.include_router(characters_router)
 app.include_router(projects_router)
 app.include_router(generators_router)
 app.include_router(scenes_router)
 app.include_router(voiceovers_router)
-app.include_router(tasks_router)
-app.include_router(images_packages_router)
+# app.include_router(images_packages_router)

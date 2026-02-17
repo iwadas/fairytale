@@ -19,7 +19,7 @@ import numpy as np
 
 from utils.invert_text_mask_color import generate_neon_text_with_border
 from utils.invert_text_mask import generate_invert_mask_text
-from services import generate_speech, filename_from_name
+# from services import generate_speech, filename_from_name
 
 GLUE_PUNCTUATION = {",", ".", "?", "!", ":", ";", "-", "–", "—"}
 
@@ -113,8 +113,8 @@ def generate_photo_dump_mp4(
     final_audio = AudioFileClip(audio_tmp)
     video = video.with_audio(final_audio).with_duration(total_duration)
 
-
-    output_path = f"videos/{filename_from_name(title)}.mp4"
+    # TODO - add title normalization
+    output_path = f"videos/{title}.mp4"
     video.write_videofile(
         output_path,
         fps=20,

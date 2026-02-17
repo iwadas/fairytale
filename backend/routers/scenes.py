@@ -171,7 +171,6 @@ async def generate_scene_video(
 async def add_character_to_scene(
     scene_id: str = Body(..., embed=True),
     character_id: str = Body(..., embed=True),
-    session: AsyncSession = Depends(get_session),
 ):
   
     return

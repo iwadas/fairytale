@@ -77,12 +77,5 @@ class ConnectionManager:
                     except Exception:
                         self.disconnect(connection)
 
-        for connection in self.active_connections[:]:
-            try:
-                # websocket.send_json automatically dumps the dict to a string
-                await connection.send_json(message)
-            except Exception:
-                self.disconnect(connection)
-
 # Create a single global instance
 socket_manager = ConnectionManager()

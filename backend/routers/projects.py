@@ -1,28 +1,16 @@
-import json
-from fastapi import APIRouter, HTTPException, Body, Depends
+from fastapi import APIRouter, HTTPException, Body
 from pydantic import BaseModel
 from AI.tts import TTS
 from AI.llm import LLM
 from script.generate_scenes import generate_scenes, split_script
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.future import select
-from sqlalchemy import update, delete, desc, inspect
-from sqlalchemy.orm import selectinload
 
 import uuid
-from sqlalchemy.sql import func
-from datetime import datetime
 from copy import deepcopy
 
 import os
-from typing import List, Dict, Optional, Tuple, Set, Any
-from db import get_session, Project, Scene, Voiceover, Place, Character, ImagesPackage, PhotoDumpImage
-from schemas import ProjectBasicOutput, ProjectOutput
-from .translations import get_translated_voiceovers
-from moviepy import VideoFileClip, concatenate_videoclips, AudioFileClip, CompositeAudioClip
+from typing import List, Optional
 from generate import generate_mp4
 from generate_photo_dump import generate_photo_dump_mp4
-from services import generate_speech, filename_from_name
 from database.crud import create_scene_db, create_voiceover_db, get_projects_db, get_project_db, remove_project_db, update_voiceover_db, update_scene_db, update_pd_project_db, create_project_db, copy_project_db
 
 from script.generate_script import generate_script
@@ -59,7 +47,7 @@ class ScriptIn(BaseModel):
     reference_stories: Optional[str]
 
 @router.post("/generate-script")
-async def script_generation(request: ScriptIn, session: AsyncSession = Depends(get_session)):
+async def script_generation(request: ScriptIn):
     # word_count = estimated word count approximating to 180 words per minute.
     word_count = request.duration * 180 / 60
 
@@ -127,7 +115,6 @@ async def script_generation(request: ScriptIn, session: AsyncSession = Depends(g
         }
     
     except Exception as e:
-        await session.rollback()
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -333,7 +320,6 @@ async def download_photo_dump_project(
 @router.post("/add-translations/{project_id}")
 async def add_translations(
     project_id: str,
-    session: AsyncSession = Depends(get_session)
 ):
     return
     result = await session.execute(

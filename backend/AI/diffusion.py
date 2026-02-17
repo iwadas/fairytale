@@ -5,7 +5,6 @@ import os
 from pathlib import Path
 import base64
 
-from click import prompt
 import aiohttp
 from fastapi.concurrency import run_in_threadpool
 import aiofiles
@@ -13,9 +12,7 @@ import aiofiles
 from fastapi import HTTPException
 from dotenv import load_dotenv
 
-
 from runware import Runware, IVideoInference, IFrameImage, IBytedanceProviderSettings
-
 
 class Diffusion:
     def __init__(

@@ -169,6 +169,9 @@ async def update_voiceover_db(id: str, session=None, **kwargs):
     voiceover = result.scalars().first()
     if voiceover:
         for key, value in kwargs.items():
+            if(key == "timestamps" and isinstance(value, list)):
+                value = json.dumps(value)
+
             setattr(voiceover, key, value)
         session.add(voiceover)
         return serialize_voiceover(voiceover)
@@ -181,6 +184,16 @@ async def get_project_voiceovers_db(project_id: str, session=None):
     result = await session.execute(stmt)
     voiceovers = result.scalars().all()
     return [serialize_voiceover(vo) for vo in voiceovers]
+
+@with_session
+async def get_voiceover_db(id: str, session=None):
+    stmt = select(Voiceover).where(Voiceover.id == id)
+    result = await session.execute(stmt)
+    voiceover = result.scalars().first()
+    if voiceover:
+        return serialize_voiceover(voiceover)
+    else:
+        return None
 
 @with_session
 async def remove_voiceover_db(id: str, session=None):
