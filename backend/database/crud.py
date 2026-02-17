@@ -273,3 +273,46 @@ async def update_scene_db(id: str, session=None, **kwargs):
         return serialize_scene(scene)
     else:
         return None
+    
+@with_session
+async def remove_scene_db(id: str, session=None):
+    stmt = delete(Scene).where(Scene.id == id)
+    await session.execute(stmt)
+    return {"message": "Scene deleted successfully"}
+
+
+# SCENE IMAGES
+@with_session
+async def remove_scene_image_db(id: str, session=None):
+    stmt = delete(SceneImage).where(SceneImage.id == id)
+    await session.execute(stmt)
+    return {"message": "Scene image deleted successfully"}
+
+@with_session
+async def create_or_update_scene_image_db(id: Optional[str] = None, scene_id: Optional[str] = None, src: str = "", prompt: Optional[str] = None, time: Optional[str] = "start", session=None):
+    if not scene_id:
+        raise ValueError("scene_id is required")
+
+    if id is not None:
+        # Update existing scene image
+        stmt = select(SceneImage).where(SceneImage.id == id)
+        result = await session.execute(stmt)
+        scene_image = result.scalars().first()
+        if src:
+            scene_image.src = src
+        if prompt is not None:
+            scene_image.prompt = prompt
+        scene_image.time = time
+        session.add(scene_image)
+    else:
+        # Create new scene image
+        scene_image = SceneImage(
+            id=str(uuid.uuid4()),
+            scene_id=scene_id,
+            src=src,
+            prompt=prompt,
+            time=time
+        )
+        session.add(scene_image)
+
+    return serialize_scene_image(scene_image)

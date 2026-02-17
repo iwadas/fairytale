@@ -1,0 +1,25 @@
+import uuid
+
+from dotenv import load_dotenv
+from fastapi import UploadFile
+import os
+import aiofiles
+from fastapi import HTTPException
+
+async def save_file(file: UploadFile, type: str = "scene"):
+    filename = f"scene_{uuid.uuid4()}"
+    load_dotenv()
+
+    if type == "scene":
+        output_dir = os.getenv("SCENES_DIR", "static/videos/scenes")
+    else:
+        raise ValueError(f"Invalid file type: {type}")
+
+    video_src = os.path.join(output_dir, f"{filename}.mp4")
+    try:
+        async with aiofiles.open(video_src, "wb") as f:
+            f.write(file.file.read())
+        print(f"Saved uploaded file to: {video_src}")
+    except Exception as e:
+        print(f"Error saving uploaded file to {video_src}: {e}")
+        raise HTTPException(status_code=500, detail="Failed to save uploaded file")

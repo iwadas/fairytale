@@ -12,7 +12,7 @@ import re
 from tasks.video_tasks import generate_scene_video_task
 from tasks.text_tasks import generate_text_task
 from AI.diffusion import Diffusion
-
+import uuid
 from database.crud import get_scene_db, update_scene_db
 
 # MoviePy imports
