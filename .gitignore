@@ -25,6 +25,7 @@ backend/utils/__pycache__/
 backend/static/images/*
 backend/static/videos/*
 backend/static/voiceovers/*
+backend/static/voiceovers_old/*
 backend/videos/*
 
 # Backend - Environment variables

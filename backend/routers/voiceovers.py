@@ -1,16 +1,14 @@
-from fastapi import APIRouter, Depends, Body
-from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import APIRouter, Body
 
-from pydantic import BaseModel
 from database.crud import create_voiceover_db, get_project_voiceovers_db, remove_voiceover_db, get_voiceover_db, update_voiceover_db
 
-from db import get_session, Voiceover
 from AI.tts import TTS
 
-router = APIRouter(prefix="/voiceovers", tags=["voiceovers"])
+from websocket import WebSocketTaskManager 
 
-class VoiceoverUpdate(BaseModel):
-    start_time: float
+import uuid
+
+router = APIRouter(prefix="/voiceovers", tags=["voiceovers"])
 
 @router.post("/{project_id}")
 async def create_voiceover(project_id: str):   
@@ -39,57 +37,63 @@ async def delete_voiceover(
     return {"message": "Voiceover deleted successfully"}
 
 
-# NOT USED (maybe used in future for auto-updating project)
-@router.post("/{voiceover_id}")
-async def update_voiceover_start_time(
-    voiceover_id: str,
-    payload: VoiceoverUpdate,
-    session: AsyncSession = Depends(get_session)
-):
-    return
-    voiceover = await session.get(Voiceover, voiceover_id)
-    if not voiceover:
-        return {"error": "Voiceover not found"}
-    voiceover.start_time = payload.start_time
-    session.add(voiceover)
-    await session.commit()
-    await session.refresh(voiceover)
-    return {"message": "Voiceover start time updated", "voiceover_id": voiceover_id, "new_start_time": payload.start_time}
-
-
 @router.post("/generate/{voiceover_id}")
 async def generate_voiceover(
     voiceover_id: str, 
     text: str = Body(..., embed=True),
 ):
-    voiceover = get_voiceover_db(id=voiceover_id)
+    voiceover = await get_voiceover_db(id=voiceover_id)
     if not voiceover:
         raise ValueError("Voiceover not found")
     if not voiceover["text"]:
         raise ValueError("Voiceover text is empty")
     
+    provider = "gemini"
+
     tts_client = TTS(
-        text=text, 
-        voiceover_id=voiceover_id,
-        project_id=voiceover["project_id"],
-        # TODO pass voice settings here
+        provider=provider       
     )
 
+    task = WebSocketTaskManager(connection_type="global", message_type="voiceover_generation")
+
+    await task.send_json(
+        message=f"🎙️ Initializing voiceover generation with '{provider}'...",
+        status="init"
+    )
+
+    print("Generating voiceover with text:", text)
+
     tts_result = await tts_client.generate(
+        progress_callback=task.send_json,
         text=text,
-        language="english",
-        gender="female",
-        voice_model_id="158880",
-        age=35
+        # language="english",
+        # gender="female",
+        # voice_model_id="158880",
+        # age=35,
+    )
+
+    print("TTS result:", tts_result)
+
+    await task.send_json(
+        message=f"📁 Saving generated voiceover...",
+        status="in_progress"
     )
 
     await update_voiceover_db(
-        **tts_result,
+        id=voiceover_id,
+        **tts_result
+    )
+
+    await task.send_json(
+        message=f"✅ Voiceover generation and saving completed.",
+        status="finished"
     )
 
     return {
         "message": "voiceover generated successfully",
         "voiceover_id": voiceover_id,
         "src": tts_result["src"],
+        "duration": tts_result["duration"],
+        "timestamps": tts_result["timestamps"]
     }
    

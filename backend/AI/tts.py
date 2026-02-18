@@ -2,11 +2,19 @@ import uuid
 from dotenv import load_dotenv
 import os
 from pydub import AudioSegment
-from groq import AsyncGroq
 import sys
 import aiofiles
-import aiohttp
 import asyncio
+import mimetypes
+import wave
+
+from typing import Callable, Optional
+
+from groq import AsyncGroq
+from camb.client import AsyncCambAI, save_async_stream_to_file
+from camb.types.stream_tts_output_configuration import StreamTtsOutputConfiguration
+from google import genai
+from google.genai import types
 
 # Standard path setup
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -24,10 +32,15 @@ class TTS:
         self.timestamps = []
         self.src = None
         self.text = None
+
         self.set_api_key()
 
     def set_api_key(self):
-        if self.provider == "camb":
+        if self.provider == "gemini":
+            self.api_key = os.getenv("GENAI_API_KEY")
+            if not self.api_key:
+                raise ValueError("GENAI_API_KEY not found in environment variables.")
+        elif self.provider == "camb":
             self.api_key = os.getenv("CAMB_AI_API_KEY")
             if not self.api_key:
                 raise ValueError("CAMB_AI_API_KEY not found in environment variables.")
@@ -50,7 +63,15 @@ class TTS:
             "english": 1,
             # Add other languages here if needed
         }
-        return language_mapping.get(language.lower(), 1)  
+        return language_mapping.get(language.lower(), 1) 
+    
+    @staticmethod
+    def language_to_code(language: str) -> str:
+        language = language.lower()
+        if language == "english":
+            return "en-us"
+        # Extend this mapping based on Camb.ai documentation
+        return "en-us"  # Default to English if unknown
 
     @staticmethod
     def get_audio_duration(audio_file_path: str) -> float:
@@ -67,6 +88,10 @@ class TTS:
         """
         Perform STT with timestamps using Groq's API.
         """
+
+        print("Starting TTS generation with Camb.ai...")
+
+
         groq_api_key = os.getenv("GROQ_API_KEY")
         if not groq_api_key:
             print("GROQ_API_KEY missing, skipping timestamps.")
@@ -110,14 +135,38 @@ class TTS:
             print(f"Error adding timestamps to audio: {e}")
             self.timestamps = []
 
-    async def generate(self, **kwargs):
+    async def generate(self, progress_callback: Optional[Callable] = None, **kwargs):
         self.text = kwargs.get("text")
+
         if not self.text:
             raise ValueError("Text is required for TTS generation.")
         
-        if self.provider == "camb":
+        if progress_callback:
+            await progress_callback(
+                status="in_progress", 
+                message="⌨️ Generatating voiceover for text: " + (self.text[:50] + "..." if len(self.text) > 50 else self.text)
+            )
+
+        if self.provider == "gemini":
+            success = await self.generate_gemini(**kwargs)
+            if success and self.src:
+                if progress_callback:
+                    await progress_callback(
+                        status="in_progress", 
+                        message="⌨️ Adding timestamps to generated voiceover..."
+                    )
+
+                await self.add_timestamps_to_audio(self.src)
+
+        elif self.provider == "camb":
             success = await self.generate_camb(**kwargs)
             if success and self.src:
+                if progress_callback:
+                    await progress_callback(
+                        status="in_progress", 
+                        message="⌨️ Adding timestamps to generated voiceover..."
+                    )
+
                 await self.add_timestamps_to_audio(self.src)
             else:
                 return None
@@ -132,102 +181,113 @@ class TTS:
             "text_with_pauses": self.text,
         }
 
-    async def generate_camb(self, **kwargs):
+
+    async def generate_gemini(self, **kwargs):
+        model = "gemini-2.5-flash-preview-tts"
+        voice_name = kwargs.get("voice_name", "Algenib")
+
+        voice_style = kwargs.get("voice_style", "Read aloud in a deep, warm and stoic tone, fast paced:")
+        self.text = kwargs.get("text", None)
+
+        output_file = f"{uuid.uuid4()}.wav"
+        output_dir = os.getenv("VOICEOVER_DIR", "voiceovers")
+        os.makedirs(output_dir, exist_ok=True)
+        output_path = os.path.join(output_dir, output_file)
+
+        contents = f"{voice_style} {self.text}"
         
-        language = kwargs.get("language", "english")
-        gender = kwargs.get("gender", "female")
-        voice_model_id = kwargs.get("voice_model_id", "1")
-        age = kwargs.get("age", 35)
+        generate_content_config = types.GenerateContentConfig(
+            temperature=1,
+            response_modalities=["AUDIO"],
+            speech_config=types.SpeechConfig(
+                voice_config=types.VoiceConfig(
+                    prebuilt_voice_config=types.PrebuiltVoiceConfig(
+                        voice_name=voice_name
+                    )
+                )
+            ),
+        )
 
-        tts_payload = {
-            "text": self.text,
-            "voice_id": int(voice_model_id) if str(voice_model_id).isdigit() else 1,
-            "language": self.language_to_int(language),
-            "gender": self.gender_to_int(gender),
-            "age": age
-        }
-
-        headers = {
-            "x-api-key": self.api_key,
-            "Content-Type": "application/json"
-        }
+        client = genai.Client(
+            api_key=self.api_key
+        )
 
         try:
-            async with aiohttp.ClientSession() as session:
-                # 1. Submit Request
-                async with session.post(
-                    "https://api.camb.ai/apis/tts",
-                    json=tts_payload,
-                    headers=headers
-                ) as response:
-                    response.raise_for_status()
-                    task_data = await response.json()
-                
-                task_id = task_data.get("task_id")
-                if not task_id:
-                    print("No task_id received from Camb.ai")
-                    return False
+            response = await asyncio.to_thread(
+                client.models.generate_content,
+                model=model,
+                contents=contents,
+                config=generate_content_config
+            )
+        except Exception as e:
+            print(f"Gemini API Error: {e}")
+            return False
 
-                print(f"Speech task created! Task ID: {task_id}")
+        def save_audio_file(filename, pcm, channels=1, rate=24000, sample_width=2):
+            with wave.open(filename, "wb") as wf:
+                wf.setnchannels(channels)
+                wf.setsampwidth(sample_width)
+                wf.setframerate(rate)
+                wf.writeframes(pcm)
 
-                # 2. Polling
-                run_id = None
-                max_retries = 30
-                attempts = 0
+        if response.candidates and response.candidates[0].content.parts:
+            data = response.candidates[0].content.parts[0].inline_data.data
+            await asyncio.to_thread(save_audio_file, output_path, data)
 
-                while attempts < max_retries:
-                    async with session.get(
-                        f"https://api.camb.ai/apis/tts/{task_id}",
-                        headers=headers
-                    ) as status_response:
-                        if status_response.status != 200:
-                            print(f"Polling error: {status_response.status}")
-                            await asyncio.sleep(2) # Async sleep
-                            attempts += 1
-                            continue
+            self.src = output_path
+            self.duration = await asyncio.to_thread(self.get_audio_duration, output_path)
+            
+            return True
+        
+        return False
 
-                        status_data = await status_response.json()
-                        status = status_data.get("status")
-                        print(f"Status: {status}")
 
-                        if status == "SUCCESS":
-                            run_id = status_data.get("run_id")
-                            break
-                        elif status == "FAILED":
-                            print("Task failed at provider level.")
-                            return False
-                    
-                    await asyncio.sleep(2) # Async sleep
-                    attempts += 1
-                
-                if not run_id:
-                    print("Timed out waiting for TTS generation.")
-                    return False
+    async def generate_camb(self, **kwargs):
+        print("Starting TTS generation with Camb.ai SDK...")
 
-                # 3. Download
-                print(f"Speech ready! Run ID: {run_id}")
-                
-                output_dir = os.getenv("VOICEOVER_DIR", "voiceovers")
-                os.makedirs(output_dir, exist_ok=True)
-                audio_file_path = os.path.join(output_dir, f"{uuid.uuid4()}.wav")
+        # Initialize the Async Client
+        client = AsyncCambAI(api_key=self.api_key)
 
-                # Stream download using aiohttp and write using aiofiles
-                async with session.get(
-                    f"https://api.camb.ai/apis/tts-result/{run_id}",
-                    headers=headers
-                ) as audio_response:
-                    audio_response.raise_for_status()
-                    async with aiofiles.open(audio_file_path, "wb") as audio_file:
-                        async for chunk in audio_response.content.iter_chunked(1024):
-                            await audio_file.write(chunk)
+        # Parse arguments
+        raw_language = kwargs.get("language", "english")
+        language_code = self.language_to_code(raw_language)
+        
+        # Ensure voice_id is an integer
+        voice_model_id = kwargs.get("voice_model_id", 1)
+        try:
+            voice_id = int(voice_model_id)
+        except (ValueError, TypeError):
+            voice_id = 1
+        
+        # Output setup
+        output_dir = os.getenv("VOICEOVER_DIR", "voiceovers")
+        os.makedirs(output_dir, exist_ok=True)
+        filename = f"{uuid.uuid4()}.mp3"
+        audio_file_path = os.path.join(output_dir, filename)
+
+        try:
+            # Call the TTS endpoint (Stream)
+            response = client.text_to_speech.tts(
+                text=self.text,
+                language=language_code,
+                voice_id=voice_id,
+                speech_model="mars-pro", # Use 'mars-pro' if you need higher quality over speed
+                output_configuration=StreamTtsOutputConfiguration(
+                    format="mp3"
+                )
+            )
+
+            # Stream to file using SDK utility
+            await save_async_stream_to_file(response, audio_file_path)
 
             print(f"✨ Generated speech saved as '{audio_file_path}'")
             
             self.src = audio_file_path
+            
             # Calculate duration asynchronously
             self.duration = await asyncio.to_thread(self.get_audio_duration, audio_file_path)
             return True
 
         except Exception as e:
-            print(f"Error generating TTS with camb: {e}")
+            print(f"Error generating TTS with camb SDK: {e}")
             return False

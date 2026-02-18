@@ -16,7 +16,7 @@ from database.crud import create_scene_db, create_voiceover_db, get_projects_db,
 from script.generate_script import generate_script
 
 import re
-from websocket import socket_manager  # Import the global instance
+from websocket import WebSocketTaskManager
 
 router = APIRouter(prefix="/projects", tags=["projects"])
 
@@ -66,24 +66,22 @@ async def script_generation(request: ScriptIn):
             ai_model="grok-4-1-fast-reasoning",
         )
 
-        task_id = str(uuid.uuid4())
         scripts = []
 
-        await socket_manager.broadcast_json({
-            "type": "script_generation",
-            "status": "init",
-            "task_id": task_id,
-            "message": f"🎬 Initializing script generation for {STORY_SAMPLES_COUNT} story samples..."
-        })
+        task = WebSocketTaskManager(connection_type="global", message_type="script_generation")
+
+        await task.send_json(
+            message=f"🎬 Initializing script generation for {STORY_SAMPLES_COUNT} story samples...",
+            status="init",
+        )
 
         for i in range(STORY_SAMPLES_COUNT):
 
-            await socket_manager.broadcast_json({
-                "type": "script_generation",
-                "status": "in_progress",
-                "task_id": task_id,
-                "message": f"✅ Generating story sample {i+1} of {STORY_SAMPLES_COUNT}..."
-            })
+            await task.send_json(
+                message=f"🖊️ Generating story sample {i+1} of {STORY_SAMPLES_COUNT}...",
+                status="in_progress",
+            )
+
 
             script = generate_script(
                 llm_client=llm_client,
@@ -96,19 +94,11 @@ async def script_generation(request: ScriptIn):
             )
             scripts.append(script)
 
-            await socket_manager.broadcast_json({
-                "type": "script_generation",
-                "status": "in_progress",
-                "task_id": task_id,
-                "message": f"✅ Finished generating story sample {i+1} of {STORY_SAMPLES_COUNT}."
-            })
         
-        await socket_manager.broadcast_json({
-            "type": "script_generation",
-            "status": "finished",
-            "task_id": task_id,
-            "message": f"🎉 Finished generating story sample {STORY_SAMPLES_COUNT} of {STORY_SAMPLES_COUNT}."
-        })
+        await task.send_json(
+            message=f"🎉 Finished generating story sample {STORY_SAMPLES_COUNT} of {STORY_SAMPLES_COUNT}.",
+            status="finished"
+        )
 
         return {
             "scripts": scripts
@@ -129,55 +119,46 @@ async def create_project(
     script = project_in.script
     topic = project_in.topic
 
-    task_id = str(uuid.uuid4())
+    task = WebSocketTaskManager(connection_type="global", message_type="create_project")
 
-    await socket_manager.broadcast_json({
-        "type": "create_project",
-        "status": "init",
-        "task_id": task_id,
-        "message": f"🎬 Initializing project creation for topic: {topic}..."
-    })
+    await task.send_json(
+        message=f"🎬 Initializing project creation for topic: {topic}...",
+        status="init"
+    )
+    
 
-    await socket_manager.broadcast_json({
-        "type": "create_project",
-        "status": "in_progress",
-        "task_id": task_id,
-        "message": f"✂️ Splitting script..."
-    })
+    await task.send_json(
+        message=f"✂️ Splitting script...",
+        status="in_progress"
+    )
+
 
     splitted_script = split_script(script)
 
-    await socket_manager.broadcast_json({
-        "type": "create_project",
-        "status": "in_progress",
-        "task_id": task_id,
-        "message": f"🖼️ Adding scenes.."
-    })
+    await task.send_json(
+        message=f"🖼️ Adding scenes..",
+        status="in_progress"
+    )
 
     script_with_scenes = await generate_scenes(
         llm_client=LLM(provider="xai", ai_model="grok-4-1-fast-reasoning"),
         splitted_script=splitted_script,
-        socket_manager=socket_manager,
-        task_id=task_id
     )
 
     # prepare data for project creation
-    await socket_manager.broadcast_json({
-        "type": "create_project",
-        "status": "in_progress",
-        "task_id": task_id,
-        "message": f"💾 Saving project to database..."
-    })
+
+    await task.send_json(
+        message=f"💾 Creating project in database...",
+        status="in_progress"
+    )
 
     project_id = str(uuid.uuid4())
     await create_project_db(id=project_id, name=topic, type="BASIC")
     
-    await socket_manager.broadcast_json({
-        "type": "create_project",
-        "status": "in_progress",
-        "task_id": task_id,
-        "message": f"🔊 Saving voiceovers and scenes..."
-    })
+    await task.send_json(
+        message=f"🔊 Saving voiceovers and scenes...",
+        status="in_progress"
+    )
 
     for script_part in script_with_scenes:
 
@@ -205,12 +186,10 @@ async def create_project(
                 ]
             )
 
-    await socket_manager.broadcast_json({
-        "type": "create_project",
-        "status": "finished",
-        "task_id": task_id,
-        "message": f"🎉 Project created successfully!"
-    })
+    await task.send_json(
+        message=f"🎉 Project created successfully!",
+        status="finished"
+    )
 
     return {
         "message": "Project created successfully",

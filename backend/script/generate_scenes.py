@@ -1,12 +1,10 @@
-from typing import Dict, List, Optional, Literal
+from typing import Dict, List, Callable, Literal, Optional
 from AI.llm import LLM
 from pydantic import BaseModel, Field
 import re
 import json
 import asyncio
 
-from script.generate_script import generate_script
-from websocket import ConnectionManager
 import math
 
 def estimate_duration(text: str) -> float:
@@ -61,8 +59,7 @@ class ScenesResponse(BaseModel):
 async def generate_scenes(
     llm_client: LLM,
     splitted_script: List[Dict[str, any]],
-    socket_manager: ConnectionManager,
-    task_id: str
+    progress_callback: Optional[Callable] = None
 ) -> List[Dict[str, any]]:
 
     # TODO: implement style choosing logic
@@ -145,12 +142,11 @@ async def generate_scenes(
 
     
     for i, script_part in enumerate(splitted_script):
-        await socket_manager.broadcast_json({
-            "type": "create_project",
-            "status": "in_progress",
-            "task_id": task_id,
-            "message": f"🎬 Generating scenes for part {i+1}/{len(splitted_script)}..."
-        })
+        if progress_callback:
+            await progress_callback(
+                stats="in_progress",
+                message=f"🎬 Generating scenes for part {i+1}/{len(splitted_script)}..."
+            )
 
         respone = llm_client.generate(
             messages=[
@@ -197,7 +193,7 @@ async def main():
     await generate_scenes(
         llm_client=LLM(provider="xai", ai_model="grok-4-1-fast-reasoning"),
         splitted_script=splitted_script,
-        socket_manager=ConnectionManager(),
+        progress_callback=None,
         task_id="test_task_123"
     )
 

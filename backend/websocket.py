@@ -1,5 +1,6 @@
 from fastapi import WebSocket
 from typing import List, Dict, Any
+import uuid
 
 class ConnectionManager:
     """
@@ -77,5 +78,33 @@ class ConnectionManager:
                     except Exception:
                         self.disconnect(connection)
 
+class WebSocketTaskManager:
+    """
+    Manages long-running tasks and their associated WebSocket connections.
+    This is a placeholder for future functionality where you might want to track
+    specific tasks and their progress.
+    """
+    def __init__(self, connection_type: str = "global", message_type: str = "generation"):
+        self.connection_type = connection_type
+        self.message_type = message_type
+        self.id = str(uuid.uuid4())
+
+    async def send_json(self, status: str, message: str):
+        """
+        Helper method to send a standardized JSON message about task status.
+        """
+        payload = {
+            "type": self.message_type,
+            "status": status,
+            "task_id": self.id,
+            "message": message
+        }
+        await socket_manager.broadcast_json(type=self.connection_type, message=payload)
+
 # Create a single global instance
 socket_manager = ConnectionManager()
+
+
+
+
+        

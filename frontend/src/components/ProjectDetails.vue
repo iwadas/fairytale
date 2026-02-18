@@ -1204,10 +1204,10 @@ const removeReferenceImage = (referenceImgSrc) => {
 const generateVoiceover = async () => {
   const voiceoverIndex = selectedVoiceoverIndex.value;
   const voiceover = voiceovers.value[selectedVoiceoverIndex.value];
-  const voiceoverResponse = await axios.post(`http://localhost:8000/voiceovers/generate-voiceover/${voiceover.id}`, {
+  const voiceoverResponse = await axios.post(`http://localhost:8000/voiceovers/generate/${voiceover.id}`, {
     text: voiceover.text
   });
-  voiceovers.value[voiceoverIndex].src = voiceoverResponse.data.voiceover_src+"?v="+Date.now();
+  voiceovers.value[voiceoverIndex].src = voiceoverResponse.data.src+"?v="+Date.now();
   voiceovers.value[voiceoverIndex].duration = voiceoverResponse.data.duration
   voiceovers.value[voiceoverIndex].timestamps = voiceoverResponse.data.timestamps
 }

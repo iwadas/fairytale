@@ -76,7 +76,7 @@ def generate_script(
     # normalize script
     # remove doube <br><br> and replace with singe <br>
     # remove \n
-    script = response.script.replace("\n", " ").replace("<br><br>", "<br>").strip()
+    script = response.script.replace("\n", " ").replace("<br><br>", "<br>").replace("  ", " ").strip()
     return script
 
 
