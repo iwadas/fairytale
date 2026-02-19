@@ -16,11 +16,14 @@ async def save_file(file: UploadFile, type: str = "scene"):
         output_dir = os.getenv("SCENE_IMAGE_DIR", "static/images/scenes")
     else:
         raise ValueError(f"Invalid file type: {type}")
+    
+    # if type includes image -> ext = png, else ext = mp4
+    ext = "png" if "image" in type else "mp4"
+    video_src = os.path.join(output_dir, f"{filename}.{ext}")
 
-    video_src = os.path.join(output_dir, f"{filename}.mp4")
     try:
         async with aiofiles.open(video_src, "wb") as f:
-            f.write(file.file.read())
+            await f.write(file.file.read())
         print(f"Saved uploaded file to: {video_src}")
         return video_src
     except Exception as e:

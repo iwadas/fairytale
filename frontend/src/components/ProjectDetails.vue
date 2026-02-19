@@ -1118,6 +1118,7 @@ const generateImage = async () => {
 // MANUAL SCENE LOAD
 const handleSceneImageUpload = async (event) => {
   const img = event.target.files[0];
+  if(!img) return;
   const formData = new FormData();
   formData.append('image', img);
   formData.append('time', ["start", "end"][selectedSceneImageIndex.value]);

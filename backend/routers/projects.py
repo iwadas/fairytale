@@ -145,6 +145,7 @@ async def create_project(
 
     script_with_scenes = await generate_scenes(
         llm_client=LLM(provider="xai", ai_model="grok-4-1-fast-reasoning"),
+        script=script,
         splitted_script=splitted_script,
     )
 

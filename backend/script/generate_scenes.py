@@ -58,22 +58,36 @@ class ScenesResponse(BaseModel):
 
 async def generate_scenes(
     llm_client: LLM,
+    script: str,
     splitted_script: List[Dict[str, any]],
     progress_callback: Optional[Callable] = None
 ) -> List[Dict[str, any]]:
 
     # TODO: implement style choosing logic
+
     style = (
         "**VISUAL STYLE RULES (APPLY THESE TO EVERY SCENE)**\n"
-        "1. **Geometry:** Everything must be described as sharp, faceted, low-poly geometric forms.\n"
-        "2. **Materials:** For every object you describe, you MUST assign one of these specific materials:\n"
-        "   - White Ceramic, Polished Black Obsidian, Matte Chocolate Brown, Brushed Gold, Grass Green, Glass.\n"
+        "1. **Geometry:** Everything must be described as sharp, fractured, and splintered geometric forms.\n"
+        "2. **Materials:** For every object you describe, you MUST assign one of these specific high-impact materials:\n"
+        "   - Polished Black Obsidian, Liquid Chrome/Mercury, Iridescent Oil Slick, Smoked Deep Crimson Glass, Vantablack (pure light-absorbing black), or Matte Bone White.\n"
         "3. **Environment:** Never leave the background empty. Describe a geometric/abstract version of the setting.\n\n"
-        ", hyper-realistic 3D render, faceted low-poly sculpture, "
-        "flawless ultra-clean surfaces, dramatic moody studio lighting, "
-        "warm orange rim lights, deep crisp shadows, macro photography depth of field, "
-        "Octane render, raytracing, heavy caustics, 8k"
+        ", hyper-realistic 3D render, fractured dark-aesthetic sculpture, "
+        "flawless ultra-reflective surfaces, stark chiaroscuro studio lighting, "
+        "piercing crimson and cold cyan rim lights, engulfing pitch-black shadows, "
+        "macro photography depth of field, Octane render, raytracing, hypnotic heavy caustics, psychological thriller mood, 8k"
     )
+
+    # style = (
+    #     "**VISUAL STYLE RULES (APPLY THESE TO EVERY SCENE)**\n"
+    #     "1. **Geometry:** Everything must be described as sharp, faceted, low-poly geometric forms.\n"
+    #     "2. **Materials:** For every object you describe, you MUST assign one of these specific materials:\n"
+    #     "   - White Ceramic, Polished Black Obsidian, Matte Chocolate Brown, Brushed Gold, Grass Green, Glass.\n"
+    #     "3. **Environment:** Never leave the background empty. Describe a geometric/abstract version of the setting.\n\n"
+    #     ", hyper-realistic 3D render, faceted low-poly sculpture, "
+    #     "flawless ultra-clean surfaces, dramatic moody studio lighting, "
+    #     "warm orange rim lights, deep crisp shadows, macro photography depth of field, "
+    #     "Octane render, raytracing, heavy caustics, 8k"
+    # )
 
     script_parts_with_scenes = []
 
@@ -83,7 +97,10 @@ async def generate_scenes(
             "You are an expert AI Video Director and Cinematographer. "
             "Your expertise in making engaging visualizations for short-form videos - making it easy for viewers to understand and be amazed by the content. "
             "You are an expert Director for Psychology and Philosophy video essays. "
-            "Translate the script into a mix of **Literal** and **Metaphorical** imagery.\n"
+            "### FULL SCRIPT OVERVIEW (For Context Only):\n"
+            f"\"{script}\"\n\n"
+            "Use this overview to ensure the visual metaphors you choose align with the overall narrative arc "
+            "Translate the script into a mix of **Literal**, **Metaphorical** and **Methaphorical Relism** imagery.\n"
             "- **Literal:** Use when the script describes a specific, grounded action or biological process (e.g., 'The neurons fire').\n"
             "- **Metaphorical/Abstract:** Use when discussing feelings, concepts, or theories (e.g., 'The mind is a prison').\n"
             "- **Balance:** Do not make the video 100\\% abstract (boring) or 100\\% literal (cheesy). Mix them dynamically."
@@ -123,9 +140,9 @@ async def generate_scenes(
                 f"{style}\n"
 
                 "### INSTRUCTIONS\n"
-                "1. Generate visual scenes for this text.\n"
-                "2. **Continuity:** Ensure the first scene transitions smoothly from the 'Previous Scene'.\n"
-                "3. **Format:** JSON List of objects: {image_prompt, video_prompt}.\n"
+                f"**Generate visual scenes for this text \"\"{splitted_script[scene_index]['text']}\"\"**.\n"
+                "**2. Format:**\n"
+                "JSON List of objects: {image_prompt, video_prompt}.\n"
                 "**4. image_prompt:**\n"
                 "- Describe the *content* and *composition* clearly.\n"
                 "- Focus on what is physically visible (subjects, setting, perspective).\n"
@@ -136,7 +153,9 @@ async def generate_scenes(
                 "- **Camera:** Use cool camera techniques (e.g., Orbit, Fly to birds view, Shaky camera, Drone camera flying through scene, Pan, Tilt, Zoom, Dolly, Static).\n"
                 "- **Action:** Describe subtle movements (wind, blinking, walking). If no action, use 'Subtle natural movement' and **suitable** for scene context.\n"
                 "- **Feasibility:** Ensure movements are realistic for AI video models.\n\n"
-                "**Avoid repetition:** Each scene should be unique - do not reuse the same central object / same composition / same methaphor. Pivot to a new metaphor for every line.\n"
+                "**6. Avoid repetition:**\n"
+                "- Create a dynamic mix of shot distances: close-ups for intimacy & detail, medium shots for character + context, wide/long/establishing shots for scale, environment and 'breathing room'.\n"
+                "- Each scene should be unique - do not reuse the same central object / same composition / same methaphor.\n"
             )
         }
 
@@ -144,7 +163,7 @@ async def generate_scenes(
     for i, script_part in enumerate(splitted_script):
         if progress_callback:
             await progress_callback(
-                stats="in_progress",
+                status="in_progress",
                 message=f"🎬 Generating scenes for part {i+1}/{len(splitted_script)}..."
             )
 
@@ -194,7 +213,6 @@ async def main():
         llm_client=LLM(provider="xai", ai_model="grok-4-1-fast-reasoning"),
         splitted_script=splitted_script,
         progress_callback=None,
-        task_id="test_task_123"
     )
 
 if __name__ == "__main__":

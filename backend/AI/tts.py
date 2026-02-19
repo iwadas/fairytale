@@ -186,7 +186,7 @@ class TTS:
         model = "gemini-2.5-flash-preview-tts"
         voice_name = kwargs.get("voice_name", "Algenib")
 
-        voice_style = kwargs.get("voice_style", "Read aloud in a deep, warm and stoic tone, fast paced:")
+        voice_style = kwargs.get("voice_style", "Read aloud in a deep, fast-paced tone:")
         self.text = kwargs.get("text", None)
 
         output_file = f"{uuid.uuid4()}.wav"

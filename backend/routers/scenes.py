@@ -90,12 +90,13 @@ async def upload_scene_image(
         raise HTTPException(status_code=404, detail="Scene not found")
     
     src = await save_file(image, type="scene_image")
+    
     updated_scene_image = await create_or_update_scene_image_db(
+        id=scene_image_id,
         scene_id=scene_id,
         src=src,
         prompt=scene_image_prompt,
         time=time,
-        scene_image_id=scene_image_id
     )
 
     return {"message": "Scene image uploaded successfully", "scene_image": updated_scene_image}
