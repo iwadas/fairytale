@@ -1,93 +1,142 @@
 from typing import Optional
 from AI.llm import LLM
 from pydantic import BaseModel
+import asyncio
 
-def generate_script(
-    llm_client: LLM,
-    topic: str = None,
-    description: Optional[str] = None,
-    story_data: Optional[str] = None,
-    reference_stories: Optional[str] = None,
-    persistant_characters: bool = False,
-    word_limit: int = 180,
-) -> str:
+class ScriptGenerator:
+    def __init__(   self, 
+                    llm_client: LLM,
+                    topic: str = None,
+                    description: Optional[str] = None,
+                    story_data: Optional[str] = None, 
+                    reference_stories: Optional[str] = None,
+                    persistant_characters: bool = False,
+                    word_limit: int = 180,
+                ):
+        self.llm_client = llm_client
+        self.topic = topic
+        self.description = description
+        self.story_data = story_data
+        self.reference_stories = reference_stories
+        self.persistant_characters = persistant_characters
+        self.word_limit = word_limit
 
-    # ADD CONTEXT HISTORY
-    # story data - facts, information, research
-    # reference stories - example stories about the topic
-    if story_data and reference_stories:
-        context_instruction = (
-            f"Base the story entirely on reference stories and gathered data:\n"
-            f"Data:\n{story_data}\n\n"
-            f"Example reference stories about the topic: \n{reference_stories}\n\n"
-        )
-    elif story_data:
-        context_instruction = (
-            f"Base the story entirely on the following gathered data about the topic:\n{story_data}\n\n"
-        )
-    elif reference_stories:
-        context_instruction = (
-            f"Base the story entirely on the following reference stories about the topic: \n{reference_stories}\n\n"
-        )
+    async def generate(self) -> str:
 
-    role_message = {
-        "role": "system",
-        "content": (
-            "You are an expert scriptwriter for short-form video (TikTok/Reels)."
-        )
-    }
+        raw_script = await asyncio.to_thread(self.generate_script_raw)
 
-    user_message = {
-        "role": "user",
-        "content": (
-            f"Write a {int(word_limit) - 10}-{int(word_limit) + 10} word script about: { topic }\n\n"
-            f"{f'The video should be about: {description}\n\n' if description else ''}"
-            f"{context_instruction if (story_data or reference_stories) else ''}"
-            "**Strictly follow this \"4-Step Structural Formula\":**\n\n"
-            "**Step 1: The \"Pattern Interrupt\" Hook (0-5 seconds)**\n"
-            "- Start with a direct, absolute statement that challenges a common belief. \n"
-            "- Use the word \"You\" immediately.\n"
-            "- Do NOT say \"Hello\" or \"Today we will talk about.\" Just start.\n\n"
-            "**Step 2: The \"Mechanism\" (5-20 seconds)**\n"
-            "- Explain *how* the phenomenon works using scientific or psychological terminology.\n"
-            "- Keep sentences short. fast. Punchy.\n\n"
-            "**Step 3: The \"Evolutionary/Deep\" Reason (20-55 seconds)**\n"
-            "- Pivot to *why* this happens. \n"
-            "- Connect the fact to: Ancient survival, childhood development, deep subconscious protection methods or other psychological mechanisms.\n"
-            "- Frame it as: \"Your brain isn't broken; it's protecting you.\"\n"
-            "- This section must be empathetic and moody.\n"
-            "**Step 4: Split the script using <br> every 2-4 sentences into connected segments.**\n\n"
-            "**Tone Guidelines:**\n"
-            "- **Voice:** Authoritative, Dark, Moody, Intellectual.\n"
-            "- **Rhythm:** Use short sentences. Pause frequently.\n"
-            "- **Vocabulary:** Simple words mixed with one or two complex scientific terms for credibility.\n\n"
-            "**Write the script now:**"
-        )
-    }
+        refined_script = await asyncio.to_thread(self.refine_script, raw_script)
+
+        formatted_script = await asyncio.to_thread(self.format_script, refined_script)
+
+        return formatted_script
     
-    class ScriptResponse(BaseModel):
-        script: str
+    def generate_script_raw(self) -> str:
+        if self.story_data and self.reference_stories:
+            context_instruction = (
+                f"Base the story entirely on reference stories and gathered data:\n"
+                f"Data:\n{self.story_data}\n\n"
+                f"Example reference stories about the topic: \n{self.reference_stories}\n\n"
+            )
+        elif self.story_data:
+            context_instruction = (
+                f"Base the story entirely on the following gathered data about the topic:\n{self.story_data}\n\n"
+            )
+        elif self.reference_stories:
+            context_instruction = (
+                f"Base the story entirely on the following reference stories about the topic: \n{self.reference_stories}\n\n"
+            )
 
-    response = llm_client.generate(
-        messages=[role_message, user_message],
-        response_format=ScriptResponse
-    )
+        role_message = {
+            "role": "system",
+            "content": (
+                "You are an expert scriptwriter for short-form video (TikTok/Reels)."
+            )
+        }
+
+        user_message = {
+            "role": "user",
+            "content": (
+                f"Write a {self.word_limit} word raw script about: {self.topic}\n"
+          
+                f"{f'Context: {self.description}\n\n' if self.description else ''}"
+                f"{context_instruction if (self.story_data or self.reference_stories) else ''}"
+
+                "**Structure:**\n"
+                "1. Hook (0-3s): Direct challenge. No 'Hello'.\n"
+                "2. Mechanism: How it works (Fast facts).\n"
+                "3. The Twist/Deep Reason: Why it matters.\n\n"
+                "**Style:**\n"
+                "- Fast-paced.\n"
+                "- No fluff.\n"
+                "- Use simple, sharp words.\n"
+                "- Do NOT format the text yet. Just write the paragraphs."
+            )
+        }
+        
+        class ScriptResponse(BaseModel):
+            script: str
+
+        response = self.llm_client.generate(
+            messages=[role_message, user_message],
+            response_format=ScriptResponse
+        )
+
+        return response.script.strip()
     
-    # normalize script
-    # remove doube <br><br> and replace with singe <br>
-    # remove \n
-    script = response.script.replace("\n", " ").replace("<br><br>", "<br>").replace("  ", " ").strip()
-    return script
+    def refine_script(self, raw_script: str) -> str:
+        
+        role_message = {
+            "role": "system",
+            "content": "You are a Retention Editor. Your job is to delete boring parts and spike dopamine."
+        }
+        
+        user_message = {
+            "role": "user",
+            "content": (
+                f"Here is a draft script:\n\"\"\"{raw_script}\"\"\"\n\n"
+                "**Critically analyze this draft and rewrite it to increase retention:**\n"
+                "1. **Use sensory language:** Make the viewer see, feel, and hear the content. Instead of 'The brain releases dopamine', say 'The brain's reward center floods with dopamine, giving you that rush of pleasure'.\n"
+                "2. **Compression:** Cut the word count by around 10% without losing information.\n"
+                "3. **Rhythm:** Vary sentence length. One long sentence followed by a two-word sentence.\n"
+                "\n\nReturn ONLY the improved script."
+            )
+        }
+        
+        class RefinedScriptResponse(BaseModel):
+            refined_script: str
 
+        response = self.llm_client.generate(
+            messages=[role_message, user_message],
+            response_format=RefinedScriptResponse
+        )
 
+        return response.refined_script.strip()
     
-# TESTING
-if __name__ == "__main__":
-    topic = "The history of the Eiffel Tower"
-    story_data = "The Eiffel Tower was constructed from 1887 to 1889 as the entrance arch for the 1889 World's Fair. It was designed by the French engineer Gustave Eiffel and has become a global cultural icon of France and one of the most recognizable structures in the world."
-    reference_stories = "1. The Eiffel Tower was initially criticized by some of France's leading artists and intellectuals for its design, but it has since become one of the most visited monuments in the world.\n2. The tower is 324 meters tall andwas the tallest man-made structure in the world until the completion of the Chrysler Building in New York in 1930.\n3. The Eiffel Tower is made of iron and weighs approximately 10,000 tons."
-    generated_story = generate_script(topic=topic, story_data=story_data, reference_stories=reference_stories)
-    print("Generated Story:\n", generated_story)
+    def format_script(self, refined_script: str) -> str:
+        
+        role_message = {
+            "role": "system",
+            "content": "You are a TTS (Text-to-Speech) formatting engine."
+        }
+        
+        user_message = {
+            "role": "user",
+            "content": (
+                f"Format the following script for audio generation:\n\"\"\"{refined_script}\"\"\"\n\n"
+                "**Rules:**\n"
+                "1. Insert <br> tags, for every part that introduces new idea (every 2-4 sentences).\n"
+                "2. Return raw text only."
+                "3. Do NOT add <br> inside a fast-paced sentence.\n"
+            )
+        }
+        
+        class FormattedScriptResponse(BaseModel):
+            formatted_script: str
 
+        response = self.llm_client.generate(
+            messages=[role_message, user_message],
+            response_format=FormattedScriptResponse
+        )
 
-    
+        return response.formatted_script.strip().replace("\n", " ").replace("<br><br>", "<br>").replace("  ", " ")

@@ -13,7 +13,7 @@ from generate import generate_mp4
 from generate_photo_dump import generate_photo_dump_mp4
 from database.crud import create_scene_db, create_voiceover_db, get_projects_db, get_project_db, remove_project_db, update_voiceover_db, update_scene_db, update_pd_project_db, create_project_db, copy_project_db
 
-from script.generate_script import generate_script
+from script.generate_script import ScriptGenerator
 
 import re
 from websocket import WebSocketTaskManager
@@ -83,7 +83,7 @@ async def script_generation(request: ScriptIn):
             )
 
 
-            script = generate_script(
+            script_generator = ScriptGenerator(
                 llm_client=llm_client,
                 topic=request.topic,
                 description=request.description,
@@ -92,6 +92,9 @@ async def script_generation(request: ScriptIn):
                 persistant_characters=request.persistant_characters,
                 word_limit=word_count
             )
+
+            script = await script_generator.generate()
+
             scripts.append(script)
 
         
