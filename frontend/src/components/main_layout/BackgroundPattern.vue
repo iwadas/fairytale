@@ -1,0 +1,6 @@
+<template>
+    <div class="bg-gradient-to-br from-[#1a1a1a] to-[#2a2a2a] min-h-screenflex">
+        <svg xmlns="http://www.w3.org/2000/svg" version="1.1" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:svgjs="http://svgjs.dev/svgjs" viewBox="0 0 800 800"><defs><filter id="bbblurry-filter" x="-100%" y="-100%" width="400%" height="400%" filterUnits="objectBoundingBox" primitiveUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+	<feGaussianBlur stdDeviation="113" x="0%" y="0%" width="100%" height="100%" in="SourceGraphic" edgeMode="none" result="blur"></feGaussianBlur></filter></defs><g filter="url(#bbblurry-filter)"><ellipse rx="150" ry="150" cx="605.4882832321468" cy="252.31739883173515" fill="hsla(0, 0%, 42%, 1.00)"></ellipse><ellipse rx="150" ry="150" cx="151.2060089111328" cy="226.54620361328125" fill="hsla(0, 0%, 40%, 1.00)"></ellipse><ellipse rx="150" ry="150" cx="404.5034484863281" cy="577.9515991210938" fill="hsla(0, 67%, 33%, 1.00)"></ellipse></g></svg>
+    </div>
+</template>
