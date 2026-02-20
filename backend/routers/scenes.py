@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Body, UploadFile, File, Depends, Form, BackgroundTasks
+from fastapi import APIRouter, HTTPException, Body, UploadFile, File, Form, BackgroundTasks
 
 from typing import Optional, List
 import os
@@ -6,12 +6,8 @@ from AI.diffusion import Diffusion
 import uuid
 from database.crud import get_scene_db, update_scene_db, create_scene_db, remove_scene_db, remove_scene_image_db, create_or_update_scene_image_db
 
-# MoviePy imports
 from pydantic import BaseModel
 from services.save_file import save_file
-
-from db import get_session, Scene, Character, SceneImage
-from dotenv import load_dotenv
 
 from websocket import socket_manager
 
@@ -64,7 +60,7 @@ async def upload_scene_video(
     if not scene:
         raise HTTPException(status_code=404, detail="Scene not found")
     
-    video_src = await save_file(video, type="scene")
+    video_src = await save_file(video, type="scene_video")
 
     await update_scene_db(scene_id, video_src=video_src)
     return {"message": "Scene video uploaded successfully", "scene_id": scene_id, "video_url": video_src}
@@ -90,7 +86,7 @@ async def upload_scene_image(
         raise HTTPException(status_code=404, detail="Scene not found")
     
     src = await save_file(image, type="scene_image")
-    
+
     updated_scene_image = await create_or_update_scene_image_db(
         id=scene_image_id,
         scene_id=scene_id,
@@ -114,8 +110,10 @@ async def process_video_task(scene_id: str, prompt: str, duration: float, frames
         diffusion = Diffusion(
             provider="runware", 
             fps=24, 
-            resolution=(1080, 1080), 
-            diffusion_model="bytedance:1@1"
+            # 480p horizontal
+            resolution=(1280, 720),
+            steps=40, 
+            diffusion_model="bytedance:seedance@1.5-pro"
         )
 
         await socket_manager.broadcast_json(message={"status": "in_progress", "type": "scene_generation", "message": "🎞️ Generating video...", "task_id": task_id})
@@ -143,11 +141,13 @@ async def generate_scene_video(
     prompt: str = Body(..., embed=True),
     duration: int = Body(3, embed=True),
 ):
-    
+    print(scene_id)
     scene = await get_scene_db(scene_id)
 
     if not scene:
         raise HTTPException(404, "Scene not found")
+    
+    print("scene[images]", scene["images"])
     
     frames = [
         {"src": img["src"], "time": img["time"]}

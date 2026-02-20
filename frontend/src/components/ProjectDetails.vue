@@ -982,7 +982,7 @@ const generateVideo = async () => {
   try {
     // Reset the form
     generatingVideo.value.push(scene.id);
-    const response = await axios.post(`http://localhost:8000/scenes/generate-scene-video/${scene.id}`, {
+    const response = await axios.post(`http://localhost:8000/scenes/generate-video/${scene.id}`, {
       prompt: scene.video_prompt,
       duration: scene.duration,
     });
@@ -990,26 +990,26 @@ const generateVideo = async () => {
     console.log("the task started")
     console.log(response.data);
 
-    let task_id = response.data.task_id;
+    // let task_id = response.data.task_id;
 
-    let task_response 
+    // let task_response 
     // start polling for task status
-    while(true || false || true){
-      task_response = await axios.get(`http://localhost:8000/tasks/${task_id}`);
-      console.log("polling task status")
-      console.log(task_response.data);
+    // while(true || false || true){
+    //   task_response = await axios.get(`http://localhost:8000/tasks/${task_id}`);
+    //   console.log("polling task status")
+    //   console.log(task_response.data);
       
-      if(task_response.data.status == 'success'){
-        const newSrc = task_response.data.result.video_url;
-        scenes.value[sceneIndex].video_src = newSrc + "?v=" + Date.now(); // Assuming the backend returns the video URL in 'video_ur
-        break;
-      }
-      else if(task_response.data.status == 'failed'){
-        throw new Error('Video generation task failed');
-      }
-      // wait for a few seconds before polling again
-      await new Promise(resolve => setTimeout(resolve, 3000));
-    }
+    //   if(task_response.data.status == 'success'){
+    //     const newSrc = task_response.data.result.video_url;
+    //     scenes.value[sceneIndex].video_src = newSrc + "?v=" + Date.now(); // Assuming the backend returns the video URL in 'video_ur
+    //     break;
+    //   }
+    //   else if(task_response.data.status == 'failed'){
+    //     throw new Error('Video generation task failed');
+    //   }
+    //   // wait for a few seconds before polling again
+    //   await new Promise(resolve => setTimeout(resolve, 3000));
+    // }
   } catch (error) {
     console.error('Error generating scene video:', error.response?.data || error.message);
   } finally {

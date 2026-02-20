@@ -231,7 +231,13 @@ async def create_voiceover_db(
 # SCENES
 @with_session
 async def get_scene_db(id: str, session=None):
-    stmt = select(Scene).where(Scene.id == id)
+    stmt = (
+        select(Scene)
+        .where(Scene.id == id)
+        .options(
+            selectinload(Scene.images)
+        )
+    )
     result = await session.execute(stmt)
     scene = result.scalars().first()
     if scene:
