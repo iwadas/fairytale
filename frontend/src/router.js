@@ -1,6 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import CharactersList from './components/CharactersList.vue';
-import CreateProject from './components/CreateProject.vue';
+import CreateProject from './pages/CreateProject.vue';
 import SelectProject from './pages/ProjectsList.vue';
 import ProjectDetails from './components/ProjectDetails.vue';
 import CreatePhotoDump from './components/CreatePhotoDump.vue';

@@ -1,8 +1,8 @@
 from typing import Any, Dict, List, Optional
 import uuid
 from requests import session
-from sqlalchemy import select, delete
-from .models import Project, SceneImage, Voiceover, Place, Scene, Character, ImagesPackage
+from sqlalchemy import select, delete, func
+from .models import PhotoDumpImage, Project, SceneImage, Voiceover, Place, Scene, Character, ImagesPackage, project_images_package_association
 from .decorators import with_session # Import your new tool
 from sqlalchemy.orm import selectinload
 from .serialization import serialize_project, serialize_scene_image, serialize_voiceover, serialize_scene
@@ -13,7 +13,7 @@ import json
 async def get_projects_db(with_thumbnails=False, session=None):
     if with_thumbnails:
         # 1. Create a subquery that fetches exactly ONE valid image src per project
-        thumbnail_subq = (
+        scene_image_subq = (
             select(SceneImage.src)
             .join(Scene, Scene.id == SceneImage.scene_id)
             # Link the subquery to the outer Project query
@@ -28,9 +28,29 @@ async def get_projects_db(with_thumbnails=False, session=None):
             .scalar_subquery()
         )
 
+        photo_dump_subq = (
+            select(PhotoDumpImage.src)
+            .join(
+                project_images_package_association,
+                project_images_package_association.c.images_package_id == PhotoDumpImage.package_id
+            )
+            # Link the subquery to the outer Project query
+            .where(project_images_package_association.c.project_id == Project.id)
+            .where(PhotoDumpImage.src.is_not(None))
+            .where(PhotoDumpImage.src != "")
+            # Order randomly to pick a random image from the package
+            .order_by(func.random()) 
+            .limit(1)
+            .correlate(Project)
+            .scalar_subquery()
+        )
+
         # 2. Select the Project AND our new subquery as a labeled column
         stmt = (
-            select(Project, thumbnail_subq.label('thumbnail'))
+            select(
+                Project, 
+                func.coalesce(scene_image_subq, photo_dump_subq).label('thumbnail')
+            )
             .order_by(Project.created_at.desc())
         )
         

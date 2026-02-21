@@ -51,15 +51,25 @@ body {
 
 :root {
   --dark: #1a1a1a;
+  --light-gray: rgba(255, 255, 255, 0.3);
   --light: rgb(230,230,230);
   --light-hover: rgb(255,255,255);
   --red: #ee4545;
+  --primary: #ee4545;
   --transparent-red: rgba(238, 69, 69, 0.2);
 }
 
 .text-light {
   color: var(--light);
 }
+
+.text-primary {
+  color: var(--primary);
+}
+
+.bg-primary {
+  background-color: var(--primary);
+} 
 
 .text-red {
   color: var(--red);

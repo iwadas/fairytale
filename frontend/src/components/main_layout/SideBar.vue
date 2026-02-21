@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen p-10 flex">
+  <div class="min-h-screen p-10 pr-0 flex">
     
  
 
@@ -21,12 +21,12 @@
         <button 
           @click="tab.sub_paths ? toggleTab(index) : goTo(tab.path)"
           class="flex flex-col items-center justify-center gap-2 cursor-pointer group transition-all duration-300 w-full"
-          :class="selectedTabIndex === index ? 'text-[#ff5a5a]' : 'text-light-hover'"
+          :class="selectedTabIndex === index ? 'text-primary' : 'text-light-hover'"
         >
           <div class="relative flex items-center justify-center">
             <div 
               v-if="selectedTabIndex === index" 
-              class="absolute inset-0 bg-red-500 blur-md opacity-50 rounded-full scale-150"
+              class="absolute inset-0 bg-primary blur-md opacity-50 rounded-full scale-150"
             ></div>
             <font-awesome-icon :icon="tab.icon" class="text-2xl relative z-10"/>
           </div>
