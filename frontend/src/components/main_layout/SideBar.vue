@@ -1,10 +1,17 @@
 <template>
   <div class="min-h-screen p-10 flex">
     
+ 
+
     <nav 
       v-if="showTab" 
-      class="w-[100px] container-background rounded-[10px] py-10 flex flex-col items-center gap-8 shadow-2xl transition-all duration-300"
+      class="w-[100px] container-background rounded-[10px] py-4 flex flex-col items-center gap-8 shadow-2xl transition-all duration-300"
     >
+
+      <div class="flex justify-center -my-4">
+        <img :src="logo" alt="Logo">
+      </div>
+
       <div 
         v-for="(tab, index) in tabs" 
         :key="index"
@@ -14,7 +21,7 @@
         <button 
           @click="tab.sub_paths ? toggleTab(index) : goTo(tab.path)"
           class="flex flex-col items-center justify-center gap-2 cursor-pointer group transition-all duration-300 w-full"
-          :class="selectedTabIndex === index ? 'text-[#ff5a5a]' : 'text-light hover:text-gray-200'"
+          :class="selectedTabIndex === index ? 'text-[#ff5a5a]' : 'text-light-hover'"
         >
           <div class="relative flex items-center justify-center">
             <div 
@@ -37,14 +44,14 @@
             v-for="(sub, subIndex) in tab.sub_paths" 
             :key="subIndex"
             @click="goTo(sub.path)"
-            class="flex flex-col items-center justify-center gap-1 cursor-pointer text-gray-500 hover:text-gray-300 transition-colors"
+            class="flex flex-col items-center justify-center gap-1 cursor-pointer text-light hover:text-light-hover transition-colors"
           >
             <font-awesome-icon :icon="sub.icon" class="text-[1.1rem]"/>
             <span class="text-[8px] font-medium text-center leading-tight px-1">
               {{ sub.name }}
             </span>
           </button>
-          <div class="w-1/2 h-[1px] bg-gray-700 rounded-full mb-1"></div>
+          <div class="w-1/2 h-[1px] bg-[var(--light)] rounded-full mb-1"></div>
 
         </div>
 
@@ -57,6 +64,7 @@
 <script setup>
 import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router'; 
+import logo from '@/assets/logo.png';
 
 const router = useRouter();
 

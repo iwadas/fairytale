@@ -28,7 +28,7 @@ def get_save_name(name):
 
 @router.get("")
 async def get_projects():
-    projects = await get_projects_db()
+    projects = await get_projects_db(with_thumbnails=True)
     return projects
 
 @router.get("/{project_id}")

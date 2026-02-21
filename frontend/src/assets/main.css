@@ -22,15 +22,56 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.3);
 }
 
+.container-background-hoverable{
+  background: rgba(96,96,96, 0.5);
+  border-radius: 16px;
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.container-background-hoverable:hover {
+  border: 1px solid var(--red);
+  box-shadow: 0 4px 30px var(--transparent-red);
+}
+
+
+@layer components {
+  /* Secondary actions (Copy, Translate, Download) */
+  .btn-secondary {
+    @apply px-3 py-1.5 text-[10px] font-medium rounded-[8px] transition-all duration-300 text-light-hover bg-white/5 hover:bg-white/10 hover:text-white cursor-pointer border border-transparent;
+  }
+  
+  /* Destructive action (Delete) */
+  .btn-danger {
+    @apply px-3 py-1.5 text-[10px] font-medium rounded-[8px] transition-all duration-300 text-light-hover bg-white/5 hover:bg-red-500/20 hover:text-red-500 cursor-pointer border border-transparent;
+  }
+}
 
 :root {
   --dark: #1a1a1a;
   --light: rgb(230,230,230);
+  --light-hover: rgb(255,255,255);
+  --red: #ee4545;
+  --transparent-red: rgba(238, 69, 69, 0.2);
+}
+
+.text-light {
+  color: var(--light);
+}
+
+.text-red {
+  color: var(--red);
 }
 
 /* utils */
-.text-light {
+.text-light-hover {
   color: var(--light);
+}
+
+.text-light-hover:hover {
+  color: var(--light-hover);
 }
 
 .bg-dark {

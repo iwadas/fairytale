@@ -3,14 +3,14 @@
   <background-pattern
     class="fixed inset-0 z-[-1]"
   />
-  <div class="flex h-screen p-4"  
+  <div class="flex h-screen"  
   >
     <!-- Sidebar -->
     <side-bar
+      class="p-6"
       :tabs=tabs
     />
 
- 
 
     <!-- Main Content -->
     <div class="flex-1 p-6 overflow-auto">

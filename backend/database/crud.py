@@ -10,10 +10,46 @@ import json
 
 # PROJECTS
 @with_session
-async def get_projects_db(session=None):
-    stmt = select(Project).order_by(Project.created_at.desc())
-    result = await session.execute(stmt)
-    return result.scalars().all()
+async def get_projects_db(with_thumbnails=False, session=None):
+    if with_thumbnails:
+        # 1. Create a subquery that fetches exactly ONE valid image src per project
+        thumbnail_subq = (
+            select(SceneImage.src)
+            .join(Scene, Scene.id == SceneImage.scene_id)
+            # Link the subquery to the outer Project query
+            .where(Scene.project_id == Project.id)
+            # Ensure it actually has a src, as requested
+            .where(SceneImage.src.is_not(None))
+            .where(SceneImage.src != "")
+            # Order by whatever determines your "first" scene/image (adjust if needed)
+            .order_by(Scene.id.asc(), SceneImage.id.asc()) 
+            .limit(1)
+            .correlate(Project) # Tells SQLAlchemy this relies on the outer Project query
+            .scalar_subquery()
+        )
+
+        # 2. Select the Project AND our new subquery as a labeled column
+        stmt = (
+            select(Project, thumbnail_subq.label('thumbnail'))
+            .order_by(Project.created_at.desc())
+        )
+        
+        result = await session.execute(stmt)
+        
+        # 3. Attach the thumbnail dynamically to the project object for easy access
+        projects = []
+        for project, thumbnail in result.all():
+            # project.thumbnail will be the string 'src' or None
+            project.thumbnail = thumbnail 
+            projects.append(project)
+            
+        return projects
+
+    else:
+        # Standard query without thumbnails
+        stmt = select(Project).order_by(Project.created_at.desc())
+        result = await session.execute(stmt)
+        return result.scalars().all()
 
 @with_session
 async def get_project_db(id: str, serialize: bool=False, session=None):
