@@ -61,7 +61,7 @@
 
     <div class="preview mb-4 h-[660px]">
       <div
-        class="flex gap-10 h-full"
+        class="flex gap-10 h-full justify-center"
       >
         <!-- PREVIEW -->
 
@@ -71,7 +71,7 @@
               v-for="index in 3"
               :key="index"
               :ref="el => setVideoRef(el, index - 1)"
-              class="absolute object-cover bg-dark"
+              class="absolute object-cover w-full h-full bg-dark"
               width="400"
               height="400"
               muted
@@ -361,29 +361,56 @@
 
         <div
           v-else-if="typeof(selectedVoiceoverIndex) == 'number'"
-          class="flex flex-col gap-6 items-center text-white w-fit mx-auto"
+          class="text-light flex flex-col gap-6 container-background w-fit p-4 text-xs" 
         >
           <div class="flex gap-4 justify-center">
-            <form-input label="Start Time" class="w-[200px]">
-              <input type="text" class="w-[200px] text-white bg-gray-800 border p-1 rounded-sm" v-model="voiceovers[selectedVoiceoverIndex].start_time">
-            </form-input>
-            <form-input label="Duration" class="w-[200px]">
-              <input type="text" class="text-white w-[200px] bg-gray-800 border p-1 rounded-sm" v-model="voiceovers[selectedVoiceoverIndex].duration">
-            </form-input>
+
+              <form-input 
+                v-model="voiceovers[selectedVoiceoverIndex].start_time" 
+                label="Start Time"
+                type="text"
+                placeholder="Enter start time..."
+                class="w-[200px]"
+              />
+
+              <form-input 
+                v-model="voiceovers[selectedVoiceoverIndex].duration" 
+                label="Duration"
+                type="text"
+                placeholder="Enter duration..."
+                class="w-[200px]"
+              />
+            
           </div>
-          <form-input label="Text">
-            <textarea class="w-[416px] text-white bg-gray-800 border p-1 rounded-sm h-32" v-model="voiceovers[selectedVoiceoverIndex].text"></textarea>
-          </form-input>
-          <form-input label="Text With Breakes">
-            <textarea class="w-[416px] text-white bg-gray-800 border p-1 rounded-sm h-32" v-model="voiceovers[selectedVoiceoverIndex].text_with_pauses"></textarea>
-          </form-input>
+          <form-input 
+            v-model="voiceovers[selectedVoiceoverIndex].text" 
+            label="Text"
+            type="textarea"
+            placeholder="Enter text..."
+            class="w-[416px]"
+          />
+
+          <form-input 
+            v-model="voiceovers[selectedVoiceoverIndex].text_with_pauses" 
+            label="Text With Pauses"
+            type="textarea"
+            placeholder="Enter text with pauses..."
+            class="w-[416px]"
+          />
+          
 
           <div v-if="voiceovers[selectedVoiceoverIndex].src" class="w-[416px]">
-            <!-- <form-button  label="Regenrate Voiceover" @clicked="generateVoiceover"/> -->
             <audio :src="`http://localhost:8000/${voiceovers[selectedVoiceoverIndex].src}`" controls class="w-full mt-2"></audio>
           </div>
-          <!-- <form-button v-else label="Generate Voiceover" @clicked="generateVoiceover"/>
-          <form-button label="Delete voiceover" @clicked="deleteVoiceover"/> -->
+
+          <form-button 
+            :label="voiceovers[selectedVoiceoverIndex].src ? 'Regenerate Voiceover' : 'Generate Voiceover'" 
+            :show_status="true" 
+            :loading="generatingVoiceover[selectedVoiceoverIndex]" 
+            button_style="primary" 
+            @click="generateVoiceover"
+          />
+          <form-button label="Delete voiceover" @clicked="deleteVoiceover"/>
         </div>
 
       </div>
@@ -392,7 +419,9 @@
     </div>
 
     <!-- Timeline Section -->
-    <div class="bg-gray-900 rounded-lg p-4">
+    <div
+      class="text-light container-background w-full p-4 text-xs" 
+    >
       <div class="mb-2 flex justify-end *:w-32 gap-2">
           <!-- <form-button label="Add scene" @clicked="addScene"/>
           <form-button label="Add voiceover" @clicked="addVoiceover"/> -->
@@ -415,8 +444,13 @@
               <div class="absolute h-[400px] z-40 top-0"
                 :style="{ left: `${currentTime * pixelsPerSecond}px` }"
               >
-                <div class="w-10 h-3 bg-red-500 -ml-5"></div>
-                <div class="h-full bg-red-500 w-1">
+                <div class="relative h-full">
+                  <font-awesome-icon
+                    icon="caret-down"
+                    class="text-[var(--primary)] text-3xl absolute -translate-x-1/2 top-0 -translate-y-3 left-1/2"
+                  />
+                  <div class="h-full bg-red-500 w-1">
+                  </div>
                 </div>
               </div>
             </div>
@@ -475,11 +509,11 @@
 <script setup>
 import { ref, onMounted, onBeforeUnmount, computed, watch, nextTick } from 'vue';
 import axios from 'axios'
-import FormInput from './FormInput.vue'
-import FormButton from './FormButton.vue'
-import VideoSubtitles from './VideoSubtitles.vue'
-import ReferenceImage from './ReferenceImage.vue'
-import Modal from './ModalContainer.vue'
+import FormInput from '@/components/FormInput.vue'
+import FormButton from '@/components/FormButton.vue'
+import VideoSubtitles from '@/components/VideoSubtitles.vue'
+import ReferenceImage from '@/components/ReferenceImage.vue'
+import Modal from '@/components/ModalContainer.vue'
 import getSrc from '../utils/getSrc.js'
 
 
@@ -1290,12 +1324,19 @@ const removeReferenceImage = (referenceImgSrc) => {
 
 
 // REQUESTS
+const generatingVoiceover = ref({});
+
 const generateVoiceover = async () => {
+
+  generatingVoiceover.value[selectedVoiceoverIndex.value] = true;
   const voiceoverIndex = selectedVoiceoverIndex.value;
   const voiceover = voiceovers.value[selectedVoiceoverIndex.value];
   const voiceoverResponse = await axios.post(`http://localhost:8000/voiceovers/generate/${voiceover.id}`, {
     text: voiceover.text
   });
+
+  generatingVoiceover.value[selectedVoiceoverIndex.value] = false;
+
   voiceovers.value[voiceoverIndex].src = voiceoverResponse.data.src+"?v="+Date.now();
   voiceovers.value[voiceoverIndex].duration = voiceoverResponse.data.duration
   voiceovers.value[voiceoverIndex].timestamps = voiceoverResponse.data.timestamps
