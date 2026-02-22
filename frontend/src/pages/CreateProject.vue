@@ -63,10 +63,10 @@
           </div>
         </div>
 
-        <hr class="border-gray-700/50" />
+        <hr class="border-[var(--light-gray)]" />
 
         <div class="flex flex-wrap gap-6">
-          <div class="flex gap-3 items-center p-3 rounded-[10px] border border-gray-700/50 hover:bg-white/5 transition-colors cursor-pointer w-full sm:w-auto">
+          <div class="flex gap-3 items-center p-3 rounded-[10px] border border-[var(--light-gray)] hover:bg-white/5 transition-colors cursor-pointer w-full sm:w-auto">
             <input
               v-model="scriptPrompt.gather_data"
               type="checkbox"
@@ -78,7 +78,7 @@
             </label>
           </div>
 
-          <div class="flex gap-3 items-center p-3 rounded-[10px] border border-gray-700/50 hover:bg-white/5 transition-colors cursor-pointer w-full sm:w-auto">
+          <div class="flex gap-3 items-center p-3 rounded-[10px] border border-[var(--light-gray)] hover:bg-white/5 transition-colors cursor-pointer w-full sm:w-auto">
             <input
               v-model="scriptPrompt.persistant_characters"
               type="checkbox"
@@ -93,7 +93,7 @@
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
           <div>
-            <label class="block text-sm font-medium text-gray-300 mb-1">Existing Data <span class="text-gray-500 font-normal">(Optional)</span></label>
+            <label class="block text-sm font-medium text-gray-300 mb-1">Existing Data <span class="text-[var(--light-gray)] font-normal">(Optional)</span></label>
             <textarea
               v-model="scriptPrompt.data"
               class="w-full p-3 bg-transparent border border-[var(--light-gray)] rounded-[10px] focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:border-transparent text-white transition-all min-h-[120px] resize-y"
@@ -102,7 +102,7 @@
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-gray-300 mb-1">Reference Stories <span class="text-gray-500 font-normal">(Optional)</span></label>
+            <label class="block text-sm font-medium text-gray-300 mb-1">Reference Stories <span class="text-[var(--light-gray)] font-normal">(Optional)</span></label>
             <textarea
               v-model="scriptPrompt.reference_stories"
               class="w-full p-3 bg-transparent border border-[var(--light-gray)] rounded-[10px] focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:border-transparent text-white transition-all min-h-[120px] resize-y"
@@ -114,7 +114,7 @@
         <div class="pt-2 flex justify-center">
           <button
             @click="createScripts"
-            class="w-full sm:w-auto px-10 py-3 bg-[var(--primary)] text-white font-bold rounded-[10px] hover:bg-red-500 transition-all duration-300 shadow-lg hover:shadow-red-500/25 flex justify-center items-center gap-2"
+            class="w-full sm:w-auto px-10 py-3 bg-[var(--primary)] text-white font-bold rounded-[10px] hover:bg-[var(--primary-dark)] transition-all duration-300 shadow-lg hover:shadow-red-500/25 flex justify-center items-center gap-2"
           >
             Generate Script
           </button>

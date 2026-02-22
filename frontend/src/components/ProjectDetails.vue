@@ -1,5 +1,5 @@
 <template>
-  <div class="container mx-auto p-4">
+  <div class="container mx-auto">
 
     <!-- REGENERATING PROMPT -->
     <modal v-if="newImagePromptForm.scene_id && newImagePromptForm.full_voiceover_text">
@@ -59,23 +59,21 @@
     </modal>
 
 
-    <div class="preview bg-gray-800 rounded-lg p-4 mb-4 h-[660px]">
+    <div class="preview mb-4 h-[660px]">
       <div
-        class="flex gap-2 items-center h-full"
+        class="flex gap-10 h-full"
       >
-        <!-- TODO -->
-        <!-- TODO -->
-        <!-- TODO -->
         <!-- PREVIEW -->
-        <div class="relative min-w-[270px] rounded-lg overflow-hidden">
-          <div class="h-[480px]">
+
+        <div class="relative min-w-[400px] overflow-hidden">
+          <div class="size-[400px] rounded-[10px] overflow-hidden relative">
             <video
               v-for="index in 3"
               :key="index"
               :ref="el => setVideoRef(el, index - 1)"
-              class="absolute inset-0 w-full object-cover top-0 left-0"
-              width="270"
-              height="480"
+              class="absolute object-cover bg-dark"
+              width="400"
+              height="400"
               muted
               playsinline
               preload="auto"
@@ -102,68 +100,116 @@
             style="display: none;"
           ></audio>
 
-          <div class="text-white">
-            <div class="flex gap-4 items-center mt-2 justify-center text-xl">
-              <button class="size-4 rounded-md grid place-items-center" @click="reset">
-                <font-awesome-icon icon="backward-fast" />
-              </button>
-              <button class="size-4 rounded-md grid place-items-center" @click="move(-10)">
+          <div class="mt-4 text-lg">
+            <div class="flex gap-3 items-center justify-center">
+              <button class="size-6 rounded-md grid place-items-center text-light-hover" @click="move(-10)">
                 <font-awesome-icon icon="backward" />
               </button>
-              <button class="size-4 rounded-md grid place-items-center" @click="togglePlay">
-                <font-awesome-icon icon="circle-play" v-if="!isPlaying"/>
-                <font-awesome-icon icon="circle-stop" v-else/>
+              <button class="size-12 rounded-md grid place-items-center text-light-hover text-3xl" @click="togglePlay">
+                <font-awesome-icon icon="play" v-if="!isPlaying"/>
+                <font-awesome-icon icon="stop" v-else/>
               </button>
-               <button class="size-4 rounded-md grid place-items-center" @click="move(10)">
-                <font-awesome-icon icon="forward" />
-              </button>
-               <button class="size-4 rounded-md grid place-items-center opacity-0" >
+               <button class="size-6 rounded-md grid place-items-center text-light-hover" @click="move(10)">
                 <font-awesome-icon icon="forward" />
               </button>
             </div>
-            <p class="text-center mt-3">Time: {{ currentTime.toFixed(2) }}s</p>
+            <!-- <p class="text-center mt-3">Time: {{ currentTime.toFixed(2) }}s</p> -->
           </div>
         </div>
 
-        <!-- Divider -->
-        <div class="h-full w-1 bg-white"></div>
 
+        <!-- EDIT SCENE -->
         <div 
-          class="text-gray-300 flex gap-6" 
+          class="text-gray-300 flex gap-6 container-background flex-1 p-4" 
           v-if="typeof(selectedSceneIndex) == 'number'"
         >
           <!-- SCENE VIDEO -->
           <div>
-            <div class="h-[320px] w-[180px] bg-gray-400 rounded-lg mx-auto relative">
-              <p class="absolute top-4 left-1/2 -translate-x-1/2 text-white fonr-bold z-10">Video</p>
+             <!-- MORE FUNCTIONS -->
+            <div class="flex items-center gap-6 text-xs mb-5 max-w-[300px]">
+              <form-input 
+                v-model="scenes[selectedSceneIndex].start_time" 
+                label="Start Time"
+                type="text"
+                placeholder="Enter start time..."
+                class="w-full"
+              />
+              <form-input 
+                v-model="scenes[selectedSceneIndex].duration" 
+                label="Duration"
+                type="text"
+                placeholder="Enter duration..."
+                class="w-full"
+              />
+            </div>
+
+            <div class="h-[300px] w-[300px] rounded-t-lg mx-auto relative bg-dark">
               <video 
                 v-if="scenes[selectedSceneIndex].video_src" 
                 :src="`http://localhost:8000/${scenes[selectedSceneIndex].video_src}?v=1}`"
                 alt="Scene Video"
-                class="w-full h-full object-cover rounded-md border" 
+                class="w-full h-full object-cover rounded-md" 
                 controls 
               />
             </div>
-            <form-input label="Video Prompt" class="w-[180px] mt-6 text-xs">
+
+            <div class="relative flex flex-col text-xs">
+              <div class="relative group">
+                <input 
+                  type="file" 
+                  class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" 
+                  @input="handleSceneVideoUpload"
+                >
+                <div class="w-full p-3 bg-transparent border border-[var(--light-gray)] rounded-b-[10px] group-hover:bg-white/5 transition-all flex items-center justify-between text-gray-400">
+                  <span>Choose a file...</span>
+                  <span class="bg-[var(--medium)] px-3 py-1 -my-4 rounded-md text-xs text-gray-200 border border-[var(--light-gray)]">Browse</span>
+                </div>
+              </div>
+            </div>
+            <!-- <input type="file" class="w-[180px] text-white bg-gray-800 border p-1 rounded-sm text-xs" @input="handleSceneVideoUpload"> -->
+
+            <!-- <form-input label="Video Prompt" class="w-[180px] mt-6 text-xs">
               <textarea class="w-[180px] text-white bg-gray-800 border p-1 rounded-sm h-24" v-model="scenes[selectedSceneIndex].video_prompt"></textarea>
               <form-button label="Fix Prompt" :show_status="true" :loading="fixingVideoPrompt" @clicked="fixVideoPrompt"/>
-            </form-input>
-            <div class="flex flex-col gap-1 mt-4">
-              <form-button :show_status="true" :loading="generatingVideo.includes(scenes[selectedSceneIndex].id)" v-if="scenes[selectedSceneIndex].video_src" label="Regenerate Video" color="green" @click="generateVideo"/>
-              <form-button :show_status="true" :loading="generatingVideo.includes(scenes[selectedSceneIndex].id)" v-else label="Generate Video" @click="generateVideo" color="green"/>
-              <input type="file" class="w-[180px] text-white bg-gray-800 border p-1 rounded-sm text-xs" @input="handleSceneVideoUpload">
+            </form-input> -->
+            <div class="flex flex-col mt-4 text-xs">
+              <form-input 
+                v-model="scenes[selectedSceneIndex].video_prompt" 
+                label="Video Prompt" 
+                type="textarea" 
+                placeholder="Enter video prompt..."
+                :rounded_b="false"
+              />
+              <form-button 
+                v-if="scenes[selectedSceneIndex].video_src" 
+                label="Regenerate Video" 
+                :show_status="true" 
+                :loading="generatingVideo.includes(scenes[selectedSceneIndex].id)" 
+                button_style="primary" 
+                :rounded_t="false"
+                @click="generateVideo"
+              />
+              <form-button 
+                v-else 
+                label="Generate Video"
+                :show_status="true" 
+                :loading="generatingVideo.includes(scenes[selectedSceneIndex].id)" 
+                button_style="primary" 
+                :rounded_t="false"
+                @click="generateVideo"
+              />
             </div>
           </div>
           
           <!-- SCENE IMAGE -->
-          <div>
+          <div class="flex flex-col gap-4 text-xs flex-1">
             <!-- IMAGES -->
             <div class="flex gap-2 justify-center items-center">
               <div v-for="name, idx in ['start', 'end']" :key="name" class="flex gap-2 items-center">
-                <button class="h-[240px] w-[135px] bg-gray-400 rounded-lg relative" @click="selectedSceneImageIndex = idx"
-                  :class="selectedSceneImageIndex == idx && 'border-4 border-blue-500'"
+                <button class="h-[135px] w-[135px] bg-dark rounded-lg relative border overflow-hidden" @click="selectedSceneImageIndex = idx"
+                  :class="selectedSceneImageIndex == idx ? 'border-[var(--primary)]' : 'border-transparent'"
                 >
-                  <p class="absolute top-4 left-1/2 -translate-x-1/2 text-white fonr-bold z-10">{{ name }}</p>
+                  <!-- <p class="absolute top-4 left-1/2 -translate-x-1/2 text-white fonr-bold z-10">{{ name }}</p> -->
                   <button v-if="scenes[selectedSceneIndex].images[idx]?.src" class="absolute top-1 right-1 z-10" @click="removeImage(scenes[selectedSceneIndex].images[idx].id)">
                     <font-awesome-icon icon="xmark"/>
                   </button>
@@ -181,18 +227,40 @@
                 </div>
               </div>
             </div>
+            
+            <div class="relative flex flex-col text-xs">
+              <div class="relative group">
+                <input 
+                  type="file" 
+                  class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" 
+                  @input="handleSceneImageUpload"
+                >
+                <div class="w-full p-3 bg-transparent border border-[var(--light-gray)] rounded-[10px] group-hover:bg-white/5 transition-all flex items-center justify-between text-gray-400">
+                  <span>Choose a file...</span>
+                  <span class="bg-[var(--medium)] px-3 py-1 -my-4 rounded-md text-xs text-gray-200 border border-[var(--light-gray)]">Browse</span>
+                </div>
+              </div>
+            </div>
+
             <div class="flex gap-2 items-center mt-3 text-xs">
-              <form-input label="Image Style" class="w-full mt-4">
-                <select v-model="imageGenerationStyle" class="text-white bg-gray-800 border-white rounded-sm w-full border">
-                  <option value="" default>Auto style</option>
-                  <option value="lifelaps">LifeLaps style</option>
-                  <option value="lifelaps_science">LifeLaps style (with_science_shit)</option>
-                  <option value="criminal">Criminal style</option>
-                </select>
-              </form-input>
-              <div v-if="imageGenerationStylePower" class="w-full text-xs">
-                <label for="stylePower" class="text-gray-300">
-                  Style Intensity: <span class="font-semibold text-white">{{ imageGenerationStylePower }}</span>/10
+
+              <form-input 
+                v-model="imageGenerationStyle" 
+                label="Image Style" 
+                type="select"
+                :options="[
+                  { value: '', label: 'Auto style' },
+                  { value: 'lifelaps', label: 'LifeLaps style' },
+                  { value: 'lifelaps_science', label: 'LifeLaps style (with science)' },
+                  { value: 'criminal', label: 'Criminal style' },
+                ]" 
+                placeholder="Select image style..."
+                class="w-full"
+              />
+
+              <div v-if="imageGenerationStylePower" class="w-full h-[66px] flex flex-col">
+                <label for="stylePower" class="text-sm font-medium text-light mb-1">
+                  Style Intensity: <span class="font-semibold text-light">{{ imageGenerationStylePower }}</span>/10
                 </label>
                 <input
                   id="stylePower"
@@ -201,73 +269,93 @@
                   min="1"
                   max="10"
                   step="1"
-                  class="w-full accent-indigo-500 cursor-pointer"
+                  class="w-full accent-[var(--primary)] cursor-pointer my-auto"
                 />
               </div>
             </div>
 
+
+
+            <div class="flex justify-center">
+              <form-button 
+                label="Apply Styles To Prompt" 
+                :show_status="true" 
+                :loading="fixingImagePrompt[selectedSceneIndex]" 
+                button_style="secondary" 
+                @click="fixImagePrompt"
+                class="w-fit"
+              />
+            </div>
             <!-- PROMPT TEXT AREA -->
-            <form-input label="Image Prompt" class="w-full text-xs mt-5" v-if="scenes[selectedSceneIndex].images[selectedSceneImageIndex]">
-              <textarea class="w-full text-white bg-gray-800 border p-1 rounded-sm h-24" v-model="scenes[selectedSceneIndex].images[selectedSceneImageIndex].prompt"></textarea>
-              <form-button :show_status="true" :loading="fixingImagePrompt" label="Apply styles" @clicked="fixImagePrompt"/>
-              <form-button label="Regenerate prompt" class="mt-2" @clicked="openNewImagePromptForm"/>
-            </form-input>
+
+            <form-input 
+              v-model="scenes[selectedSceneIndex].images[selectedSceneImageIndex].prompt" 
+              label="Image Prompt"
+              type="textarea"
+              placeholder="Enter image prompt..."
+              class="w-full"
+            />
+
 
             <!-- REFERENCE IMAGES -->
-            <div class="flex gap-6 mt-4 mb-4 text-xs">
-              <div class="flex-1">
-                <p>
-                  Reference Images Added:
-                </p>
-                <div class="overflow-y-auto max-w-[300px] flex gap-1">
-                  <reference-image
-                    v-for="referenceImg in addedReferenceImages"
-                    :key="referenceImg.src"
-                    :name="referenceImg.name"
-                    :src="referenceImg.src"
-                    @remove="removeReferenceImage"
-                    :added="true"
-                  />
-                </div>
+            <div>
+              <div class="flex justify-between">
+                <label for="_" class="text-sm font-medium text-light mb-1">
+                  Reference Images
+                  <span class="text-[var(--light-gray)]" v-if="addedReferenceImages.length > 0">
+                    ({{ addedReferenceImages.length }} added)
+                  </span> 
+                </label>
+                <button @click="showReferenceImages = !showReferenceImages">
+                  <font-awesome-icon v-if="showReferenceImages == false" icon="chevron-down" class="text-light-hover"/>
+                  <font-awesome-icon v-else icon="chevron-up" class="text-light-hover"/>
+                </button>
               </div>
-              <div class="flex-1">
-                <p>
-                  Available Reference Images:
-                </p>
-                <div class="overflow-y-auto max-w-[300px] flex gap-1" v-if="availableReferenceImages.length > 0">
-                  <reference-image
-                    v-for="refImg in availableReferenceImages"
-                    :key="refImg.name"
-                    :name="refImg.name"
-                    :src="refImg.src"
-                    @add="addReferenceImage"
-                    :added="false"
-                  />
+
+              <div class="flex gap-6 mt-4 mb-4 text-xs" v-if="showReferenceImages">
+                <div class="flex-1">
+                  <p>
+                    Added:
+                  </p>
+                  <div class="overflow-y-auto max-w-[200px] flex gap-1">
+                    <reference-image
+                      v-for="referenceImg in addedReferenceImages"
+                      :key="referenceImg.src"
+                      :name="referenceImg.name"
+                      :src="referenceImg.src"
+                      @remove="removeReferenceImage"
+                      :added="true"
+                    />
+                  </div>
+                </div>
+                <div class="flex-1">
+                  <p>
+                    Available:
+                  </p>
+                  <div class="overflow-y-auto max-w-[200px] flex gap-1" v-if="availableReferenceImages.length > 0">
+                    <reference-image
+                      v-for="refImg in availableReferenceImages"
+                      :key="refImg.name"
+                      :name="refImg.name"
+                      :src="refImg.src"
+                      @add="addReferenceImage"
+                      :added="false"
+                    />
+                  </div>
                 </div>
               </div>
             </div>
 
             <!-- IMAGE FINAL ACTION -->
             <div class="flex flex-col gap-1">
-              <form-button v-if="scenes[selectedSceneIndex].image_src" :show_status="true" :loading="generatingImage" label="Regenerate Image" color="green" @clicked="generateImage"/>
-              <form-button v-else label="Generate Image" :show_status="true" :loading="generatingImage" @clicked="generateImage" color="green"/>
-              <div class="flex justify-center" v-if="false">
-                <p>Lowkey</p>
-                <input type="checkbox" class="border" v-model="generateImageLowkey">
-              </div>
-              <input type="file" class="w-full text-white bg-gray-800 border p-1 rounded-sm text-xs" @input="handleSceneImageUpload">
+              <form-button 
+                :label="scenes[selectedSceneIndex].images[selectedSceneImageIndex]?.src ? 'Regenerate Image' : 'Generate Image'" 
+                :show_status="true" 
+                :loading="generatingImage[selectedSceneIndex]" 
+                button_style="primary" 
+                @click="generateImage"
+              />
             </div>
-          </div>
-
-          <!-- MORE FUNCTIONS -->
-          <div class="flex flex-col justify-center gap-6 text-xs">
-            <form-input label="Start Time">
-              <input type="text" class="w-[100px] text-white bg-gray-800 border p-1 rounded-sm" v-model="scenes[selectedSceneIndex].start_time">
-            </form-input>
-            <form-input label="Duration">
-              <input type="text" class="w-[100px] text-white bg-gray-800 border p-1 rounded-sm" v-model="scenes[selectedSceneIndex].duration">
-            </form-input>
-            <form-button label="Delete scene" @clicked="deleteScene"/>
           </div>
         </div>
 
@@ -276,7 +364,6 @@
           class="flex flex-col gap-6 items-center text-white w-fit mx-auto"
         >
           <div class="flex gap-4 justify-center">
-
             <form-input label="Start Time" class="w-[200px]">
               <input type="text" class="w-[200px] text-white bg-gray-800 border p-1 rounded-sm" v-model="voiceovers[selectedVoiceoverIndex].start_time">
             </form-input>
@@ -292,11 +379,11 @@
           </form-input>
 
           <div v-if="voiceovers[selectedVoiceoverIndex].src" class="w-[416px]">
-            <form-button  label="Regenrate Voiceover" @clicked="generateVoiceover"/>
+            <!-- <form-button  label="Regenrate Voiceover" @clicked="generateVoiceover"/> -->
             <audio :src="`http://localhost:8000/${voiceovers[selectedVoiceoverIndex].src}`" controls class="w-full mt-2"></audio>
           </div>
-          <form-button v-else label="Generate Voiceover" @clicked="generateVoiceover"/>
-          <form-button label="Delete voiceover" @clicked="deleteVoiceover"/>
+          <!-- <form-button v-else label="Generate Voiceover" @clicked="generateVoiceover"/>
+          <form-button label="Delete voiceover" @clicked="deleteVoiceover"/> -->
         </div>
 
       </div>
@@ -307,8 +394,8 @@
     <!-- Timeline Section -->
     <div class="bg-gray-900 rounded-lg p-4">
       <div class="mb-2 flex justify-end *:w-32 gap-2">
-          <form-button label="Add scene" @clicked="addScene"/>
-          <form-button label="Add voiceover" @clicked="addVoiceover"/>
+          <!-- <form-button label="Add scene" @clicked="addScene"/>
+          <form-button label="Add voiceover" @clicked="addVoiceover"/> -->
       </div>
       <div class="timeline " ref="containerRef"> 
         <div class="overflow-x-auto relative">
@@ -379,8 +466,8 @@
         </div>
       </div>
     </div>
-    <form-button label="Generate one long voiceover" @clicked="combineVoiceovers"/>
-    <form-button label="Save project" @clicked="saveProjectChanges"/>
+    <!-- <form-button label="Generate one long voiceover" @clicked="combineVoiceovers"/>
+    <form-button label="Save project" @clicked="saveProjectChanges"/> -->
     
   </div>
 </template>
@@ -1019,14 +1106,14 @@ const generateVideo = async () => {
 
 
 // GENERATING IMAGE
-const imageGenerationStyle = ref(null);
+const imageGenerationStyle = ref('');
 const imageGenerationStylePower = ref(5);
 
-const fixingImagePrompt = ref(false);
+const fixingImagePrompt = ref([]);
 
 const fixImagePrompt = async () => {
   try {
-    fixingImagePrompt.value = true;
+    fixingImagePrompt.value[selectedSceneIndex.value] = true;
     const response = await axios
       .post('http://localhost:8000/generators/fix-scene-image-prompt', { 
         prompt: scenes.value[selectedSceneIndex.value].images[selectedSceneImageIndex.value].prompt,
@@ -1042,7 +1129,7 @@ const fixImagePrompt = async () => {
   } catch (error) {
     console.error('Error fixing scene image prompt:', error);
   } finally {
-    fixingImagePrompt.value = false;
+    fixingImagePrompt.value[selectedSceneIndex.value] = false;
   }
 }
 
@@ -1148,6 +1235,7 @@ const handleSceneVideoUpload = async (event) => {
 
 // REFERENCE IMAGES
 const addedReferenceImages = ref([]);
+const showReferenceImages = ref(false);
 
 watch(selectedSceneIndex, ()=>{
   if(typeof(selectedSceneIndex.value) == 'number'){

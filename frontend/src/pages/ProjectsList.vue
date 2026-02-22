@@ -14,7 +14,7 @@
         :key="project.id"
         @click="selectProject(project)"
         class="flex flex-col gap-4 transition-all duration-300 border border-transparent w-full sm:w-80 cursor-pointer relative group overflow-hidden"
-        :class="activeMenu === project.id ? 'z-20 container-background' : 'z-0 container-background-hoverable'"
+        :class="activeMenu === project.id ? 'z-20 container-background' : 'z-0 container-background-hover'"
       >
         
         <button 
