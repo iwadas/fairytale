@@ -475,15 +475,20 @@
               <div
                 v-for="(scene, index) in scenes"
                 :key="scene.id"
-                class="absolute h-full bg-blue-500 rounded cursor-pointer select-none border flex flex-col justify-between"
+                class="absolute rounded-[10px] cursor-pointer select-none flex flex-col justify-between border border-[var(--light-gray)]"
                 :style="{
                   left: `${scene.start_time * pixelsPerSecond}px`,
-                  width: `${scene.duration * pixelsPerSecond}px`,
-                  zIndex: Math.round(scene.start_time * 100)
+                  width: `${sceneActualDuration[scene.id] * pixelsPerSecond}px`,
+                  zIndex: Math.round(scene.start_time * 100),
                 }"
                 @click="selectScene(scene.id)"
               >
-                <span class="text-xs text-white p-2 overflow-hidden">{{ scene.video_prompt }}</span>
+                <video-element
+                  v-if="scene.video_src"
+                  :scene="scene"
+                  :numberOfFramesToDisplay="Math.ceil(scene.duration * pixelsPerSecond / 50)"
+                />
+                <!-- <span class="text-xs text-white p-2 overflow-hidden">{{ scene.video_prompt }}</span> -->
                 <div class="w-full text-center bg-gray-800 z-20 text-white text-xs font-bold cursor-move"
                   @mousedown="startDragging($event, 'scene', scene, index, $refs.scenesTrack)"
                 >
@@ -497,13 +502,15 @@
               <div
                 v-for="(voiceover, index) in voiceovers"
                 :key="voiceover.id"
-                class="absolute h-16 mt-1 bg-green-500 rounded cursor-pointer select-none flex flex-col justify-between border border-white"
+                class="absolute h-16 mt-1 bg-green-500 rounded cursor-pointer select-none flex flex-col justify-between"
                 :style="{
                   left: `${voiceover.start_time * pixelsPerSecond}px`,
                   width: `${voiceover.duration * pixelsPerSecond}px`,
                 }"
                 @click="selectVoiceover(voiceover.id)"
               >
+                
+
                 <span class="text-xs text-white truncate p-2" :style="`max-width: ${voiceover.duration * pixelsPerSecond}px`">{{ voiceover.text }} </span>
                 <div class="w-full text-center bg-gray-800 z-20 text-white text-xs font-bold cursor-move"
                   @mousedown="startDragging($event, 'voiceover', voiceover, index, $refs.voiceoversTrack)"
@@ -531,6 +538,7 @@ import VideoSubtitles from '@/components/VideoSubtitles.vue'
 import ReferenceImage from '@/components/ReferenceImage.vue'
 import Modal from '@/components/ModalContainer.vue'
 import getSrc from '../utils/getSrc.js'
+import VideoElement from '@/components/project_details/VideoElement.vue'
 
 
 const route = 'http://localhost:8000/'
@@ -580,6 +588,7 @@ const addVoiceover = async () => {
   const response = await axios.post(`${route}voiceovers/${projectId}`);
   voiceovers.value.push(response.data);
 }
+
 
 // SET TIME
 const handleTimeChange = (event) => {
@@ -679,6 +688,25 @@ let playbackStartTimestamp = 0
 const orderedScenes = computed(()=>{
   return [...scenes.value].sort((a, b) => a.start_time - b.start_time)
 }, {deep: true})
+
+const orderedScenesIdToIndex = computed(()=>{
+  let mapping = {}
+  orderedScenes.value.forEach((scene, index) => {
+    mapping[scene.id] = index
+  })
+  return mapping
+})
+
+const sceneActualDuration = computed(()=>{
+  let mapping = {}
+  orderedScenes.value.forEach((scene) => {
+    const nextScene = orderedScenes.value.find(s => s.start_time > scene.start_time)
+    const endTime = Math.min(nextScene ? nextScene.start_time : 10000, scene.start_time + scene.duration)
+    mapping[scene.id] = endTime - scene.start_time
+  })
+  return mapping
+})
+
 
 // ================ SCENE LOGIC ================
 const activeScene = computed(() => {
