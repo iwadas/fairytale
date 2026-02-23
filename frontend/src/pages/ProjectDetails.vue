@@ -359,27 +359,28 @@
           </div>
         </div>
 
+        <!-- VOICEOVER EDIT -->
         <div
           v-else-if="typeof(selectedVoiceoverIndex) == 'number'"
           class="text-light flex flex-col gap-6 container-background w-fit p-4 text-xs" 
         >
           <div class="flex gap-4 justify-center">
 
-              <form-input 
-                v-model="voiceovers[selectedVoiceoverIndex].start_time" 
-                label="Start Time"
-                type="text"
-                placeholder="Enter start time..."
-                class="w-[200px]"
-              />
+            <form-input 
+              v-model="voiceovers[selectedVoiceoverIndex].start_time" 
+              label="Start Time"
+              type="text"
+              placeholder="Enter start time..."
+              class="w-[200px]"
+            />
 
-              <form-input 
-                v-model="voiceovers[selectedVoiceoverIndex].duration" 
-                label="Duration"
-                type="text"
-                placeholder="Enter duration..."
-                class="w-[200px]"
-              />
+            <form-input 
+              v-model="voiceovers[selectedVoiceoverIndex].duration" 
+              label="Duration"
+              type="text"
+              placeholder="Enter duration..."
+              class="w-[200px]"
+            />
             
           </div>
           <form-input 
@@ -420,26 +421,41 @@
 
     <!-- Timeline Section -->
     <div
-      class="text-light container-background w-full p-4 text-xs" 
+      class="text-light container-background w-full text-xs" 
     >
-      <div class="mb-2 flex justify-end *:w-32 gap-2">
-          <!-- <form-button label="Add scene" @clicked="addScene"/>
-          <form-button label="Add voiceover" @clicked="addVoiceover"/> -->
-      </div>
-      <div class="timeline " ref="containerRef"> 
-        <div class="overflow-x-auto relative">
+      <!-- <div class="mb-2 flex justify-end *:w-32 gap-2">
+          <form-button label="Add scene" @clicked="addScene"/>
+          <form-button label="Add voiceover" @clicked="addVoiceover"/>
+      </div> -->
+      <div class="timeline flex" ref="containerRef"> 
+        <div class="min-w-[100px] flex flex-col -mr-10 relative z-30">
+          <div class="mt-[60px] h-[70px] w-full flex justify-center items-center bg-dark">
+            <font-awesome-icon icon="video"/>
+          </div>
+          <div class="h-[70px] w-full flex justify-center items-center bg-medium">
+            <font-awesome-icon icon="image"/>
+          </div>
+          <div class="h-[70px] w-full flex justify-center items-center bg-dark">
+            <font-awesome-icon icon="microphone"/>
+          </div>
+        </div>
+
+        <div class="overflow-x-auto relative px-10">
           <div class="relative" :style="{ width: `${totalWidth}px`, minWidth: '100%' }">
             <!-- Timeline Background with Time Markers -->
-            <div class="relative w-full h-5 bg-gray-800 rounded">
+            <div class="relative w-full h-5 rounded">
               <!-- Time Markers -->
               <div class="flex text-xs text-gray-400">
-                <span v-for="tick in timeTicks" :key="tick" class="absolute " :style="{ left: `${tick * pixelsPerSecond}px` }">
-                  {{ formatTime(tick) }}
-                </span>
+                <div v-for="tick in timeTicks" :key="tick" class="absolute flex flex-col items-center -translate-x-1/2" :style="{ left: `${tick.time * pixelsPerSecond}px` }">
+                  <div :class="tick.label ? 'h-6' : 'h-2'" class="w-[1px] bg-[var(--light-gray)]"></div>
+                  <span class="h-5 text-xs text-light">
+                    {{ tick.label }}
+                  </span>
+                </div>
               </div>
             </div>
   
-            <div class="h-3 w-full relative z-20 bg-gray-800">
+            <div class="h-10 w-full relative z-20 -mt-5">
               <div class="w-full h-full" @click="handleTimeChange($event)"></div>
               <div class="absolute h-[400px] z-40 top-0"
                 :style="{ left: `${currentTime * pixelsPerSecond}px` }"
@@ -455,7 +471,7 @@
               </div>
             </div>
             <!-- Scenes Track -->
-            <div class="relative h-24 mt-1 z-0" ref="scenesTrack">
+            <div class="relative h-[70px] bg-dark mt-5 z-0" ref="scenesTrack">
               <div
                 v-for="(scene, index) in scenes"
                 :key="scene.id"
@@ -477,7 +493,7 @@
             </div>
   
             <!-- Voiceovers Track -->
-            <div class="relative h-20" ref="voiceoversTrack">
+            <div class="relative h-[70px]" ref="voiceoversTrack">
               <div
                 v-for="(voiceover, index) in voiceovers"
                 :key="voiceover.id"
@@ -572,8 +588,8 @@ const handleTimeChange = (event) => {
   const containerRect = containerRef.value.getBoundingClientRect();
   const scrollLeft = containerRef.value.querySelector('.overflow-x-auto').scrollLeft;
 
-  // Calculate how far from the start of the timeline the user clicked (in pixels)
-  const clickX = event.clientX - containerRect.left + scrollLeft - 12;
+  // 40 because of padding
+  const clickX = event.clientX - containerRect.left + scrollLeft - 100;
 
   // Convert pixels to seconds
   const clickedTime = clickX / pixelsPerSecond.value;
@@ -1344,7 +1360,26 @@ const generateVoiceover = async () => {
 
 
 // Time markers (every 10 seconds)
-const timeTicks = Array.from({ length: Math.ceil(timelineDuration / 5) + 1 }, (_, i) => i * 5);
+
+const timeTicks = computed(()=>{
+  const ticks = [];
+  for(let t = 0; t <= timelineDuration; t++){
+    if(t % 5 == 0){
+      ticks.push({
+        time: t,
+        label: formatTime(t)
+      })
+    } else {
+      ticks.push({
+        time: t,
+        label: '',
+      });
+    }
+  }
+  return ticks
+})
+
+const timeTicksOLD = Array.from({ length: Math.ceil(timelineDuration / 5) + 1 }, (_, i) => i * 5);
 
 // Format time in seconds to MM:SS.ss (with milliseconds if needed, but simplified to seconds)
 const formatTime = (seconds) => {

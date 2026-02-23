@@ -2,6 +2,7 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+@import './scrollbar.css';
 
 
 body {
@@ -36,19 +37,6 @@ body {
   box-shadow: 0 4px 30px var(--transparent-red);
 }
 
-
-@layer components {
-  /* Secondary actions (Copy, Translate, Download) */
-  .btn-secondary {
-    @apply px-3 py-1.5 text-[10px] font-medium rounded-[8px] transition-all duration-300 text-light-hover bg-white/5 hover:bg-white/10 hover:text-white cursor-pointer border border-transparent;
-  }
-  
-  /* Destructive action (Delete) */
-  .btn-danger {
-    @apply px-3 py-1.5 text-[10px] font-medium rounded-[8px] transition-all duration-300 text-light-hover bg-white/5 hover:bg-red-500/20 hover:text-red-500 cursor-pointer border border-transparent;
-  }
-}
-
 :root {
   --dark: #1a1a1a;
   --medium: #3f3f3f;
@@ -62,6 +50,33 @@ body {
   --transparent-red: rgba(238, 69, 69, 0.2);
   --gray: #a3a3a3;
 }
+
+@layer components {
+  /* Secondary actions (Copy, Translate, Download) */
+  .btn-secondary {
+    @apply px-3 py-1.5 text-[10px] font-medium rounded-[8px] transition-all duration-300 text-light-hover bg-white/5 hover:bg-white/10 hover:text-white cursor-pointer border border-transparent;
+  }
+  
+  /* Destructive action (Delete) */
+  .btn-danger {
+    @apply px-3 py-1.5 text-[10px] font-medium rounded-[8px] transition-all duration-300 text-light-hover bg-white/5 hover:bg-red-500/20 hover:text-red-500 cursor-pointer border border-transparent;
+  }
+  
+  .bg-dark {
+    background-color: var(--dark);
+  }
+  .bg-light-gray {
+    background-color: var(--light-gray);
+  }
+  .bg-medium {
+    background-color: var(--medium);
+  }
+  .bg-light {
+    background-color: var(--light);
+  }
+}
+
+
 
 
 .button-primary {
@@ -107,9 +122,6 @@ body {
   background-color: var(--primary);
 } 
 
-.bg-dark {
-  background-color: var(--dark);
-}
 
 .text-red {
   color: var(--red);
