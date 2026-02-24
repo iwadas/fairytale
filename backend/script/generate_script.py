@@ -67,7 +67,7 @@ class ScriptGenerator:
                 "2. Mechanism: How it works (Fast facts).\n"
                 "3. The Twist/Deep Reason: Why it matters.\n\n"
                 "**Style:**\n"
-                "- Fast-paced.\n"
+                # "- Fast-paced.\n"
                 "- No fluff.\n"
                 "- Use simple, sharp words.\n"
                 "- Do NOT format the text yet. Just write the paragraphs."
