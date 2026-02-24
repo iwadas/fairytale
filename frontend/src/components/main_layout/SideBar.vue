@@ -8,9 +8,9 @@
       class="w-[100px] container-background rounded-[10px] py-4 flex flex-col items-center gap-8 shadow-2xl transition-all duration-300"
     >
 
-      <div class="flex justify-center -my-4">
+      <!-- <div class="flex justify-center -my-4">
         <img :src="logo" alt="Logo">
-      </div>
+      </div> -->
 
       <div 
         v-for="(tab, index) in tabs" 

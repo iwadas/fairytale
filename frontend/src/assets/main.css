@@ -41,7 +41,7 @@ body {
   --dark: #1a1a1a;
   --medium: #3f3f3f;
   --medium-hover: rgb(53, 53, 53);
-  --light-gray: rgba(255, 255, 255, 0.3);
+  --light-gray: rgb(117, 117, 117);
   --light: rgb(230,230,230);
   --light-hover: rgb(255,255,255);
   --red: #ee4545;

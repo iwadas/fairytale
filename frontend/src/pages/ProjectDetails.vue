@@ -429,13 +429,13 @@
       </div> -->
       <div class="timeline flex" ref="containerRef"> 
         <div class="min-w-[100px] flex flex-col -mr-10 relative z-30">
-          <div class="mt-[60px] h-[70px] w-full flex justify-center items-center bg-dark">
+          <div class="mt-[60px] h-[70px] w-full flex justify-center items-center bg-medium">
             <font-awesome-icon icon="video"/>
           </div>
-          <div class="h-[70px] w-full flex justify-center items-center bg-medium">
+          <div class="h-[70px] w-full flex justify-center items-center bg-light-gray">
             <font-awesome-icon icon="image"/>
           </div>
-          <div class="h-[70px] w-full flex justify-center items-center bg-dark">
+          <div class="h-[70px] w-full flex justify-center items-center bg-medium">
             <font-awesome-icon icon="microphone"/>
           </div>
         </div>
@@ -471,52 +471,61 @@
               </div>
             </div>
             <!-- Scenes Track -->
-            <div class="relative h-[70px] bg-dark mt-5 z-0" ref="scenesTrack">
+            <div class="relative h-[70px] bg-medium mt-5 z-0" ref="scenesTrack">
               <div
                 v-for="(scene, index) in scenes"
                 :key="scene.id"
-                class="absolute rounded-[10px] cursor-pointer select-none flex flex-col justify-between border border-[var(--light-gray)]"
+                class="absolute rounded-[10px] cursor-pointer select-none flex flex-col border-[2px] justify-between mt-[10px] overflow-hidden"
+                :class="{
+                  'border-[var(--primary)]' : index == selectedSceneIndex,
+                  'border-transparent' : index != selectedSceneIndex,
+                }"
                 :style="{
                   left: `${scene.start_time * pixelsPerSecond}px`,
                   width: `${sceneActualDuration[scene.id] * pixelsPerSecond}px`,
                   zIndex: Math.round(scene.start_time * 100),
                 }"
                 @click="selectScene(scene.id)"
+                @mousedown="startDragging($event, 'scene', scene, index, $refs.scenesTrack)"
               >
                 <video-element
-                  v-if="scene.video_src"
                   :scene="scene"
                   :numberOfFramesToDisplay="Math.ceil(scene.duration * pixelsPerSecond / 50)"
                 />
                 <!-- <span class="text-xs text-white p-2 overflow-hidden">{{ scene.video_prompt }}</span> -->
-                <div class="w-full text-center bg-gray-800 z-20 text-white text-xs font-bold cursor-move"
+                <!-- <div class="w-full text-center bg-gray-800 z-20 text-white text-xs font-bold cursor-move"
                   @mousedown="startDragging($event, 'scene', scene, index, $refs.scenesTrack)"
                 >
                   move
-                </div>
+                </div> -->
               </div>
             </div>
   
             <!-- Voiceovers Track -->
-            <div class="relative h-[70px]" ref="voiceoversTrack">
+            <div class="relative h-[70px] bg-light-gray" ref="voiceoversTrack">
               <div
                 v-for="(voiceover, index) in voiceovers"
                 :key="voiceover.id"
-                class="absolute h-16 mt-1 bg-green-500 rounded cursor-pointer select-none flex flex-col justify-between"
+                class="absolute h-[50px] rounded-[10px] cursor-pointer select-none flex flex-col border-[2px] justify-between mt-[10px]"
                 :style="{
                   left: `${voiceover.start_time * pixelsPerSecond}px`,
                   width: `${voiceover.duration * pixelsPerSecond}px`,
                 }"
+                :class="{
+                  'border-[var(--primary)]' : index == selectedVoiceoverIndex,
+                  'border-transparent' : index != selectedVoiceoverIndex,
+                }"
                 @click="selectVoiceover(voiceover.id)"
+                @mousedown="startDragging($event, 'voiceover', voiceover, index, $refs.voiceoversTrack)"
               >
                 
-
-                <span class="text-xs text-white truncate p-2" :style="`max-width: ${voiceover.duration * pixelsPerSecond}px`">{{ voiceover.text }} </span>
-                <div class="w-full text-center bg-gray-800 z-20 text-white text-xs font-bold cursor-move"
+                <audio-element :voiceover="voiceover"/>
+                <!-- <span class="text-xs text-white truncate p-2" :style="`max-width: ${voiceover.duration * pixelsPerSecond}px`">{{ voiceover.text }} </span> -->
+                <!-- <div class="w-full text-center bg-gray-800 z-20 text-white text-xs font-bold cursor-move"
                   @mousedown="startDragging($event, 'voiceover', voiceover, index, $refs.voiceoversTrack)"
                 >
                   move
-                </div>
+                </div> -->
               </div>
             </div>
           </div>
@@ -539,6 +548,7 @@ import ReferenceImage from '@/components/ReferenceImage.vue'
 import Modal from '@/components/ModalContainer.vue'
 import getSrc from '../utils/getSrc.js'
 import VideoElement from '@/components/project_details/VideoElement.vue'
+import AudioElement from '@/components/project_details/AudioElement.vue'
 
 
 const route = 'http://localhost:8000/'
@@ -906,7 +916,7 @@ const updateVideoLayers = async (time) => {
   }
 
   // Auto-switch when next scene starts
-  if (next && time >= next.start_time - 0.05) {
+  if (next && time >= next.start_time) {
     const switchLayer = layerReady.value[nextLayer] ? nextLayer : currentLayer
     showLayer(switchLayer)
     if (switchLayer === nextLayer) {
@@ -932,7 +942,7 @@ const tick = () => {
   if (activeScene.value && videoEls.value[activeLayer.value]) {
     const video = videoEls.value[activeLayer.value]
     const expected = currentTime.value - activeScene.value.start_time
-    if (Math.abs(video.currentTime - expected) > 0.1) {
+    if (Math.abs(video.currentTime - expected) > 0.5) {
       video.currentTime = expected
     }
     if (video.paused && layerReady.value[activeLayer.value]) {
@@ -1426,6 +1436,9 @@ const dragging = ref(null);
 
 // Handle dragging
 const startDragging = (event, type, item, index, trackRef) => {
+  if(index != selectedSceneIndex.value && type === 'scene') return;
+  if(index != selectedVoiceoverIndex.value && type === 'voiceover') return;
+  
   event.preventDefault();
   console.log('start dragging');
   const trackRect = trackRef.getBoundingClientRect();

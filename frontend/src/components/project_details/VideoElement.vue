@@ -2,17 +2,22 @@
   <div class="w-full">
     {{ actualDuration }}
     <div v-if="loading">
-       <div class="flex rounded overflow-hidden">
+      <div class="flex rounded overflow-hidden">
+        <div v-if="fistSceneImg">
+          <img :src="fistSceneImg" class="w-[50px] min-w-[50px] h-[50px] object-cover" />
+        </div>
         <div 
-          v-for="n in NUMBER_OF_FRAMES" 
+          v-for="n in (NUMBER_OF_FRAMES - (fistSceneImg ? 1 : 0))" 
           :key="n" 
-          class="w-[50px] min-w-[50px] h-[50px]"
+          class="w-[50px] min-w-[50px] h-[50px] flex justify-center items-center"
           :class="{
-            'bg-gray-200' : n % 3 == 0,
-            'bg-gray-300' : n % 3 == 1,
-            'bg-gray-400' : n % 3 == 2,
+            'bg-stone-300' : n % 3 == 0,
+            'bg-[var(--light-gray)]' : n % 3 == 1,
+            'bg-stone-400' : n % 3 == 2,
           }"
-        ></div>
+        >
+          <font-awesome-icon icon="image"></font-awesome-icon>
+        </div>
       </div>
     </div>
     
@@ -45,6 +50,18 @@ const props = defineProps({
   actualDuration: Number,
 });
 
+const fistSceneImg = computed(()=>{
+  if(props.scene.video_src){
+    return null;
+  }
+  if(props.scene.images.length > 0){
+    if(props.scene.images[0].src){
+      return `http://localhost:8000/${props.scene.images[0].src}`;
+    }
+  }
+  return null;
+})
+
 // State
 const loading = ref(true);
 const thumbnails = ref([]);
@@ -67,10 +84,12 @@ const displayedThumbnails = computed(()=>{
 
 
 onMounted(async () => {
-
-
+  loading.value = true;
+  if(!props.scene.video_src) {
+    console.warn("No video source provided for the scene.");
+    return;
+  }
   try {
-    loading.value = true;
     
     const response = await fetch(`http://localhost:8000/${props.scene.video_src}`);
     const blob = await response.blob();
@@ -84,7 +103,8 @@ onMounted(async () => {
       start: intervalTime,
       end: duration - intervalTime,
       interval: intervalTime,
-      quality: 0.2,   
+      quality: 0.1, 
+      scale: 0.1, 
     });
     
     thumbnails.value = generatedThumbnails.map(item => {
