@@ -1,6 +1,13 @@
 from database.models import (
-    Project, Character, Place, Scene, Voiceover, 
-    ImagesPackage, PhotoDumpImage, SceneImage
+    Project, 
+    Character,
+    Place, 
+    Scene, 
+    Voiceover, 
+    ImagesPackage, 
+    PhotoDumpImage, 
+    SceneImage, 
+    Music
 )
 import json
 from sqlalchemy import inspect
@@ -21,7 +28,8 @@ def serialize_project(project: Project):
         "places": [serialize_place(p) for p in project.places] if is_loaded(project, "places") else [],
         "scenes": [serialize_scene(s) for s in project.scenes] if is_loaded(project, "scenes") else [],
         "voiceovers": [serialize_voiceover(v) for v in project.voiceovers] if is_loaded(project, "voiceovers") else [],
-        "images_packages": [serialize_images_package(ip) for ip in project.images_packages] if is_loaded(project, "images_packages") else []
+        "images_packages": [serialize_images_package(ip) for ip in project.images_packages] if is_loaded(project, "images_packages") else [],
+        "background_music": [serialize_music(m) for m in project.background_music] if is_loaded(project, "background_music") else []
     }
 
 def serialize_character(character: Character):
@@ -62,6 +70,15 @@ def serialize_voiceover(voiceover: Voiceover):
         "start_time": voiceover.start_time,
         "duration": voiceover.duration,
         "timestamps": json.loads(voiceover.timestamps) if voiceover.timestamps else []
+    }
+
+def serialize_music(music: Music):
+    return {
+        "id": music.id,
+        "name": music.name,
+        "src": music.src,
+        "start_time": music.start_time,
+        "duration": music.duration
     }
 
 def serialize_images_package(package: ImagesPackage):

@@ -1,8 +1,7 @@
 import uuid
-from sqlalchemy import Column, Integer, String, Text, ForeignKey, DateTime, Table, Float, create_engine
+from sqlalchemy import Column, Integer, String, Text, ForeignKey, DateTime, Table, Float
 from sqlalchemy.sql import func
-from sqlalchemy.orm import declarative_base, relationship, sessionmaker
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+from sqlalchemy.orm import relationship
 from .config import Base
 
 project_character_association = Table(
@@ -47,19 +46,36 @@ class Project(Base):
     name = Column(String, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     type = Column(String, nullable=True, default="BASIC")  # Add this line; adjust type/default as needed (e.g., String, Integer)
+    scenes = relationship("Scene", back_populates="project")
     images_packages = relationship(
         "ImagesPackage",
         secondary=project_images_package_association,
         back_populates="projects"
     )
-    scenes = relationship("Scene", back_populates="project")
     characters = relationship(
         "Character",
         secondary=project_character_association,
         back_populates="projects"
     )
     voiceovers = relationship("Voiceover", back_populates="project")
-    places = relationship("Place", secondary=place_project_association, back_populates="projects")
+    places = relationship(
+        "Place", 
+        secondary=place_project_association, 
+        back_populates="projects"
+    )
+    background_music = relationship("Music", back_populates="project", uselist=False)
+
+
+class Music(Base):
+    __tablename__ = "music"
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
+    project_id = Column(String(36), ForeignKey("projects.id"))
+    project = relationship("Project", back_populates="background_music")
+    name = Column(String, nullable=False)
+    src = Column(String, nullable=True)
+    start_time = Column(Float, nullable=False)
+    duration = Column(Float, nullable=False)
+
 
 class ImagesPackage(Base):
     __tablename__ = "images_packages"

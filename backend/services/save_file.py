@@ -12,13 +12,18 @@ async def save_file(file: UploadFile, type: str = "scene"):
 
     if type == "scene_video":
         output_dir = os.getenv("SCENE_VIDEO_DIR", "static/videos/scenes")
+        ext = "mp4"
     elif type == "scene_image":
         output_dir = os.getenv("SCENE_IMAGE_DIR", "static/images/scenes")
+        ext = "png"
+    elif type == "music":
+        output_dir = os.getenv("MUSIC_DIR", "static/music")
+        ext = "mp3"
     else:
         raise ValueError(f"Invalid file type: {type}")
     
     # if type includes image -> ext = png, else ext = mp4
-    ext = "png" if "image" in type else "mp4"
+    
     video_src = os.path.join(output_dir, f"{filename}.{ext}")
 
     try:

@@ -2,10 +2,10 @@ from typing import Any, Dict, List, Optional
 import uuid
 from requests import session
 from sqlalchemy import select, delete, func
-from .models import PhotoDumpImage, Project, SceneImage, Voiceover, Place, Scene, Character, ImagesPackage, project_images_package_association
+from .models import PhotoDumpImage, Project, SceneImage, Voiceover, Place, Scene, Character, ImagesPackage, Music, project_images_package_association
 from .decorators import with_session # Import your new tool
 from sqlalchemy.orm import selectinload
-from .serialization import serialize_project, serialize_scene_image, serialize_voiceover, serialize_scene
+from .serialization import serialize_music, serialize_project, serialize_scene_image, serialize_voiceover, serialize_scene
 import json
 
 # PROJECTS
@@ -86,6 +86,7 @@ async def get_project_db(id: str, serialize: bool=False, session=None):
             selectinload(Project.places),
             selectinload(Project.characters),
             selectinload(Project.voiceovers),
+            selectinload(Project.background_music),
             selectinload(Project.images_packages)
                 .selectinload(ImagesPackage.images)
         )
@@ -391,3 +392,39 @@ async def create_or_update_scene_image_db(id: Optional[str] = None, scene_id: Op
         session.add(scene_image)
 
     return serialize_scene_image(scene_image)
+
+@with_session
+async def create_music_db(project_id: str, session=None):
+    new_music = Music(
+        id=str(uuid.uuid4()),
+        project_id=project_id,
+        name="",
+        src="",
+        start_time=0.0,
+        duration=30.0
+    )
+    session.add(new_music)
+    return serialize_music(new_music)
+
+@with_session
+async def get_music_db(id: str, session=None):
+    stmt = select(Music).where(Music.id == id)
+    result = await session.execute(stmt)
+    music = result.scalars().first()
+    if music:
+        return serialize_music(music)
+    else:
+        return None
+    
+@with_session
+async def update_music_db(id: str, session=None, **kwargs):
+    stmt = select(Music).where(Music.id == id)
+    result = await session.execute(stmt)
+    music = result.scalars().first()
+    if music:
+        for key, value in kwargs.items():
+            setattr(music, key, value)
+        session.add(music)
+        return serialize_music(music)
+    else:
+        return None
