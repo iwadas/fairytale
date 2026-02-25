@@ -25,11 +25,11 @@ class LLM:
             if not self.api_key:
                 raise ValueError("XAI_API_KEY not found in environment variables.")
             self.client = instructor.from_openai(OpenAI(api_key=self.api_key, base_url="https://api.x.ai/v1"))
-        elif self.provider == "genai":
-            self.api_key = os.getenv("GENAI_API_KEY")
+        elif self.provider == "openai":
+            self.api_key = os.getenv("OPEN_AI_API_KEY")
             if not self.api_key:
-                raise ValueError("GENAI_API_KEY not found in environment variables.")
-            self.client = instructor.from_google_genai(api_key=self.api_key)
+                raise ValueError("OPEN_AI_API_KEY not found in environment variables.")
+            self.client = instructor.from_openai(OpenAI(api_key=self.api_key))
         else:
             raise ValueError(f"Unsupported LLM provider: {self.provider}")
     

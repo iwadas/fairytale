@@ -2,64 +2,10 @@
   <div class="container mx-auto">
 
     <!-- REGENERATING PROMPT -->
-    <modal v-if="newImagePromptForm.scene_id && newImagePromptForm.full_voiceover_text">
-      <div class="flex flex-col gap-4">
-        
-        <div class="flex justify-end">
-          <form-button label="Cancel" class="w-fit" color="red" @clicked="newImagePromptForm.scene_id = null"/>
-        </div>
-        <h2 class="text-2xl">Regenerate prompt</h2>
-        
-        <div>
-          <p>
-            Select the part of the scene description that you want to regenerate.
-          </p>
-          <p>Set: <span :class="settingWordForStart ? 'text-blue-500' : 'text-red-500'">{{ settingWordForStart ? 'start' : 'end' }}</span></p>
-          <div class="flex gap-1 flex-wrap">
-            <span v-for="(word, idx) in newImagePromptForm.full_voiceover_text.split(' ')" :key="`${idx}-word`" class="relative cursor-pointer bg-gray-100 p-0.5 rounded-sm" @click="setWordForImageGeneration(idx)">
-              {{ word }}
-              <span v-if="idx == newImagePromptForm.start_word_idx" class="absolute left-0 h-full w-1 top-0 bg-blue-500"></span>
-              <span v-if="idx == newImagePromptForm.end_word_idx" class="absolute right-0 h-full w-1 top-0 bg-red-500"></span>
-            </span>
-          </div>
-        </div>
-
-        <p>Additional information (style or mood)</p>
-        <textarea v-model="newImagePromptForm.additional_info"></textarea>
+ 
 
 
-        <form-button label="Generate new prompts" :loading="generatingNewImagePrompts" :show_status="true" @clicked="generateNewImagePrompts"/>
-        
-        <div v-if="newImagePromptForm.options.length">
-          <h3 class="text-xl mb-2">New Scene Description Options:</h3>
-          <div class="flex flex-col gap-2 max-h-[400px] overflow-y-auto">
-            <div 
-              v-for="(option, idx) in newImagePromptForm.options" 
-              :key="`option-${idx}`" 
-              class="p-2 border rounded hover:bg-gray-100 cursor-pointer"
-              @click="applyNewImagePrompt(option)"
-            >
-              <p>
-                <font-awesome-icon icon="image"/>
-                {{ option.image_description }}
-              </p>
-              <br>
-              <p>
-                <font-awesome-icon icon="circle-play"/>
-                {{ option.video_description }}
-              </p>
-            </div>
-          </div>
-        </div>
-
-
-      </div>
-
-
-    </modal>
-
-
-    <div class="preview mb-4 h-[660px]">
+    <div class="preview mb-4 h-[600px]">
       <div
         class="flex gap-10 h-full justify-center"
       >
@@ -119,300 +65,24 @@
 
 
         <!-- EDIT SCENE -->
-        <div 
-          class="text-gray-300 flex gap-6 container-background flex-1 p-4" 
+        <scene-editor
           v-if="typeof(selectedSceneIndex) == 'number'"
-        >
-          <!-- SCENE VIDEO -->
-          <div>
-             <!-- MORE FUNCTIONS -->
-            <div class="flex items-center gap-6 text-xs mb-5 max-w-[300px]">
-              <form-input 
-                v-model="scenes[selectedSceneIndex].start_time" 
-                label="Start Time"
-                type="text"
-                placeholder="Enter start time..."
-                class="w-full"
-              />
-              <form-input 
-                v-model="scenes[selectedSceneIndex].duration" 
-                label="Duration"
-                type="text"
-                placeholder="Enter duration..."
-                class="w-full"
-              />
-            </div>
+          v-model:scene="scenes[selectedSceneIndex]"
+          v-model:scene_tasks="sceneTasks"
+          :project-id="projectId"
+          :voiceovers="voiceovers"
 
-            <div class="h-[300px] w-[300px] rounded-t-lg mx-auto relative bg-dark">
-              <video 
-                v-if="scenes[selectedSceneIndex].video_src" 
-                :src="`http://localhost:8000/${scenes[selectedSceneIndex].video_src}?v=1}`"
-                alt="Scene Video"
-                class="w-full h-full object-cover rounded-md" 
-                controls 
-              />
-            </div>
-
-            <div class="relative flex flex-col text-xs">
-              <div class="relative group">
-                <input 
-                  type="file" 
-                  class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" 
-                  @input="handleSceneVideoUpload"
-                >
-                <div class="w-full p-3 bg-transparent border border-[var(--light-gray)] rounded-b-[10px] group-hover:bg-white/5 transition-all flex items-center justify-between text-gray-400">
-                  <span>Choose a file...</span>
-                  <span class="bg-[var(--medium)] px-3 py-1 -my-4 rounded-md text-xs text-gray-200 border border-[var(--light-gray)]">Browse</span>
-                </div>
-              </div>
-            </div>
-            <!-- <input type="file" class="w-[180px] text-white bg-gray-800 border p-1 rounded-sm text-xs" @input="handleSceneVideoUpload"> -->
-
-            <!-- <form-input label="Video Prompt" class="w-[180px] mt-6 text-xs">
-              <textarea class="w-[180px] text-white bg-gray-800 border p-1 rounded-sm h-24" v-model="scenes[selectedSceneIndex].video_prompt"></textarea>
-              <form-button label="Fix Prompt" :show_status="true" :loading="fixingVideoPrompt" @clicked="fixVideoPrompt"/>
-            </form-input> -->
-            <div class="flex flex-col mt-4 text-xs">
-              <form-input 
-                v-model="scenes[selectedSceneIndex].video_prompt" 
-                label="Video Prompt" 
-                type="textarea" 
-                placeholder="Enter video prompt..."
-                :rounded_b="false"
-              />
-              <form-button 
-                v-if="scenes[selectedSceneIndex].video_src" 
-                label="Regenerate Video" 
-                :show_status="true" 
-                :loading="generatingVideo.includes(scenes[selectedSceneIndex].id)" 
-                button_style="primary" 
-                :rounded_t="false"
-                @click="generateVideo"
-              />
-              <form-button 
-                v-else 
-                label="Generate Video"
-                :show_status="true" 
-                :loading="generatingVideo.includes(scenes[selectedSceneIndex].id)" 
-                button_style="primary" 
-                :rounded_t="false"
-                @click="generateVideo"
-              />
-            </div>
-          </div>
-          
-          <!-- SCENE IMAGE -->
-          <div class="flex flex-col gap-4 text-xs flex-1">
-            <!-- IMAGES -->
-            <div class="flex gap-2 justify-center items-center">
-              <div v-for="name, idx in ['start', 'end']" :key="name" class="flex gap-2 items-center">
-                <button class="h-[135px] w-[135px] bg-dark rounded-lg relative border overflow-hidden" @click="selectedSceneImageIndex = idx"
-                  :class="selectedSceneImageIndex == idx ? 'border-[var(--primary)]' : 'border-transparent'"
-                >
-                  <!-- <p class="absolute top-4 left-1/2 -translate-x-1/2 text-white fonr-bold z-10">{{ name }}</p> -->
-                  <button v-if="scenes[selectedSceneIndex].images[idx]?.src" class="absolute top-1 right-1 z-10" @click="removeImage(scenes[selectedSceneIndex].images[idx].id)">
-                    <font-awesome-icon icon="xmark"/>
-                  </button>
-                  <img
-                    v-if="scenes[selectedSceneIndex].images[idx]?.src"
-                    :src="getSrc(scenes[selectedSceneIndex].images[idx].src)"
-                    alt="Scene Image"
-                    class="w-full h-full object-cover"
-                  />
-                </button>
-                <div v-if="idx != 1">
-                  <button @click="console.log('swaping ', idx)">
-                    <font-awesome-icon icon="right-left"/>
-                  </button>
-                </div>
-              </div>
-            </div>
-            
-            <div class="relative flex flex-col text-xs">
-              <div class="relative group">
-                <input 
-                  type="file" 
-                  class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" 
-                  @input="handleSceneImageUpload"
-                >
-                <div class="w-full p-3 bg-transparent border border-[var(--light-gray)] rounded-[10px] group-hover:bg-white/5 transition-all flex items-center justify-between text-gray-400">
-                  <span>Choose a file...</span>
-                  <span class="bg-[var(--medium)] px-3 py-1 -my-4 rounded-md text-xs text-gray-200 border border-[var(--light-gray)]">Browse</span>
-                </div>
-              </div>
-            </div>
-
-            <div class="flex gap-2 items-center mt-3 text-xs">
-
-              <form-input 
-                v-model="imageGenerationStyle" 
-                label="Image Style" 
-                type="select"
-                :options="[
-                  { value: '', label: 'Auto style' },
-                  { value: 'lifelaps', label: 'LifeLaps style' },
-                  { value: 'lifelaps_science', label: 'LifeLaps style (with science)' },
-                  { value: 'criminal', label: 'Criminal style' },
-                ]" 
-                placeholder="Select image style..."
-                class="w-full"
-              />
-
-              <div v-if="imageGenerationStylePower" class="w-full h-[66px] flex flex-col">
-                <label for="stylePower" class="text-sm font-medium text-light mb-1">
-                  Style Intensity: <span class="font-semibold text-light">{{ imageGenerationStylePower }}</span>/10
-                </label>
-                <input
-                  id="stylePower"
-                  v-model="imageGenerationStylePower"
-                  type="range"
-                  min="1"
-                  max="10"
-                  step="1"
-                  class="w-full accent-[var(--primary)] cursor-pointer my-auto"
-                />
-              </div>
-            </div>
-
-
-
-            <div class="flex justify-center">
-              <form-button 
-                label="Apply Styles To Prompt" 
-                :show_status="true" 
-                :loading="fixingImagePrompt[selectedSceneIndex]" 
-                button_style="secondary" 
-                @click="fixImagePrompt"
-                class="w-fit"
-              />
-            </div>
-            <!-- PROMPT TEXT AREA -->
-
-            <form-input 
-              v-model="scenes[selectedSceneIndex].images[selectedSceneImageIndex].prompt" 
-              label="Image Prompt"
-              type="textarea"
-              placeholder="Enter image prompt..."
-              class="w-full"
-            />
-
-
-            <!-- REFERENCE IMAGES -->
-            <div>
-              <div class="flex justify-between">
-                <label for="_" class="text-sm font-medium text-light mb-1">
-                  Reference Images
-                  <span class="text-[var(--light-gray)]" v-if="addedReferenceImages.length > 0">
-                    ({{ addedReferenceImages.length }} added)
-                  </span> 
-                </label>
-                <button @click="showReferenceImages = !showReferenceImages">
-                  <font-awesome-icon v-if="showReferenceImages == false" icon="chevron-down" class="text-light-hover"/>
-                  <font-awesome-icon v-else icon="chevron-up" class="text-light-hover"/>
-                </button>
-              </div>
-
-              <div class="flex gap-6 mt-4 mb-4 text-xs" v-if="showReferenceImages">
-                <div class="flex-1">
-                  <p>
-                    Added:
-                  </p>
-                  <div class="overflow-y-auto max-w-[200px] flex gap-1">
-                    <reference-image
-                      v-for="referenceImg in addedReferenceImages"
-                      :key="referenceImg.src"
-                      :name="referenceImg.name"
-                      :src="referenceImg.src"
-                      @remove="removeReferenceImage"
-                      :added="true"
-                    />
-                  </div>
-                </div>
-                <div class="flex-1">
-                  <p>
-                    Available:
-                  </p>
-                  <div class="overflow-y-auto max-w-[200px] flex gap-1" v-if="availableReferenceImages.length > 0">
-                    <reference-image
-                      v-for="refImg in availableReferenceImages"
-                      :key="refImg.name"
-                      :name="refImg.name"
-                      :src="refImg.src"
-                      @add="addReferenceImage"
-                      :added="false"
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- IMAGE FINAL ACTION -->
-            <div class="flex flex-col gap-1">
-              <form-button 
-                :label="scenes[selectedSceneIndex].images[selectedSceneImageIndex]?.src ? 'Regenerate Image' : 'Generate Image'" 
-                :show_status="true" 
-                :loading="generatingImage[selectedSceneIndex]" 
-                button_style="primary" 
-                @click="generateImage"
-              />
-            </div>
-          </div>
-        </div>
-
+        />
+          <!-- v-model:reference_images="referenceImages"
+          v-model:generating_video="generating" -->
         <!-- VOICEOVER EDIT -->
-        <div
+        <voiceover-editor
           v-else-if="typeof(selectedVoiceoverIndex) == 'number'"
-          class="text-light flex flex-col gap-6 container-background w-fit p-4 text-xs" 
-        >
-          <div class="flex gap-4 justify-center">
+          v-model:voiceover="voiceovers[selectedVoiceoverIndex]"
+          v-model:voiceover_tasks="voiceoverTasks"
+        />
 
-            <form-input 
-              v-model="voiceovers[selectedVoiceoverIndex].start_time" 
-              label="Start Time"
-              type="text"
-              placeholder="Enter start time..."
-              class="w-[200px]"
-            />
 
-            <form-input 
-              v-model="voiceovers[selectedVoiceoverIndex].duration" 
-              label="Duration"
-              type="text"
-              placeholder="Enter duration..."
-              class="w-[200px]"
-            />
-            
-          </div>
-          <form-input 
-            v-model="voiceovers[selectedVoiceoverIndex].text" 
-            label="Text"
-            type="textarea"
-            placeholder="Enter text..."
-            class="w-[416px]"
-          />
-
-          <form-input 
-            v-model="voiceovers[selectedVoiceoverIndex].text_with_pauses" 
-            label="Text With Pauses"
-            type="textarea"
-            placeholder="Enter text with pauses..."
-            class="w-[416px]"
-          />
-          
-
-          <div v-if="voiceovers[selectedVoiceoverIndex].src" class="w-[416px]">
-            <audio :src="`http://localhost:8000/${voiceovers[selectedVoiceoverIndex].src}`" controls class="w-full mt-2"></audio>
-          </div>
-
-          <form-button 
-            :label="voiceovers[selectedVoiceoverIndex].src ? 'Regenerate Voiceover' : 'Generate Voiceover'" 
-            :show_status="true" 
-            :loading="generatingVoiceover[selectedVoiceoverIndex]" 
-            button_style="primary" 
-            @click="generateVoiceover"
-          />
-          <form-button label="Delete voiceover" @clicked="deleteVoiceover"/>
-        </div>
 
       </div>
 
@@ -437,6 +107,9 @@
           </div>
           <div class="h-[70px] w-full flex justify-center items-center bg-medium">
             <font-awesome-icon icon="microphone"/>
+          </div>
+          <div class="h-[70px] w-full flex justify-center items-center bg-light-gray">
+            <font-awesome-icon icon="music"/>
           </div>
         </div>
 
@@ -492,12 +165,6 @@
                   :scene="scene"
                   :numberOfFramesToDisplay="Math.ceil(scene.duration * pixelsPerSecond / 50)"
                 />
-                <!-- <span class="text-xs text-white p-2 overflow-hidden">{{ scene.video_prompt }}</span> -->
-                <!-- <div class="w-full text-center bg-gray-800 z-20 text-white text-xs font-bold cursor-move"
-                  @mousedown="startDragging($event, 'scene', scene, index, $refs.scenesTrack)"
-                >
-                  move
-                </div> -->
               </div>
             </div>
   
@@ -520,12 +187,6 @@
               >
                 
                 <audio-element :voiceover="voiceover"/>
-                <!-- <span class="text-xs text-white truncate p-2" :style="`max-width: ${voiceover.duration * pixelsPerSecond}px`">{{ voiceover.text }} </span> -->
-                <!-- <div class="w-full text-center bg-gray-800 z-20 text-white text-xs font-bold cursor-move"
-                  @mousedown="startDragging($event, 'voiceover', voiceover, index, $refs.voiceoversTrack)"
-                >
-                  move
-                </div> -->
               </div>
             </div>
           </div>
@@ -549,6 +210,8 @@ import Modal from '@/components/ModalContainer.vue'
 import getSrc from '../utils/getSrc.js'
 import VideoElement from '@/components/project_details/VideoElement.vue'
 import AudioElement from '@/components/project_details/AudioElement.vue'
+import SceneEditor from '@/components/project_details/SceneEditor.vue'
+import VoiceoverEditor from '@/components/project_details/VoiceoverEditor.vue'
 
 
 const route = 'http://localhost:8000/'
@@ -569,6 +232,15 @@ const selectedVoiceoverIndex = ref(null);
 const generateImageLowkey = ref(true);
 const voiceoverTimestamps = ref([])
 const selectedSceneImageIndex = ref(null);
+
+
+const sceneTasks = ref({
+  fixing_image_prompt: {},
+  generating_video: {},
+  generating_image: {},
+  generating_prompt: {},
+});
+
 
 const getSelectedSceneId = () => {
   return scenes.value[selectedSceneIndex.value].id
@@ -1048,81 +720,8 @@ const newImagePromptForm = ref({
   options: [],
 })
 
-const settingWordForStart = ref(true)
-const setWordForImageGeneration = (idx) => {
-  if(settingWordForStart.value){
-    newImagePromptForm.value.start_word_idx = idx;
-  } else {
-    if(idx < newImagePromptForm.value.start_word_idx){
-      // swap
-      newImagePromptForm.value.end_word_idx = newImagePromptForm.value.start_word_idx;
-      newImagePromptForm.value.start_word_idx = idx;
-      return;
-    }
-    newImagePromptForm.value.end_word_idx = idx;
-  }
-  settingWordForStart.value = !settingWordForStart.value;
-}
 
-const openNewImagePromptForm = async () => {
-  console.log('TEXT CONTEXT')
-  let orderedVoiceoversReverse = [...voiceovers.value].sort((a, b) => b.start_time - a.start_time);
-  let voiceover;
-  let scene = scenes.value[selectedSceneIndex.value];
-  
-  for(let i = 0; i < orderedVoiceoversReverse.length; i++){
-    if(orderedVoiceoversReverse[i].start_time <= scene.start_time){
-      voiceover = orderedVoiceoversReverse[i];
-      break;
-    }
-  }
 
-  newImagePromptForm.value.full_voiceover_text = voiceover ? voiceover.text : '';
-  newImagePromptForm.value.scene_id = scene.id;
-  newImagePromptForm.value.scene_image_id = scene.images[selectedSceneImageIndex.value].id;  
-}
-
-const generateNewImagePrompts = async () => {
-  try {
-    generatingNewImagePrompts.value = true;
-
-    const selectedVoiceoverTextPart = newImagePromptForm.value.full_voiceover_text.split(' ').slice(
-      newImagePromptForm.value.start_word_idx,
-      newImagePromptForm.value.end_word_idx + 1
-    ).join(' ');
-
-    const response = await axios
-      .post('http://localhost:8000/generators/generate-scene-image-prompts', { 
-        project_id: projectId,
-        full_voiceover_text: newImagePromptForm.value.full_voiceover_text,
-        selected_voiceover_text_part: selectedVoiceoverTextPart,
-        additional_info: newImagePromptForm.value.additional_info
-      })
-      .catch((error) => {
-        console.error('Error response from server:', error.response ? error.response.data : error.message);
-        throw error; // Re-throw the error after logging it
-      })
-    console.log(response.data.new_scene_descriptions);
-    newImagePromptForm.value.options = response.data.new_scene_descriptions.options;
-  } catch (error) {
-    console.error('Error regenerating scene image prompt:', error);
-  } finally {
-    generatingNewImagePrompts.value = false;
-  }
-}
-
-const applyNewImagePrompt = (option) => {
-  scenes.value[selectedSceneIndex.value].images[selectedSceneImageIndex.value].prompt = option.image_description;
-  scenes.value[selectedSceneIndex.value].video_prompt = option.video_description; // reset image
-  newImagePromptForm.value = {
-    scene_id: null,
-    scene_image_id: null,
-    full_voiceover_text: null,
-    start_word_idx: null,
-    end_word_idx: null,
-    options: [],
-  }
-}
 
 
 
@@ -1149,79 +748,10 @@ const fixVideoPrompt = async () => {
   }
 }
 
-const generatingVideo = ref([]);
-
-const generateVideo = async () => {
-  const sceneIndex = selectedSceneIndex.value;
-  const scene = scenes.value[selectedSceneIndex.value];
-  try {
-    // Reset the form
-    generatingVideo.value.push(scene.id);
-    const response = await axios.post(`http://localhost:8000/scenes/generate-video/${scene.id}`, {
-      prompt: scene.video_prompt,
-      duration: scene.duration,
-    });
-
-    console.log("the task started")
-    console.log(response.data);
-
-    // let task_id = response.data.task_id;
-
-    // let task_response 
-    // start polling for task status
-    // while(true || false || true){
-    //   task_response = await axios.get(`http://localhost:8000/tasks/${task_id}`);
-    //   console.log("polling task status")
-    //   console.log(task_response.data);
-      
-    //   if(task_response.data.status == 'success'){
-    //     const newSrc = task_response.data.result.video_url;
-    //     scenes.value[sceneIndex].video_src = newSrc + "?v=" + Date.now(); // Assuming the backend returns the video URL in 'video_ur
-    //     break;
-    //   }
-    //   else if(task_response.data.status == 'failed'){
-    //     throw new Error('Video generation task failed');
-    //   }
-    //   // wait for a few seconds before polling again
-    //   await new Promise(resolve => setTimeout(resolve, 3000));
-    // }
-  } catch (error) {
-    console.error('Error generating scene video:', error.response?.data || error.message);
-  } finally {
-    generatingVideo.value = generatingVideo.value.filter(id => id !== scene.id);
-  }
-}
-
-
 // GENERATING IMAGE
-const imageGenerationStyle = ref('');
-const imageGenerationStylePower = ref(5);
 
-const fixingImagePrompt = ref([]);
 
-const fixImagePrompt = async () => {
-  try {
-    fixingImagePrompt.value[selectedSceneIndex.value] = true;
-    const response = await axios
-      .post('http://localhost:8000/generators/fix-scene-image-prompt', { 
-        prompt: scenes.value[selectedSceneIndex.value].images[selectedSceneImageIndex.value].prompt,
-        style: imageGenerationStyle.value,
-        style_power: imageGenerationStylePower.value
-      })
-      .catch((error) => {
-        console.error('Error response from server:', error.response ? error.response.data : error.message);
-        throw error; // Re-throw the error after logging it
-      })
-    ;
-    scenes.value[selectedSceneIndex.value].images[selectedSceneImageIndex.value].prompt = response.data.fixed_prompt;
-  } catch (error) {
-    console.error('Error fixing scene image prompt:', error);
-  } finally {
-    fixingImagePrompt.value[selectedSceneIndex.value] = false;
-  }
-}
 
-const generatingImage = ref(false);
 
 const removeImage = async (sceneImageId) => {
   if(!sceneImageId) return
@@ -1229,176 +759,16 @@ const removeImage = async (sceneImageId) => {
   scenes.value[selectedSceneIndex.value].images[selectedSceneImageIndex.value].src = null;
 }
 
-const generateImage = async () => {
-  const formData = new FormData();
-  generatingImage.value = true;
-  // Helper to convert URL/blob to File
-  const urlToFile = async (url, filename) => {
-    try {
-      // Handle blob: URLs
-      url = getSrc(url)
-      if (url.startsWith('blob:')) {
-        const response = await fetch(url);
-        const blob = await response.blob();
-        return new File([blob], filename, { type: blob.type });
-      }
 
-      // Handle http(s) URLs (including localhost)
-      const response = await fetch(url);
-      if (!response.ok) throw new Error(`Failed to fetch ${url}`);
-      const blob = await response.blob();
-      return new File([blob], filename, { type: blob.type || 'image/jpeg' });
-    } catch (error) {
-      console.error(`Error converting ${url} to File:`, error);
-      throw error;
-    }
-  };
-
-  // Convert reference images to Files and append to formData
-  console.log(addedReferenceImages.value);
-  for (const img of addedReferenceImages.value) {
-    const file = await urlToFile(img.src, `scene_${img.name}`); 
-    formData.append("files", file); 
-  }
-
-  const scene = scenes.value[selectedSceneIndex.value].images[selectedSceneImageIndex.value];
-  formData.append("lowkey", generateImageLowkey.value);
-  formData.append("prompt", scene.prompt);
-  formData.append("scene_image_id", scene.id);
-
-  // Optional: debug
-  console.log("Sending FormData:");
-  for (const [k, v] of formData.entries()) {
-    if (v instanceof File) {
-      console.log(`  ${k} -> File: ${v.name} (${v.size} bytes)`);
-    } else {
-      console.log(`  ${k} -> ${v}`);
-    }
-  }
-
-  const response = await axios.post(
-    `${route}scenes/generate-image/${scenes.value[selectedSceneIndex.value].id}`,
-    formData,
-    {
-      headers: { "Content-Type": "multipart/form-data" },
-    }
-  );
-
-  generatingImage.value = false;
-
-  console.log(response.data);
-  scenes.value[selectedSceneIndex.value].image_src = response.data.image_url;
-};
-
-// MANUAL SCENE LOAD
-const handleSceneImageUpload = async (event) => {
-  const img = event.target.files[0];
-  if(!img) return;
-  const formData = new FormData();
-  formData.append('image', img);
-  formData.append('time', ["start", "end"][selectedSceneImageIndex.value]);
-  formData.append('scene_image_id', scenes.value[selectedSceneIndex.value].images[selectedSceneImageIndex.value].id ?? '');
-  formData.append('scene_image_prompt', scenes.value[selectedSceneIndex.value].images[selectedSceneImageIndex.value].prompt ?? '');
-  console.log(formData);
-  const response = await axios.put(`${route}scenes/upload-image/${scenes.value[selectedSceneIndex.value].id}`, formData, {
-    headers: { 'Content-Type': 'multipart/form-data' }
-  });
-  console.log('-----------response--------------');
-  console.log(response.data);
-  scenes.value[selectedSceneIndex.value].images[selectedSceneImageIndex.value] = response.data.scene_image
-}
-
-const handleSceneVideoUpload = async (event) => {
-  const video = event.target.files[0];
-  const formData = new FormData();
-  formData.append('video', video);
-
-  const response = await axios.put(`${route}scenes/upload-video/${scenes.value[selectedSceneIndex.value].id}`, formData, {
-    headers: { 'Content-Type': 'multipart/form-data' }
-  });
-
-  scenes.value[selectedSceneIndex.value].video_src = response.data.video_url;
-
-}
-
-// REFERENCE IMAGES
-const addedReferenceImages = ref([]);
-const showReferenceImages = ref(false);
-
-watch(selectedSceneIndex, ()=>{
-  if(typeof(selectedSceneIndex.value) == 'number'){
-    console.log(scenes.value[selectedSceneIndex.value].characters)
-    if(scenes.value[selectedSceneIndex.value].characters.length > 0) {
-      console.log("CHARCTERS");
-      console.log(scenes.value[selectedSceneIndex.value].characters)
-      addedReferenceImages.value = scenes.value[selectedSceneIndex.value].characters.map(el => ({ name: el.name, src: el.src }))
-      return
-    }
-  }
-  addedReferenceImages.value = []
-})
-
-const availableReferenceImages = computed(()=>{
-  const addedSrcs = addedReferenceImages.value.map(el => el.src)
-  if(typeof(selectedSceneIndex.value) == 'number'){
-    let result = []
-    characters.value.forEach(el => {
-      if(!addedSrcs.includes(el.src)){
-        result.push({
-          name: el.name,
-          src: el.src
-        })
-      }
-    })
-    scenes.value.forEach(el => {
-      if(el.images && el.images.length > 0){
-        el.images.forEach(img => {
-          if(img.src && !addedSrcs.includes(img.src)){
-            result.push({
-              name: el.id + '_' + img.time,
-              src: img.src
-            })
-          }
-        })
-      }
-    })
-    return result
-  }
-  return []
-})
-
-const addReferenceImage = (referenceImg) => {
-  addedReferenceImages.value.push(referenceImg)
-}
-
-const removeReferenceImage = (referenceImgSrc) => {
-  addedReferenceImages.value = addedReferenceImages.value.filter(el => el.src != referenceImgSrc)
-  console.log(addedReferenceImages.value)
-}
 
 
 // REQUESTS
-const generatingVoiceover = ref({});
-
-const generateVoiceover = async () => {
-
-  generatingVoiceover.value[selectedVoiceoverIndex.value] = true;
-  const voiceoverIndex = selectedVoiceoverIndex.value;
-  const voiceover = voiceovers.value[selectedVoiceoverIndex.value];
-  const voiceoverResponse = await axios.post(`http://localhost:8000/voiceovers/generate/${voiceover.id}`, {
-    text: voiceover.text
-  });
-
-  generatingVoiceover.value[selectedVoiceoverIndex.value] = false;
-
-  voiceovers.value[voiceoverIndex].src = voiceoverResponse.data.src+"?v="+Date.now();
-  voiceovers.value[voiceoverIndex].duration = voiceoverResponse.data.duration
-  voiceovers.value[voiceoverIndex].timestamps = voiceoverResponse.data.timestamps
-}
+const voiceoverTasks = ref({
+  generating_voiceover: {},
+});
 
 
 // Time markers (every 10 seconds)
-
 const timeTicks = computed(()=>{
   const ticks = [];
   for(let t = 0; t <= timelineDuration; t++){
@@ -1417,8 +787,6 @@ const timeTicks = computed(()=>{
   return ticks
 })
 
-const timeTicksOLD = Array.from({ length: Math.ceil(timelineDuration / 5) + 1 }, (_, i) => i * 5);
-
 // Format time in seconds to MM:SS.ss (with milliseconds if needed, but simplified to seconds)
 const formatTime = (seconds) => {
   const minutes = Math.floor(seconds / 60);
@@ -1432,7 +800,6 @@ const formatTime = (seconds) => {
 
 // Dragging state
 const dragging = ref(null);
-
 
 // Handle dragging
 const startDragging = (event, type, item, index, trackRef) => {
@@ -1584,9 +951,6 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-.preview {
-  min-height: 200px;
-}
 .timeline {
   user-select: none; /* Prevent text selection during dragging */
 }

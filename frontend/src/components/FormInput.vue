@@ -13,7 +13,7 @@
     <textarea
       v-if="type === 'textarea'"
       v-model="model"
-      class="w-full p-3 bg-transparent border border-[var(--light-gray)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:border-transparent text-white transition-all min-h-[120px] resize-y"
+      class="w-full p-3 bg-transparent border border-[var(--light-gray)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:border-transparent text-white transition-all min-h-[100px] resize-y"
       :class="roundedClass"
       :placeholder="placeholder"
     />

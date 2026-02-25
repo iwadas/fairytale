@@ -51,7 +51,7 @@ async def script_generation(request: ScriptIn):
     # word_count = estimated word count approximating to 180 words per minute.
     word_count = request.duration * 180 / 60
 
-    STORY_SAMPLES_COUNT = 3
+    STORY_SAMPLES_COUNT = 1
 
     try:
         story_data = None
