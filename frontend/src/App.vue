@@ -50,6 +50,7 @@ const tabs = [
   },
   { name: 'Projects', path: '/select-project', icon: 'fa-photo-film' },
   { name: 'Characters', path: '/characters-list', icon: 'fa-mask' },
+  { name: 'Settings', path: '/settings', icon: 'fa-cog' },
 ];
 
 let socket = null;

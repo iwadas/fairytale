@@ -1,8 +1,14 @@
 <template>
   <div class="-mb-1">
-    <label v-if="label" class="block text-sm font-medium text-light mb-1">
-      {{ label }} <span class="text-[var(--light-gray)] font-normal" v-if="optional">(Optional)</span>
-    </label>
+    <div class="flex gap-2 items-center mb-1">
+      <label v-if="label" class="block text-sm font-medium text-light">
+        {{ label }} <span class="text-[var(--light-gray)] font-normal" v-if="optional">(Optional)</span>
+      </label>
+      <div class="relative group" v-if="helper">
+        <font-awesome-icon icon="circle-info" class="text-xs text-light mb-[2px]" />
+        <span class="absolute bottom-0 left-full transform w-max max-w-xs bg-dark text-light text-xs rounded-[10px] p-2 opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none group-hover:pointer-events-auto" v-html="helper"></span>
+      </div>
+    </div>
         
     <textarea
       v-if="type === 'textarea'"
@@ -68,7 +74,8 @@ const props = defineProps({
   options: {
     type: Array,
     default: () => [] 
-  }
+  },
+  helper: String
 })
 
 const roundedClass = computed(() => {

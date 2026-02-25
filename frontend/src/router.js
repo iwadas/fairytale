@@ -6,6 +6,7 @@ import ProjectDetails from './pages/ProjectDetails.vue';
 import CreatePhotoDump from './components/CreatePhotoDump.vue';
 import ImagesPackage from './components/ImagesPackage.vue';
 import PhotoDumpProjectDetails from './components/PhotoDumpProjectDetails.vue';
+import Settings from './pages/Settings.vue';
 
 const routes = [
   { path: '/', redirect: '/create-project' },
@@ -16,6 +17,7 @@ const routes = [
   { path: '/photo-dump-projects/:projectId', component: PhotoDumpProjectDetails },
   { path: '/characters-list', component: CharactersList },
   { path: '/projects/:projectId', component: ProjectDetails },
+  { path: '/settings', component: Settings }
 ];
 
 const router = createRouter({

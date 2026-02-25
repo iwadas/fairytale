@@ -13,6 +13,15 @@ body {
   color: var(--light);
 }
 
+a {
+  color: var(--primary-dark);
+  text-decoration: none;
+  transition: color 0.3s ease;
+}
+a:hover {
+  text-decoration: underline;
+  color: var(--primary);
+} 
 
 .container-background {
   background: rgba(96,96,96, 0.5);
