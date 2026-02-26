@@ -428,3 +428,9 @@ async def update_music_db(id: str, session=None, **kwargs):
         return serialize_music(music)
     else:
         return None
+    
+@with_session
+async def delete_music_db(id: str, session=None):
+    stmt = delete(Music).where(Music.id == id)
+    await session.execute(stmt)
+    return {"message": "Music deleted successfully"}

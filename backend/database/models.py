@@ -39,6 +39,7 @@ place_scene_association = Table(
     Column("place_id", String(36), ForeignKey("places.id"), primary_key=True),
 )
 
+
 # ORM models
 class Project(Base):
     __tablename__ = "projects"
@@ -63,7 +64,7 @@ class Project(Base):
         secondary=place_project_association, 
         back_populates="projects"
     )
-    background_music = relationship("Music", back_populates="project", uselist=False)
+    background_music = relationship("Music", back_populates="project")
 
 
 class Music(Base):

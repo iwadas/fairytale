@@ -367,13 +367,17 @@ const handleSceneImageUpload = async (event) => {
   formData.append('scene_image_id', scene.value.images[selectedSceneImageIndex.value].id ?? '');
   formData.append('scene_image_prompt', scene.value.images[selectedSceneImageIndex.value].prompt ?? '');
   console.log(formData);
-  const response = await axios.put(`${route}scenes/upload-image/${scene.value.id}`, formData, {
-    headers: { 'Content-Type': 'multipart/form-data' }
-  });
-  console.log('-----------response--------------');
-  console.log(response.data);
-  scene.value.images[selectedSceneImageIndex.value] = response.data.scene_image
+  try {
+    const response = await axios.put(`${route}scenes/upload-image/${scene.value.id}`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+    console.log(response.data);
+    scene.value.images[selectedSceneImageIndex.value] = response.data.scene_image
+  } catch (error) {
+    console.error('Error uploading scene image:', error);
+  }
 }
+
 const handleSceneVideoUpload = async (event) => {
   const video = event.target.files[0];
   const formData = new FormData();

@@ -10,6 +10,7 @@
         class="flex gap-10 h-full justify-center"
       >
         <!-- PREVIEW -->
+         {{ activeMusic }}
 
         <div class="relative min-w-[400px] overflow-hidden">
           <div class="size-[400px] rounded-[10px] overflow-hidden relative">
@@ -46,6 +47,17 @@
             style="display: none;"
           ></audio>
 
+          <!-- Hidden audio for music -->
+          <audio
+            v-for="index in 2"
+            :key="'music' + index"
+            :ref="el => musicEls[index - 1] = el"
+            preload="auto"
+            @canplaythrough="onMusicReady(index - 1)"
+            @ended="onMusicEnded(index - 1)"
+            style="display: none;"
+          ></audio>
+
           <div class="mt-4 text-lg">
             <div class="flex gap-3 items-center justify-center">
               <button class="size-6 rounded-md grid place-items-center text-light-hover" @click="move(-10)">
@@ -73,13 +85,18 @@
           :voiceovers="voiceovers"
 
         />
-          <!-- v-model:reference_images="referenceImages"
+        <!-- v-model:reference_images="referenceImages"
           v-model:generating_video="generating" -->
         <!-- VOICEOVER EDIT -->
         <voiceover-editor
           v-else-if="typeof(selectedVoiceoverIndex) == 'number'"
           v-model:voiceover="voiceovers[selectedVoiceoverIndex]"
           v-model:voiceover_tasks="voiceoverTasks"
+        />
+
+        <music-editor
+          v-else-if="typeof(selectedMusicIndex) == 'number'"
+          v-model:music="backgroundMusic[selectedMusicIndex]"
         />
 
 
@@ -90,6 +107,26 @@
     </div>
 
     <!-- Timeline Section -->
+    <div class="flex gap-2 items-center mb-2">
+      <button class="button-secondary text-xs text-light">
+        <font-awesome-icon icon="video"/>
+        <font-awesome-icon icon="plus-circle" class="text-primary"/>
+      </button>
+      <button class="button-secondary text-xs text-light">
+        <font-awesome-icon icon="image"/>
+        <font-awesome-icon icon="plus-circle" class="text-primary"/>
+      </button>
+      <button class="button-secondary text-xs text-light">
+        <font-awesome-icon icon="microphone"/>
+        <font-awesome-icon icon="plus-circle" class="text-primary"/>
+      </button>
+      <button class="button-secondary text-xs text-light"
+        @click="addMusic"
+      >
+        <font-awesome-icon icon="music"/>
+        <font-awesome-icon icon="plus-circle" class="text-primary"/>
+      </button>
+    </div>
     <div
       class="text-light container-background w-full text-xs" 
     >
@@ -138,7 +175,7 @@
                     icon="caret-down"
                     class="text-[var(--primary)] text-3xl absolute -translate-x-1/2 top-0 -translate-y-3 left-1/2"
                   />
-                  <div class="h-full bg-red-500 w-1">
+                  <div class="h-full bg-primary w-1">
                   </div>
                 </div>
               </div>
@@ -189,6 +226,26 @@
                 <audio-element :voiceover="voiceover"/>
               </div>
             </div>
+            <div class="relative h-[70px] bg-light-gray" ref="musicTrack">
+              <div
+                v-for="(music, index) in backgroundMusic"
+                :key="music.id"
+                class="absolute h-[50px] rounded-[10px] cursor-pointer select-none flex flex-col border-[2px] justify-between mt-[10px]"
+                :style="{
+                  left: `${music.start_time * pixelsPerSecond}px`,
+                  width: `${music.duration * pixelsPerSecond}px`,
+                }"
+                :class="{
+                  'border-[var(--primary)]' : index == selectedMusicIndex,
+                  'border-transparent' : index != selectedMusicIndex,
+                }"
+                @click="selectMusic(music.id)"
+                @mousedown="startDragging($event, 'music', music, index, $refs.musicTrack)"
+              >
+                
+                <audio-element :music="music"/>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -212,6 +269,7 @@ import VideoElement from '@/components/project_details/VideoElement.vue'
 import AudioElement from '@/components/project_details/AudioElement.vue'
 import SceneEditor from '@/components/project_details/SceneEditor.vue'
 import VoiceoverEditor from '@/components/project_details/VoiceoverEditor.vue'
+import MusicEditor from '@/components/project_details/MusicEditor.vue'
 
 
 const route = 'http://localhost:8000/'
@@ -219,6 +277,7 @@ let projectId = null;
 
 const scenes = ref([]);
 const voiceovers = ref([]);
+const backgroundMusic = ref([]);
 const characters = ref([]);
 
 const timelineDuration = 220; // Total duration of the timeline in seconds (adjust as needed)
@@ -229,6 +288,7 @@ const totalWidth = computed(()=>{
 
 const selectedSceneIndex = ref(null);
 const selectedVoiceoverIndex = ref(null);
+const selectedMusicIndex = ref(null);
 const generateImageLowkey = ref(true);
 const voiceoverTimestamps = ref([])
 const selectedSceneImageIndex = ref(null);
@@ -263,6 +323,11 @@ const addScene = async () => {
 // COMBINE VOICEOVERS
 const combineVoiceovers = async () => {
   await axios.post(`${route}voiceovers/combine/${projectId}`);
+}
+
+const addMusic = async () => {
+  const response = await axios.post(`${route}music/${projectId}`);
+  backgroundMusic.value.push(response.data.music);
 }
 
 // ADD VOICEOVER
@@ -337,6 +402,11 @@ const activeAudioLayer = ref(0)
 const audioReady = ref([false, false])
 const audioSources = ref(['', ''])  // track current src per layer
 
+const musicEls = ref([])
+const activeMusicLayer = ref(0)
+const musicReady = ref([false, false])
+const musicSources = ref(['', ''])  // track current src per layer
+
 // Track which layer is visible
 const activeLayer = ref(0)
 // Preloading state per layer
@@ -352,10 +422,20 @@ const onAudioReady = (index) => {
   audioReady.value[index] = true
 }
 
+const onMusicReady = (index) => {
+  musicReady.value[index] = true
+}
+
 const onAudioEnded = (index) => {
   // Auto-switch back to layer 0 when this one finishes (optional)
   if (activeAudioLayer.value === index) {
     activeAudioLayer.value = 0
+  }
+}
+
+const onMusicEnded = (index) => {
+  if (activeMusicLayer.value === index) {
+    activeMusicLayer.value = 0
   }
 }
 
@@ -417,6 +497,16 @@ const activeVoiceover = computed(() => {
   return null
 })
 
+const activeMusic = computed(() => {
+  const time = currentTime.value
+  for (const music of backgroundMusic.value) {
+    if (time >= music.start_time && time < music.start_time + music.duration) {
+      return music
+    }
+  }
+  return null
+})
+
 const nextScene = computed(() => {
   const current = activeScene.value
   if (!current) return null
@@ -436,6 +526,13 @@ const nextNextScene = computed(() => {
   if (!next) return null
   const index = orderedScenes.value.findIndex(s => s === next)
   return orderedScenes.value[index + 1] || null
+})
+
+const nextMusic = computed(() => {
+  const current = activeMusic.value
+  if (!current) return null
+  const index = backgroundMusic.value.findIndex(m => m === current)
+  return backgroundMusic.value[index + 1] || null
 })
 
 // ================ LAYER MANAGEMENT ================
@@ -474,6 +571,78 @@ const preloadVideo = async (videoEl, src, startOffset = 0) => {
 // Called when video is ready to play smoothly
 const onCanPlayThrough = (layerIndex) => {
   layerReady.value[layerIndex] = true
+}
+
+const updateMusicLayers = async (time) => {
+  const music = activeMusic.value
+  const next_music = nextMusic.value
+
+  const currentLayer = activeMusicLayer.value
+  const nextLayer = 1 - currentLayer  // toggle between 0 and 1
+
+  // 1. Current music
+  if (music) {
+    const localTime = time - music.start_time
+    const fullSrc = (route + music.src).replaceAll("\\", "/")
+
+    // FIX 1: Check musicSources, not audioSources
+    if (musicSources.value[currentLayer] !== fullSrc) {
+      // Load into current layer
+      // FIX 2: Renamed inner variable to musicEl to prevent shadowing
+      const musicEl = musicEls.value[currentLayer]
+
+      musicEl.pause()
+      musicEl.src = fullSrc
+      musicEl.currentTime = localTime
+      musicEl.load()
+      musicSources.value[currentLayer] = fullSrc
+      musicReady.value[currentLayer] = false
+    } else {
+      // Same source → just sync time
+      const musicEl = musicEls.value[currentLayer]
+      if (Math.abs(musicEl.currentTime - localTime) > 0.1) {
+        musicEl.currentTime = localTime
+      }
+    }
+
+    // Auto-switch to this layer when ready
+    if (musicReady.value[currentLayer] && activeMusicLayer.value !== currentLayer) {
+      activeMusicLayer.value = currentLayer
+    }
+
+    // Play if playing
+    if (isPlaying.value && musicEls.value[currentLayer].paused && musicReady.value[currentLayer]) {
+      musicEls.value[currentLayer].play().catch(() => {})
+    }
+  }
+
+  // 2. Preload NEXT music (if exists and not too far)
+  if (next_music && next_music.start_time - time < 2.0) {  // preload 2s early
+    const fullSrc = (route + next_music.src).replaceAll("\\", "/")
+    if (musicSources.value[nextLayer] !== fullSrc) {
+
+      const musicEl = musicEls.value[nextLayer]
+      musicEl.pause()
+      musicEl.src = fullSrc
+      musicEl.currentTime = 0
+      musicEl.load()
+      musicSources.value[nextLayer] = fullSrc
+      musicReady.value[nextLayer] = false
+    }
+  }
+
+  // 3. Auto-switch on boundary
+  if (next_music && time >= next_music.start_time - 0.05) {
+    if (musicReady.value[nextLayer]) {
+      activeMusicLayer.value = nextLayer
+    }
+  }
+
+  // 4. Stop inactive layer
+  const inactiveLayer = 1 - activeMusicLayer.value
+  if (musicEls.value[inactiveLayer].src && inactiveLayer !== currentLayer) {
+    musicEls.value[inactiveLayer].pause()
+  }
 }
 
 const updateAudioLayers = async (time) => {
@@ -609,6 +778,7 @@ const tick = () => {
   // Update both systems
   updateVideoLayers(currentTime.value)
   updateAudioLayers(currentTime.value)
+  updateMusicLayers(currentTime.value)
 
   // Sync active video
   if (activeScene.value && videoEls.value[activeLayer.value]) {
@@ -651,6 +821,7 @@ const pause = () => {
   isPlaying.value = false
   videoEls.value.forEach(v => v.pause())
   audioEls.value.forEach(a => a.pause())
+  musicEls.value.forEach(m => m.pause())
   cancelAnimationFrame(rafId.value)
 }
 
@@ -805,6 +976,7 @@ const dragging = ref(null);
 const startDragging = (event, type, item, index, trackRef) => {
   if(index != selectedSceneIndex.value && type === 'scene') return;
   if(index != selectedVoiceoverIndex.value && type === 'voiceover') return;
+  if(index != selectedMusicIndex.value && type === 'music') return;
   
   event.preventDefault();
   console.log('start dragging');
@@ -829,6 +1001,8 @@ const startDragging = (event, type, item, index, trackRef) => {
       scenes.value[index].start_time = newStartTime;
     } else if (type === 'voiceover') {
       voiceovers.value[index].start_time = newStartTime;
+    } else if (type === 'music') {
+      backgroundMusic.value[index].start_time = newStartTime;
     }
   };
 
@@ -859,11 +1033,23 @@ const handleWheel = (event) => {
 
 // Select scene for preview
 const selectScene = (sceneId) => {
+  deselectAll();
   selectedSceneIndex.value = scenes.value.findIndex(el => el.id == sceneId);
-  selectedVoiceoverIndex.value = null;
-  selectedSceneImageIndex.value = 0;
   filterSceneImages();
 };
+
+const selectMusic = (musicId) => {
+  deselectAll();
+  selectedMusicIndex.value = backgroundMusic.value.findIndex(el => el.id == musicId);
+};
+
+const deselectAll = () => {
+  selectedSceneIndex.value = null;
+  selectedVoiceoverIndex.value = null;
+  selectedMusicIndex.value = null;
+  selectedSceneImageIndex.value = 0;
+}
+
 
 // Function filters scene images based on their time (image has time which is enum - start, mid, end) (start -> 0, mid -> 1, end -> 2);
 // If there are more than one image per time, it keeps the first one -> others are moved to next time slot (if free)
@@ -911,8 +1097,8 @@ const filterSceneImages = () => {
 
 // Select voiceover for preview
 const selectVoiceover = (voiceoverId) => {
+  deselectAll();
   selectedVoiceoverIndex.value = voiceovers.value.findIndex(el => el.id == voiceoverId);
-  selectedSceneIndex.value = null;
 };
 
 
@@ -928,6 +1114,9 @@ onMounted(async () => {
   voiceovers.value = project.voiceovers
   scenes.value = project.scenes
   characters.value = project.characters
+  backgroundMusic.value = project.background_music
+
+  console.log(project.background_music);
 
   console.log('project');
   console.log(project);
