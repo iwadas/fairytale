@@ -1,66 +1,104 @@
 from typing import Any
-import os
-from openai import OpenAI
+from openai import AsyncOpenAI
 import instructor 
-from dotenv import load_dotenv
+
+from database.crud import get_settings_db
+
 
 class LLM:
-    def __init__(self, provider: str="xai", **kwargs) -> "LLM":
+    def __init__(self) -> "LLM":
         """
         Docstring for __init__
         :param self: Description
         :param provider: Description
         :type provider: str
         """
-        load_dotenv()
-        self.provider = provider
-        self.api_key = None
-        self.ai_model = kwargs.get("ai_model", None)
+        self.provider = None
         self.client = None
-        self.set_client()
+        self.provider_settings = None
 
-    def set_client(self):
+    @classmethod
+    async def create(cls):
+        instance = cls()
+        await instance.provide_settings()
+        return instance
+    
+    async def provide_settings(self):
+        
+        settings = await get_settings_db()
+        if not settings:
+            raise ValueError("Settings not found in database.")
+        
+        provider = settings.get("selected_llm_provider", None)
+        if not provider:
+            raise ValueError("LLM provider not selected in settings.")
+        self.provider = provider
+
+        llm_provider_settings = settings.get("llm_provider_settings", None)
+        if not llm_provider_settings:
+            raise ValueError("LLM provider settings not found in settings.")
+        
+        provider_settings = llm_provider_settings.get(self.provider, None)
+        if not provider_settings:
+            raise ValueError(f"Settings for selected LLM provider '{self.provider}' not found.")
+       
+        self.provider_settings = provider_settings
+
+        api_key = provider_settings.get("api_key", None)
+        if not api_key:
+            raise ValueError(f"API key for provider '{self.provider}' not found in settings.")
+
+        self.set_client(api_key=api_key)
+
+
+    def set_client(self, api_key: str=None):
+        if not self.provider or not api_key:
+            raise ValueError("Provider and API key must be set to initialize LLM client.")
+
         if self.provider == "xai":
-            self.api_key = os.getenv("XAI_API_KEY")
-            if not self.api_key:
-                raise ValueError("XAI_API_KEY not found in environment variables.")
-            self.client = instructor.from_openai(OpenAI(api_key=self.api_key, base_url="https://api.x.ai/v1"))
+            self.client = instructor.from_openai(AsyncOpenAI(api_key=api_key, base_url="https://api.x.ai/v1"))
         elif self.provider == "openai":
-            self.api_key = os.getenv("OPEN_AI_API_KEY")
-            if not self.api_key:
-                raise ValueError("OPEN_AI_API_KEY not found in environment variables.")
-            self.client = instructor.from_openai(OpenAI(api_key=self.api_key))
+            self.client = instructor.from_openai(AsyncOpenAI(api_key=api_key))
         else:
             raise ValueError(f"Unsupported LLM provider: {self.provider}")
     
 
-    def generate(self, messages: Any=None, response_format: Any=None):
+    async def generate(self, messages: Any=None, response_format: Any=None):
         if not self.client:
             raise ValueError("LLM client not initialized.")
         
         if self.provider == "xai":
-            return self.generate_xai(messages=messages, response_format=response_format)
+            return await self.generate_xai(messages=messages, response_format=response_format)
+        elif self.provider == "openai":
+            return await self.generate_openai(messages=messages, response_format=response_format)
         else:
             return None
         
-    def generate_xai(self, messages: Any=None, response_format: Any=None):
-        if not self.ai_model:
-            raise ValueError("AI model not specified.")
+    async def generate_xai(self, messages: Any=None, response_format: Any=None):
+        
 
+        ai_model = self.provider_settings.get("ai_model", None)
+        if not ai_model:
+            raise ValueError("AI model not specified in provider settings.")
+        
         print("SENDING REQUEST TO XAI:")
-        print("" + "="*20)
+        print("="*20)
         print("Messages:")
         for msg in messages:
             print(f"{msg['role']}: {msg['content']}")
-        print("" + "="*20)
-        response = self.client.chat.completions.create(
-            model=self.ai_model,
+        print("="*20)
+
+        response = await self.client.chat.completions.create(
+            model=ai_model,
             messages=messages,
             response_model=response_format,
         )
         print("GOT RESPONSE FROM XAI:")
-        print("" + "="*20)
+        print("="*20)
         print(response)
-        print("" + "="*20)
+        print("="*20)
         return response
+    
+    async def generate_openai(self, messages: Any=None, response_format: Any=None):
+        return await self.generate_xai(messages=messages, response_format=response_format)
         
