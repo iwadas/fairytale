@@ -16,7 +16,7 @@ import numpy as np
 
 from pydantic import BaseModel
 
-from db import get_session, ImagesPackage, PhotoDumpImage
+# from db import get_session, ImagesPackage, PhotoDumpImage
 from services import generate_image, generate_image_banana, generate_video, filename_from_name, create_typing_video, height, width
 
 router = APIRouter(prefix="/images-packages", tags=["images-packages"])

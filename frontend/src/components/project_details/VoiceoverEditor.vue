@@ -56,6 +56,7 @@
   import FormInput from '@/components/FormInput.vue';
   import FormButton from '@/components/FormButton.vue';
   import getSrc from '@/utils/getSrc';
+  import axios from 'axios';
 
   const voiceover = defineModel('voiceover', { required: true, type: Object });
   const voiceoverTasks = defineModel('voiceover_tasks', { required: true, type: Object });

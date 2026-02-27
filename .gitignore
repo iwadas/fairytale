@@ -17,6 +17,7 @@ backend/*.cover
 backend/htmlcov/
 backend/dist/
 backend/build/
+backend/*.db
 
 backend/utils/__pycache__/
 **/__pycache__/

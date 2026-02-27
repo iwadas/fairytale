@@ -5,13 +5,11 @@
  
 
 
-    <div class="preview mb-4 h-[600px]">
+    <div class="preview mb-4 h-[550px]">
       <div
         class="flex gap-10 h-full justify-center"
       >
         <!-- PREVIEW -->
-         {{ activeMusic }}
-
         <div class="relative min-w-[400px] overflow-hidden">
           <div class="size-[400px] rounded-[10px] overflow-hidden relative">
             <video
@@ -128,13 +126,14 @@
       </button>
     </div>
     <div
-      class="text-light container-background w-full text-xs" 
+      class="text-light container-background w-full text-xs"
+      style="margin: 0" 
     >
       <!-- <div class="mb-2 flex justify-end *:w-32 gap-2">
           <form-button label="Add scene" @clicked="addScene"/>
           <form-button label="Add voiceover" @clicked="addVoiceover"/>
       </div> -->
-      <div class="timeline flex" ref="containerRef"> 
+      <div class="flex w-full" ref="containerRef"> 
         <div class="min-w-[100px] flex flex-col -mr-10 relative z-30">
           <div class="mt-[60px] h-[70px] w-full flex justify-center items-center bg-medium">
             <font-awesome-icon icon="video"/>
@@ -205,8 +204,12 @@
               </div>
             </div>
   
-            <!-- Voiceovers Track -->
-            <div class="relative h-[70px] bg-light-gray" ref="voiceoversTrack">
+            <!-- PHOTODUMP TRACK -->
+            <div class="relative h-[70px] bg-light-gray" >
+              
+            </div>
+
+            <div class="relative h-[70px] bg-medium" ref="voiceoversTrack">
               <div
                 v-for="(voiceover, index) in voiceovers"
                 :key="voiceover.id"
@@ -223,7 +226,7 @@
                 @mousedown="startDragging($event, 'voiceover', voiceover, index, $refs.voiceoversTrack)"
               >
                 
-                <audio-element :voiceover="voiceover"/>
+                <audio-element :voiceover="voiceover" class="bg-light-gray"/>
               </div>
             </div>
             <div class="relative h-[70px] bg-light-gray" ref="musicTrack">
@@ -243,7 +246,7 @@
                 @mousedown="startDragging($event, 'music', music, index, $refs.musicTrack)"
               >
                 
-                <audio-element :music="music"/>
+                <audio-element :music="music" class="bg-medium"/>
               </div>
             </div>
           </div>

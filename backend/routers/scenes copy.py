@@ -21,7 +21,7 @@ import numpy as np
 
 from pydantic import BaseModel
 
-from db import get_session, Scene, Character, SceneImage
+# from db import get_session, Scene, Character, SceneImage
 from services import generate_image, generate_image_banana, generate_video, filename_from_name, create_typing_video, height, width
 
 from websocket import socket_manager

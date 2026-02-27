@@ -6,8 +6,8 @@ from sqlalchemy.future import select
 from pathlib import Path
 import uuid
 
-from db import get_session, Character
-from schemas import CharacterOutput
+# from db import get_session, Character
+# from schemas import CharacterOutput
 from services import generate_image, filename_from_name
 
 router = APIRouter(prefix="/characters", tags=["characters"])

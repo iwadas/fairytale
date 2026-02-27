@@ -1,5 +1,5 @@
 <template>
-    <div class="w-full overflow-hidden rounded-[10px] bg-medium">
+    <div class="w-full overflow-hidden rounded-[10px]">
         <div ref="waveformRef" class="w-full h-[40px] -mt-[20px]"></div>
         <p class="whitespace-nowrap p-1 overflow-ellipsis truncate max-w-full">
             {{ voiceover?.text || music?.name }}

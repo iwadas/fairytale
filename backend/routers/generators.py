@@ -6,10 +6,10 @@ import uuid
 import json
 import os
 
-from db import Place, get_session, Project, Scene, Character, Voiceover, SceneImage
+# from db import Place, get_session, Project, Scene, Character, Voiceover, SceneImage
 from .prompts import gather_story_data, generate_story, story_split, add_scenes_to_story, prepare_story_for_db, get_persistant_characters, add_character_changes, estimate_speech_time
 
-from schemas import PromptRequest, FixedPromptResponse
+# from schemas import PromptRequest, FixedPromptResponse
 from pydantic import BaseModel
 from typing import Optional, List
 from openai import OpenAI
@@ -29,8 +29,11 @@ router = APIRouter(prefix="/generators", tags=["generators"])
 
 ai_model = "grok-4-1-fast-reasoning"
 
+# TODO
 @router.post('/fix-character-prompt')
-async def fix_character_prompt(request: PromptRequest):
+async def fix_character_prompt(request):
+    return
+
     print("Something")
     print("Original prompt:", request.prompt)
 
@@ -60,74 +63,17 @@ class SceneDescriptoinOption(BaseModel):
 class NewSceneDescriptions(BaseModel):
     options: List[SceneDescriptoinOption]
 
-@router.post('/generate-scene-image-prompts')
-async def generate_scene_image_prompt(request: FixVideoPrompt, session: AsyncSession = Depends(get_session)):
-
-    messages = [
-            {
-                "role": "system",
-                "content": (
-                    "You are a specialized Director of Photography AI. "
-                    "Your goal is to generate a detailed scene description suitable for AI image generation based on a voiceover script. "
-                    "Focus on visual elements like subject, environment, atmosphere, and composition."
-                )
-            },
-            {
-                "role": "user",
-                "content": (
-                    f"Give me scene ideas  (visual representation for the words) for that should appear when those words are spoken: \"{request.selected_voiceover_text_part}.\"\n\n"
-                    f"More context of the full sentence (Use when the spoken words don't give you enough information): {request.full_voiceover_text}\n\n"
-                    f"{(f"Additional information about the generation (EXTREMELY IMPORTANT): {request.additional_info}\n\n") if request.additional_info else ""}"
-                    "['option 1', 'option 2', 'option 3', 'option 4', 'option 5', 'option 6']\n\n"
-                    
-                    f"CRITICAL INSTRUCTION: You must strictly split the styles of the options (MAKE THEM SUITABLE FOR THE TARGET TEXT: \"{request.selected_voiceover_text_part}\"):\n"
-
-                    " - OPTIONS 1-3: Cinematic Realism (Human scale, live-action style, dramatic, emotional).\n"
-                    " - OPTIONS 4-6: Scientific/Abstract/Microscopic (Biology, Human parts (f.e brain/eye), neural networks, cellular level, or abstract data visualization).\n\n"
-
-                    "All `image_description` descriptions must adhere to these pillars:\n"
-                    "A. LIGHTING IS KEY: Never describe a scene without describing the light.\n"
-                    "   - For Cinematic (1-3): Use 'rim-lit', 'volumetric fog', 'firelight glowing on skin', 'moonlight cutting through darkness'.\n"
-                    "   - For Scientific (4-6): Use 'bioluminescent glow', 'subsurface scattering', 'neon electrical pulses against deep black void', 'translucent membrane lighting'.\n"
-                    "B. ATMOSPHERE & TEXTURE: The air is never empty.\n"
-                    "   - For Cinematic (1-3): Falling snow, rising dust, visible breath, rain on glass. Textures: fur, rust, grime, skin pores.\n"
-                    "   - For Scientific (4-6): Floating organic particles, liquid suspension, electrical arcs, fibrous webs, glossy cellular surfaces.\n"
-                    "C. SCALE & FRAMING: Avoid boring medium shots. Use either:\n"
-                    "   - EPIC WIDE SHOTS: Massive environments or infinite abstract voids.\n"
-                    "   - MACRO/MICROSCOPIC CLOSE-UPS: Focus on eyes/hands OR cellular structures/synapses with shallow depth of field (bokeh).\n\n"
-
-                    "VIDEO DESCRIPTION SHOULD:\n"
-                    "1. THE FORMULA: Start every prompt with a specific Camera Move + Subject Action.\n"
-                    "2. ONE CAMERA MOVE: Use specific terms: 'Slow dolly push in', 'Microscopic camera pan', 'Drone flyover', 'Rack focus', 'Orbit', 'Camera flies to birds view', 'Hand held shaky camera'.\n"
-                    "3. ONE SUBJECT MOVEMENT: Continuous loops: 'neurons firing rhythmically', 'DNA strand rotating', 'rain falling slowly', 'trembling hand'.\n"
-                    "4. KINETIC ATMOSPHERE: Ensure the background is alive (e.g., 'particles drifting', 'electricity pulsing', 'fog rolling').\n"
-                    "5. BE CONCISE: Focus on the vibe and the motion."
-                )
-            }
-        ]
-
-    print("prompt:")
-    print(messages)
-    print("---------")
-
-    response = open_ai_client.chat.completions.create(
-        model=ai_model,
-        response_model=NewSceneDescriptions,
-        messages=messages
-    )
-    print("Generated scene image prompt:", response)
-    return {"new_scene_descriptions": response}
-
-
 
 class NewPhotoDumpImages(BaseModel):
     options: List[str]
 
-
+# TODO
 @router.post('/generate-photo-dump-images')
 async def generate_scene_image_prompt(
     story: str = Body(..., embed=True),
 ):
+    
+    return
     messages = [
         {
             "role": "system",
@@ -258,9 +204,11 @@ styles = {
     )
 }
 
+# TODO
 @router.post('/fix-scene-image-prompt')
 async def fix_scene_image_prompt(request: FixImagePrompt):
 
+    return
     style = styles.get(request.style, False)    
     
     style_prompt = (
@@ -303,8 +251,10 @@ class FixVideoPrompt(BaseModel):
     image_prompt: Optional[str]
     video_prompt: str
 
+# TODO
 @router.post('/fix-scene-video-prompt')
 async def fix_scene_video_prompt(request: FixVideoPrompt):
+    return
     response = open_ai_client.chat.completions.create(
         model=ai_model,
         response_model=FixedPromptResponse,
@@ -345,139 +295,3 @@ async def fix_scene_video_prompt(request: FixVideoPrompt):
     fixed_prompt = response.fixed_prompt  # Access directly (Instructor parses it for you)
     print("Fixed prompt:", fixed_prompt)
     return {"fixed_prompt": fixed_prompt}
-
-
-
-class ProjectIn(BaseModel):
-    title: str
-    story: Optional[str]
-
-@router.post("/create-project")
-async def create_project(request: ProjectIn, session: AsyncSession = Depends(get_session)):
-    try:
-        splitted_story = story_split(request.story)
-        print("-----story--------")
-        print(json.dumps(splitted_story))
-
-        story_with_scenes = add_scenes_to_story(splitted_story)
-        print(json.dumps(story_with_scenes, indent=2))
-
-        story_database_data = prepare_story_for_db(story_with_scenes, splitted_story)
-        print("-----story for database--------")
-        print(json.dumps(story_database_data, indent=2))
-
-        print("-----story with scenes and characters--------")
-        print(json.dumps(story_database_data, indent=2))
-
-        project = Project(
-            id=str(uuid.uuid4()),
-            name=request.title,
-            created_at=func.now(),
-        )
-
-        session.add(project)
-
-        print("added project")
-        # if(request.persistant_characters):
-        #     characters_map = {}
-        #     for character in story_database_data["characters"]:
-        #         character_db = Character(
-        #             id=str(uuid.uuid4()),
-        #             prompt = character["image_prompt"],
-        #             name = character["name"]
-        #         )
-        #         session.add(character_db)
-        #         characters_map[character["name"]] = character_db
-        #         project.characters.append(character_db)
-        # print("added characters")
-
-        for scene in story_database_data["scenes"]:
-            scene_db = Scene(
-                id=str(uuid.uuid4()),
-                duration=scene["duration"],
-                start_time=scene["start_time"],
-                video_prompt=scene["video_prompt"],
-                project_id=project.id
-            )
-
-            scene_image_db = SceneImage(
-                id=str(uuid.uuid4()),
-                prompt=scene["image_prompt"],
-                scene_id=scene_db.id,
-                time='start'
-            )
-            session.add(scene_image_db)
-            session.add(scene_db)
-
-            # if "characters" in scene:
-            #     for char_name in scene["characters"]:
-            #         if char_name in characters_map:
-            #             scene_db.characters.append(characters_map[char_name])
-
-
-        print("added scenes")
-        for voiceover in story_database_data["voiceovers"]:
-            voiceover_db = Voiceover(
-                id=str(uuid.uuid4()),
-                text=voiceover["content"],
-                text_with_pauses=voiceover["content_with_pauses"],
-                project_id=project.id,
-                start_time=voiceover["start_time"],  # Adjust based on scene timing if needed
-                duration=voiceover["duration"],
-                timestamps=None
-            )
-            session.add(voiceover_db)
-
-        print("added voiceovers")
-
-
-        await session.commit()
-
-        return {"success": True, "project_id": project.id}
-
-
-    except Exception as e:
-        await session.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
-    
-
-class ScriptIn(BaseModel):
-    title: str
-    duration: int
-    data: Optional[str]
-    gather_data: bool
-    persistant_characters: bool
-    reference_stories: Optional[str]
-
-@router.post("/generate-script")
-async def generate_script(request: ScriptIn, session: AsyncSession = Depends(get_session)):
-    # word_count = estimated word count approximating to 110 words per minute.
-    word_count = request.duration * 80 / 60
-
-    try:
-        if request.data:
-            story_data = request.data
-        elif request.gather_data:
-            story_data = gather_story_data(request.title).model_dump()
-        else:
-            story_data = None
-            
-        print("-----story data--------")
-        print(json.dumps(story_data, indent=2))
-
-        STORY_SAMPLES_COUNT = 2
-        story_samples = []
-
-        for i in range(STORY_SAMPLES_COUNT):
-            story = generate_story(request.title, word_count, story_data, request.reference_stories, request.persistant_characters).model_dump()["script"]
-            story_samples.append({
-                "story": story,
-                "estimated_time": estimate_speech_time(story)
-            })
-            print(f"-----story sample {i+1}--------")
-
-        return {"story_samples": story_samples}
-
-    except Exception as e:
-        await session.rollback()
-        raise HTTPException(status_code=500, detail=str(e))

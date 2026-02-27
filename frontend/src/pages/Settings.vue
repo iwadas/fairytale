@@ -18,13 +18,20 @@
                     <form-input 
                         :label="option.label"
                         :type="option.type"
-                        v-model="selectedOptions.tts[selectedOptions.selected_tts_provider][option.name]"
+                        v-model="selectedOptions.tts_provider_settings[selectedOptions.selected_tts_provider][option.name]"
                         :options="option.options"
                         :placeholder="option.placeholder"
                         :optional="option.optional"
                         :helper="option.helper"
                     />
                 </div>
+
+                <form-button
+                    label="Save TTS Settings"
+                    button_style="primary"
+                    @clicked="saveSettings('tts')"
+                    class="w-1/4 mx-auto"
+                />
             </div>
         </section>
         <section class="container-background container mx-auto rounded-[10px] text-light p-6 ">
@@ -44,13 +51,20 @@
                     <form-input 
                         :label="option.label"
                         :type="option.type"
-                        v-model="selectedOptions.diffusion[selectedOptions.selected_diffusion_provider][option.name]"
+                        v-model="selectedOptions.diffusion_provider_settings[selectedOptions.selected_diffusion_provider][option.name]"
                         :options="option.options"
                         :placeholder="option.placeholder"
                         :optional="option.optional"
                         :helper="option.helper"
                     />
                 </div>
+
+                <form-button
+                    label="Save Diffusion Settings"
+                    button_style="primary"
+                    @clicked="saveSettings('diffusion')"
+                    class="w-1/4 mx-auto"
+                />
             </div>
         </section>
         <section class="container-background container mx-auto rounded-[10px] text-light p-6 ">
@@ -61,7 +75,7 @@
             <div class="flex flex-col gap-4 text-xs">
                 <form-input 
                     :label="'LLM Provider'"
-                    :type="'select'"
+                    type="select"
                     :options="LLM_PROVIDERS"
                     v-model="selectedOptions.selected_llm_provider"
                 />
@@ -70,13 +84,19 @@
                     <form-input 
                         :label="option.label"
                         :type="option.type"
-                        v-model="selectedOptions.llm[selectedOptions.selected_llm_provider][option.name]"
+                        v-model="selectedOptions.llm_provider_settings[selectedOptions.selected_llm_provider][option.name]"
                         :options="option.options"
                         :placeholder="option.placeholder"
                         :optional="option.optional"
                         :helper="option.helper"
                     />
                 </div>
+                <form-button
+                    label="Save LLM Settings"
+                    button_style="primary"
+                    @clicked="saveSettings('llm')"
+                    class="w-1/4 mx-auto"
+                />
             </div>
         </section>
     </div>
@@ -89,6 +109,7 @@
 <script setup>
 
     import FormInput from '@/components/FormInput.vue'
+    import FormButton from '@/components/FormButton.vue'
     import { onMounted, ref, reactive } from 'vue';
     import axios from 'axios'
 
@@ -96,7 +117,7 @@
         selected_tts_provider: 'gemini',
         selected_diffusion_provider: 'runware',
         selected_llm_provider: 'xai',
-        tts: {
+        tts_provider_settings: {
             gemini: {
                 api_key: '',
                 voice_name: 'zephyr',
@@ -108,7 +129,7 @@
                 language: 'english',
             }
         },
-        diffusion: {
+        diffusion_provider_settings: {
             runware: {
                 api_key: '',
                 diffusion_model: '',
@@ -116,7 +137,7 @@
                 fps: '24',
             }
         },
-        llm: {
+        llm_provider_settings: {
             xai: {
                 api_key: '',
                 ai_model: 'grok-4-1-fast-reasoning',
@@ -482,20 +503,75 @@
         ],
     }
 
+
+    const saveSettings = async (category) => {
+        try {
+
+            const selected_provider = "selected_" + category + "_provider" 
+            const provider_settings = category + "_provider_settings"
+
+            const payload = {
+                [selected_provider]: selectedOptions[selected_provider],
+                [provider_settings]: selectedOptions[provider_settings][selectedOptions[selected_provider]]
+            }
+
+            console.log(`Saving ${category} settings:`, payload);
+            await axios.put(`http://localhost:8000/settings`, payload);
+            alert(`${category.toUpperCase()} settings saved successfully!`);
+
+        } catch (error) {
+            console.error(`Error saving ${category} settings:`, error);
+            // alert(`Failed to save ${category.toUpperCase()} settings. Please try again.`);
+        }
+    }
+
     const fetchSettings = () => {
-        
-        // axios.get('http://localhost:8000/settings')
-        //     .then(res => {
-        //         console.log(res.data);
-        //         // Update your settings state here
-        //     })
-        //     .catch(err => {
-        //         console.error('Error fetching settings:', err);
-        //     });
+        axios.get('http://localhost:8000/settings')
+            .then(res => {
+                const data = res.data;
+                console.log('Fetched settings:', data);
+
+                if (!data) return;
+
+                // Update selected providers
+                selectedOptions.selected_tts_provider = data.selected_tts_provider || "gemini";
+                selectedOptions.selected_diffusion_provider = data.selected_diffusion_provider || "runware";
+                selectedOptions.selected_llm_provider = data.selected_llm_provider || "xai";
+
+                if (data.tts_provider_settings){
+                    const tts_provider_settings = data.tts_provider_settings;
+                    selectedOptions.tts_provider_settings['gemini']['api_key'] = tts_provider_settings.gemini?.api_key || '';
+                    selectedOptions.tts_provider_settings['gemini']['voice_name'] = tts_provider_settings.gemini?.voice_name || 'zephyr';
+                    selectedOptions.tts_provider_settings['gemini']['voice_style'] = tts_provider_settings.gemini?.voice_style || '';
+                    selectedOptions.tts_provider_settings['camb']['api_key'] = tts_provider_settings.camb?.api_key || '';
+                    selectedOptions.tts_provider_settings['camb']['voice_model_id'] = tts_provider_settings.camb?.voice_model_id || '';
+                    selectedOptions.tts_provider_settings['camb']['language'] = tts_provider_settings.camb?.language || 'english'; 
+                }
+
+                if (data.diffusion_provider_settings){
+                    const diffusion_provider_settings = data.diffusion_provider_settings;
+                    selectedOptions.diffusion_provider_settings['runware']['api_key'] = diffusion_provider_settings.runware?.api_key || '';
+                    selectedOptions.diffusion_provider_settings['runware']['diffusion_model'] = diffusion_provider_settings.runware?.diffusion_model || '';
+                    selectedOptions.diffusion_provider_settings['runware']['image_resolution'] = diffusion_provider_settings.runware?.image_resolution || '1080x1080';
+                    selectedOptions.diffusion_provider_settings['runware']['fps'] = diffusion_provider_settings.runware?.fps || '24';
+                }
+
+                if (data.llm_provider_settings){
+                    const llm_provider_settings = data.llm_provider_settings;
+                    selectedOptions.llm_provider_settings['xai']['api_key'] = llm_provider_settings.xai?.api_key || '';
+                    selectedOptions.llm_provider_settings['xai']['ai_model'] = llm_provider_settings.xai?.ai_model || 'grok-4-1-fast-reasoning';
+                    selectedOptions.llm_provider_settings['openai']['api_key'] = llm_provider_settings.openai?.api_key || '';
+                    selectedOptions.llm_provider_settings['openai']['ai_model'] = llm_provider_settings.openai?.ai_model || 'gpt-4o-nano';
+                    selectedOptions.llm_provider_settings['genai']['api_key'] = llm_provider_settings.genai?.api_key || '';
+                }
+            })
+            .catch(err => {
+                console.error('Error fetching settings:', err);
+            });
     }
 
     onMounted(()=>{
-
+        fetchSettings();
     })
 
 

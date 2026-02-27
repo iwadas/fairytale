@@ -60,8 +60,11 @@
   import FormInput from '@/components/FormInput.vue';
   import FormButton from '@/components/FormButton.vue';
   import getSrc from '@/utils/getSrc';
+  import axios from 'axios';
+  import { watch } from 'vue';
 
   const music = defineModel('music', { required: true, type: Object });
+  const route = 'http://localhost:8000/'
 
   const DEFAULT_MUSIC_OPTIONS = [
     { label: '13 Angels', value: 'static/default/sounds/13_angels.mp3' },
@@ -70,6 +73,20 @@
     { label: 'Untitled 13', value: 'static/default/sounds/untitled13.mp3'},
     { label: 'Want To Love', value: 'static/default/sounds/want_to_love.mp3'},
   ]
+
+  watch(()=>music.value.src, (newSrc) => {
+    
+    if(newSrc && DEFAULT_MUSIC_OPTIONS.some(option => option.value === newSrc)) {
+      // SEND REQUEST TO BACKEND TO UPDATE MUSIC SRC
+      axios.put(`${route}music/${music.value.id}`, { src: newSrc })
+        .then(response => {
+          console.log('Music src updated successfully');
+        })
+        .catch(error => {
+          console.error('Error updating music src:', error);
+        });
+    }
+  })
 
   const handleMusicUpload = async (event) => {
     const music_file = event.target.files[0];
