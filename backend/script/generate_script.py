@@ -23,15 +23,15 @@ class ScriptGenerator:
 
     async def generate(self) -> str:
 
-        raw_script = await asyncio.to_thread(self.generate_script_raw)
+        raw_script = await self.generate_script_raw()
 
-        refined_script = await asyncio.to_thread(self.refine_script, raw_script)
+        refined_script = await self.refine_script(raw_script)
 
-        formatted_script = await asyncio.to_thread(self.format_script, refined_script)
+        formatted_script = await self.format_script(refined_script)
 
         return formatted_script
     
-    def generate_script_raw(self) -> str:
+    async def generate_script_raw(self) -> str:
         if self.story_data and self.reference_stories:
             context_instruction = (
                 f"Base the story entirely on reference stories and gathered data:\n"
@@ -77,14 +77,14 @@ class ScriptGenerator:
         class ScriptResponse(BaseModel):
             script: str
 
-        response = self.llm_client.generate(
+        response = await self.llm_client.generate(
             messages=[role_message, user_message],
             response_format=ScriptResponse
         )
 
         return response.script.strip()
     
-    def refine_script(self, raw_script: str) -> str:
+    async def refine_script(self, raw_script: str) -> str:
         
         role_message = {
             "role": "system",
@@ -106,14 +106,14 @@ class ScriptGenerator:
         class RefinedScriptResponse(BaseModel):
             refined_script: str
 
-        response = self.llm_client.generate(
+        response = await self.llm_client.generate(
             messages=[role_message, user_message],
             response_format=RefinedScriptResponse
         )
 
         return response.refined_script.strip()
     
-    def format_script(self, refined_script: str) -> str:
+    async def format_script(self, refined_script: str) -> str:
         
         role_message = {
             "role": "system",
@@ -134,7 +134,7 @@ class ScriptGenerator:
         class FormattedScriptResponse(BaseModel):
             formatted_script: str
 
-        response = self.llm_client.generate(
+        response = await self.llm_client.generate(
             messages=[role_message, user_message],
             response_format=FormattedScriptResponse
         )

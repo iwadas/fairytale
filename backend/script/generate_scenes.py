@@ -126,7 +126,7 @@ async def generate_scenes(
             )
         }
 
-        concept_response = llm_client.generate(
+        concept_response = await llm_client.generate(
             messages=[director_system_message, director_user_message],
             response_format=ConceptsResponse
         )
@@ -155,7 +155,7 @@ async def generate_scenes(
                 )
             }
 
-            styled_response = llm_client.generate(
+            styled_response = await llm_client.generate(
                 messages=[art_director_system_message, art_director_user_message],
                 response_format=StyledScenesResponse 
             )

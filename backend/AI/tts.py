@@ -52,14 +52,19 @@ class TTS:
         if not settings.get("selected_tts_provider"):
             raise ValueError("No TTS provider selected in settings.")
         self.provider = settings["selected_tts_provider"]
-        tts_provider_settings = settings.get("tts_provider_settings", {})
+        tts_provider_settings = settings.get("tts_provider_settings", None)
         if not tts_provider_settings:
             raise ValueError("TTS provider settings not found in settings.")
-        api_key = tts_provider_settings.get(self.provider, {}).get("api_key")
+        provider_settings = tts_provider_settings.get(self.provider, None)
+        if not provider_settings:
+            raise ValueError(f"Settings for selected TTS provider '{self.provider}' not found.")
+        self.provider_settings = provider_settings
+
+        api_key = provider_settings.get(self.provider, {}).get("api_key")
         if not api_key:
             raise ValueError(f"API key for provider '{self.provider}' not found in settings.")
+
         self.api_key = api_key
-        self.provider_settings = tts_provider_settings.get(self.provider, {})
 
         if self.provider == "gemini":
             self.client = genai.Client(

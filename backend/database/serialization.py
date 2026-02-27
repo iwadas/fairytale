@@ -109,7 +109,7 @@ def serialize_settings(settings: Settings):
     return {
         "id": settings.id,
         "selected_tts_provider": settings.selected_tts_provider,
-        "selected_tts_provider": settings.selected_tts_provider,
+        "selected_llm_provider": settings.selected_llm_provider,
         "selected_diffusion_provider": settings.selected_diffusion_provider,
         "tts_provider_settings": json.loads(settings.tts_provider_settings) if settings.tts_provider_settings else {},
         "diffusion_provider_settings": json.loads(settings.diffusion_provider_settings) if settings.diffusion_provider_settings else {},

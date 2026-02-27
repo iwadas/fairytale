@@ -61,10 +61,7 @@ async def script_generation(request: ScriptIn):
             pass
             # story_data = gather_story_data(request.title)
 
-        llm_client = LLM(
-            provider="xai",
-            ai_model="grok-4-1-fast-reasoning",
-        )
+        llm_client = await LLM.create()
 
         scripts = []
 
@@ -143,8 +140,10 @@ async def create_project(
         status="in_progress"
     )
 
+    llm_client = await LLM.create()
+
     script_with_scenes = await generate_scenes(
-        llm_client=LLM(provider="xai", ai_model="grok-4-1-fast-reasoning"),
+        llm_client=llm_client,
         script=script,
         splitted_script=splitted_script,
     )

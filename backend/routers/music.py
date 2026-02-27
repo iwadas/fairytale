@@ -25,7 +25,7 @@ async def upload_music(
     updated_music = await update_music_db(
         id=music_id,
         src=src,
-        name =music_file.filename.replace(" ", "_")
+        name=music_file.filename.replace(" ", "_")
 
     )
 

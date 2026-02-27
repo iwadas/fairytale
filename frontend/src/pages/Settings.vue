@@ -466,7 +466,7 @@
                 name: "api_key",
                 type: "text",
                 optional: false,
-                placeholder: "sk-proj-6y-**************************"
+                placeholder: "sk-proj-**-**************************"
             },
             {
                 label: "AI Model",
@@ -482,7 +482,7 @@
                 name: "api_key",
                 type: "text",
                 optional: false,
-                placeholder: "sk-proj-**-**************************"
+                placeholder: "xai-************************"
             },
             {
                 label: "AI Model",

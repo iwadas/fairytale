@@ -29,6 +29,9 @@ class LLM:
         if not settings:
             raise ValueError("Settings not found in database.")
         
+        print("LLM Provider and Settings:")
+        print(settings)
+
         provider = settings.get("selected_llm_provider", None)
         if not provider:
             raise ValueError("LLM provider not selected in settings.")

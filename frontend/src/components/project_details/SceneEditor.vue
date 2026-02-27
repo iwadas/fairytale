@@ -473,8 +473,8 @@ const fixImagePrompt = async () => {
   try {
     sceneTasks.value.fixing_image_prompt[scene.value.id + selectedSceneImageIndex.value] = true;
     const response = await axios
-      .post('http://localhost:8000/generators/fix-scene-image-prompt', { 
-        prompt: scene.value.images[selectedSceneImageIndex.value].prompt,
+      .post('http://localhost:8000/scenes/fix-image-prompt', { 
+        scene_prompt: scene.value.images[selectedSceneImageIndex.value].prompt,
         style: imageGenerationStyle.value,
         style_power: imageGenerationStylePower.value
       })
@@ -483,6 +483,7 @@ const fixImagePrompt = async () => {
         throw error; // Re-throw the error after logging it
       })
     ;
+    console.log(response.data);
     scene.value.images[selectedSceneImageIndex.value].prompt = response.data.fixed_prompt;
   } catch (error) {
     console.error('Error fixing scene image prompt:', error);

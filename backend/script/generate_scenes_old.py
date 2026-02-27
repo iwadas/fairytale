@@ -200,21 +200,4 @@ async def generate_scenes(
     return script_parts_with_scenes
 
 
-async def main():
-    test_script = "When a man gets sleepy around the woman he loves, don't assume something is wrong. <br> Don't take it personally. For many men, feeling sleepy means feeling safe. <br> It means his body can finally relax. He doesn't have to stay alert anymore. <br> That's not boredom. That's trust"
-
-    splitted_script = split_script(test_script)
-
-    print("Final script parts with scenes:")
-    for i, script_part in enumerate(splitted_script):
-        print(f"Part {i+1}: {script_part}")
-
-    await generate_scenes(
-        llm_client=LLM(provider="xai", ai_model="grok-4-1-fast-reasoning"),
-        splitted_script=splitted_script,
-        progress_callback=None,
-    )
-
-if __name__ == "__main__":
-    asyncio.run(main())
 
