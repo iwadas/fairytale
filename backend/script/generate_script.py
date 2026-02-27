@@ -46,6 +46,8 @@ class ScriptGenerator:
             context_instruction = (
                 f"Base the story entirely on the following reference stories about the topic: \n{self.reference_stories}\n\n"
             )
+        else:
+            context_instruction = ""
 
         role_message = {
             "role": "system",
@@ -59,17 +61,18 @@ class ScriptGenerator:
             "content": (
                 f"Write a {self.word_limit} word raw script about: {self.topic}\n"
           
-                f"{f'Context: {self.description}\n\n' if self.description else ''}"
-                f"{context_instruction if (self.story_data or self.reference_stories) else ''}"
+                f"{f'Context: {self.description}\\n\\n' if self.description else ''}"
+                f"{context_instruction}"
 
                 "**Structure:**\n"
-                "1. Hook (0-3s): Direct challenge. No 'Hello'.\n"
-                "2. Mechanism: How it works (Fast facts).\n"
-                "3. The Twist/Deep Reason: Why it matters.\n\n"
+                "1. Hook (0-3s): Relatable 'Did you know?', psychological framing ('According to psychology...'), or a highly specific everyday scenario. No 'Hello'.\n"
+                "2. Mechanism: How it works (explain the 'why' using conversational authority).\n"
+                "3. The Twist/Deep Reason: The emotional core of why this happens or why it matters.\n"
+                "4. Call to Action: Organic, one-sentence closing (e.g., 'If this made sense to you, comment true.' or 'Send this to that one friend they deserve to know.'). No marketing speak.\n\n"
                 "**Style:**\n"
-                # "- Fast-paced.\n"
                 "- No fluff.\n"
-                "- Use simple, sharp words.\n"
+                "- Conversational Authority: Use one or two scientific/psychological terms but explain them plainly, like a smart friend sitting on a couch.\n"
+                "- STRICTLY NO flowery, poetic, aggressive, or dystopian metaphors. Keep it grounded in literal, lived reality.\n"
                 "- Do NOT format the text yet. Just write the paragraphs."
             )
         }
@@ -88,17 +91,19 @@ class ScriptGenerator:
         
         role_message = {
             "role": "system",
-            "content": "You are a Retention Editor. Your job is to delete boring parts and spike dopamine."
+            "content": "You are a Psychological Storyteller. Your job is to enhance hypnotic flow, use deeply validating language, and make the viewer feel seen and understood."
         }
         
         user_message = {
             "role": "user",
             "content": (
                 f"Here is a draft script:\n\"\"\"{raw_script}\"\"\"\n\n"
-                "**Critically analyze this draft and rewrite it to increase retention:**\n"
-                "1. **Use sensory language:** Make the viewer see, feel, and hear the content. Instead of 'The brain releases dopamine', say 'The brain's reward center floods with dopamine, giving you that rush of pleasure'.\n"
+                "**Critically analyze this draft and rewrite it to increase retention and emotional resonance:**\n"
+                "1. **Lived Experiences (NO LISTS):** Pick ONE strong, specific visual per idea. Do NOT cram multiple examples into a sentence. Let one relatable scenario breathe (e.g., just say 'a delayed text', don't add 5 more examples next to it).\n"
                 "2. **Compression:** Cut the word count by around 10% without losing information.\n"
-                "3. **Rhythm:** Vary sentence length. One long sentence followed by a two-word sentence.\n"
+                "3. **Hypnotic Rhythm (NO STACKING):** Vary sentence length drastically, but NEVER stack short sentences together (e.g., absolutely no 'Breathe. Observe. Share.'). Build tension with a longer, winding sentence, then deliver exactly ONE profound 2-5 word realization per paragraph (e.g., 'That's trust.').\n"
+                "4. **Validating Tone:** Ensure the script acts as a comforting guide. Absolve the viewer of guilt by explaining their behaviors or feelings as natural, human, or biologically hardwired (e.g., 'You're not weak... you're human', 'It's an evolutionary glitch').\n"
+                "5. **Organic CTA:** The final sentence must be a seamless, viral-style invitation (e.g., 'If this changed how you see it, comment true.'). Do not use overly eager phrases like 'Share below' or 'We are in this together'.\n"
                 "\n\nReturn ONLY the improved script."
             )
         }
@@ -125,9 +130,9 @@ class ScriptGenerator:
             "content": (
                 f"Format the following script for audio generation:\n\"\"\"{refined_script}\"\"\"\n\n"
                 "**Rules:**\n"
-                "1. Insert <br> tags, for every part that introduces new idea (every 2-4 sentences).\n"
-                "2. Return raw text only."
-                "3. Do NOT add <br> inside a fast-paced sentence.\n"
+                "1. Insert <br> tags for every part that introduces a new idea (every 2-4 sentences) to create natural pauses.\n"
+                "2. Return raw text only.\n"
+                "3. Do NOT add <br> inside a fast-paced or tightly connected sentence.\n"
             )
         }
         
