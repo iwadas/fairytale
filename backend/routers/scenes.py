@@ -1,11 +1,10 @@
 from fastapi import APIRouter, HTTPException, Body, UploadFile, File, Form, BackgroundTasks
 
 from typing import Optional, List
-import os
 from AI.diffusion import Diffusion
 from AI.llm import LLM
 import uuid
-from database.crud import get_scene_db, update_scene_db, create_scene_db, remove_scene_db, remove_scene_image_db, create_or_update_scene_image_db
+from database.crud import get_scene_db, get_script_db, update_scene_db, create_scene_db, remove_scene_db, remove_scene_image_db, create_or_update_scene_image_db
 
 from pydantic import BaseModel, Field
 from services.save_file import save_file
@@ -15,12 +14,71 @@ from websocket import socket_manager
 router = APIRouter(prefix="/scenes", tags=["scenes"])
 
 
-class TypingSceneRequest(BaseModel):
-    text: str
+@router.post("/generate-image-prompts")
+async def generate_scene_image_prompt(
+    project_id: str = Body(..., embed=True),
+    selected_voiceover_text_part: str = Body(..., embed=True),
+    additional_info: Optional[str] = Body(None, embed=True)
+):
+
+    script = get_script_db(project_id)
+
+    messages = [
+        {
+            "role": "system",
+            "content": (
+                "You are an expert Director for Psychology and Philosophy video essays. "
+                "Your ONLY job is to invent brilliant, striking visual metaphors for the provided script. "
+                f"### FULL SCRIPT OVERVIEW:\n\"{script}\"\n\n"
+                "Translate the script into raw visual concepts (Literal, Metaphorical, Abstract). "
+                "Focus ONLY on the subjects, their actions, and the setting. Do NOT apply camera angles, lighting, or specific render styles. "
+                "**NO TEXT ON SCREEN:** Never describe signs or words."
+            )
+        },
+        {
+            "role": "user",
+            "content": (
+                f"**Generate exactly 5 raw visual concepts for this sentence:**\n"
+                f"\"{selected_voiceover_text_part}\"\n\n"
+                "Make sure the concepts naturally progress from one to the next - but don't make it repetitive. Use different subjects, concepts, and settings for each scene.\n\n"
+                f"{(f"Additional information about the generation (EXTREMELY IMPORTANT): {additional_info}\n\n") if additional_info else ""}"
+            )
+        }
+    ]
+
+    # Step 2: The Styled Scene & Motion
+    class Scene(BaseModel):
+        image_prompt: str = Field(
+            description="The raw visual concept for the scene."
+        )
+        video_prompt: str = Field(
+            description="Camera movement and action instructions based on the scene. Strict format: [Camera Movement], [Subject Movement], [Speed/Vibe]"
+        )
+
+    class ResponseScenes(BaseModel):
+        scenes: List[Scene] = Field(
+            description="A list of scene descriptions, each containing an image prompt and a video prompt."
+        )
+
+    llm = await LLM.create()
+    response = await llm.generate(
+        messages=messages,
+        response_format=ResponseScenes
+    )
+
+    new_scene_descriptions = response.scenes
+
+    print("Generated scene image prompt:", new_scene_descriptions)
+    return {"new_scene_descriptions": new_scene_descriptions}
+
+
+
+class NewPhotoDumpImages(BaseModel):
+    options: List[str]
 
 
 @router.post("/fix-image-prompt")
-async def fix_scene_image_prompt(
+async def fix_image_prompt(
     scene_prompt: str = Body(..., embed=True),
     style: Optional[str] = Body(None, embed=True),
     style_power: Optional[float] = Body(0.5, embed=True),

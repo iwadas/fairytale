@@ -285,6 +285,14 @@ async def create_voiceover_db(
     session.add(new_vo)
     return serialize_voiceover(new_vo)
 
+
+@with_session
+async def get_script_db(project_id: str, session=None):
+    stmt = select(Voiceover).where(Voiceover.project_id == project_id).order_by(Voiceover.start_time.asc())
+    result = await session.execute(stmt)
+    voiceovers = result.scalars().all()
+    return " ".join([vo.text for vo in voiceovers])
+
 # SCENES
 @with_session
 async def get_scene_db(id: str, session=None):

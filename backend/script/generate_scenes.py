@@ -122,7 +122,7 @@ async def generate_scenes(
             "content": (
                 f"**Generate exactly {num_scenes} raw visual concepts for this sentence:**\n"
                 f"\"{script_part['text']}\"\n\n"
-                "Make sure the concepts naturally progress from one to the next."
+                "Make sure the concepts naturally progress from one to the next - but don't make it repetitive."
             )
         }
 

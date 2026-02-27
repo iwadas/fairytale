@@ -62,17 +62,17 @@
             <div 
               v-for="(option, idx) in newImagePromptForm.options" 
               :key="`option-${idx}`" 
-              class="p-2 border rounded hover:bg-gray-100 cursor-pointer"
+              class="p-2 border rounded-[10px] hover:bg-[var(--medium)] cursor-pointer"
               @click="applyNewImagePrompt(option)"
             >
               <p>
                 <font-awesome-icon icon="image"/>
-                {{ option.image_description }}
+                {{ option.image_prompt }}
               </p>
               <br>
               <p>
                 <font-awesome-icon icon="circle-play"/>
-                {{ option.video_description }}
+                {{ option.video_prompt }}
               </p>
             </div>
           </div>
@@ -528,8 +528,8 @@ const generateNewImagePrompts = async () => {
     ).join(' ');
 
     const response = await axios
-      .post('http://localhost:8000/generators/generate-scene-image-prompts', { 
-        project_id: projectId,
+      .post('http://localhost:8000/scenes/generate-image-prompts', { 
+        project_id: props.projectId,
         full_voiceover_text: newImagePromptForm.value.full_voiceover_text,
         selected_voiceover_text_part: selectedVoiceoverTextPart,
         additional_info: newImagePromptForm.value.additional_info
@@ -539,7 +539,7 @@ const generateNewImagePrompts = async () => {
         throw error; // Re-throw the error after logging it
       })
     console.log(response.data.new_scene_descriptions);
-    newImagePromptForm.value.options = response.data.new_scene_descriptions.options;
+    newImagePromptForm.value.options = response.data.new_scene_descriptions;
   } catch (error) {
     console.error('Error regenerating scene image prompt:', error);
   } finally {
@@ -565,8 +565,8 @@ const setWordForImageGeneration = (idx) => {
 
 
 const applyNewImagePrompt = (option) => {
-  scenes.value[selectedSceneIndex.value].images[selectedSceneImageIndex.value].prompt = option.image_description;
-  scenes.value[selectedSceneIndex.value].video_prompt = option.video_description; // reset image
+  scene.value.images[selectedSceneImageIndex.value].prompt = option.image_prompt;
+  scene.value.video_prompt = option.video_prompt; // reset image
   newImagePromptForm.value = {
     scene_id: null,
     scene_image_id: null,
