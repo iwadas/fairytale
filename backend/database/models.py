@@ -40,6 +40,17 @@ place_scene_association = Table(
 )
 
 
+class Settings(Base):
+    __tablename__ = "settings"
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
+    selected_tts_provider = Column(String, nullable=True)
+    selected_diffusion_provider = Column(String, nullable=True)
+    selected_llm_provider = Column(String, nullable=True)
+    tts_provider_settings = Column(Text, nullable=True)
+    diffusion_provider_settings = Column(Text, nullable=True)
+    llm_provider_settings = Column(Text, nullable=True)
+
+
 # ORM models
 class Project(Base):
     __tablename__ = "projects"

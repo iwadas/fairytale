@@ -48,16 +48,12 @@ async def generate_voiceover(
     if not voiceover["text"]:
         raise ValueError("Voiceover text is empty")
     
-    provider = "gemini"
-
-    tts_client = TTS(
-        provider=provider       
-    )
+    tts_client = await TTS.create()
 
     task = WebSocketTaskManager(connection_type="global", message_type="voiceover_generation")
 
     await task.send_json(
-        message=f"🎙️ Initializing voiceover generation with '{provider}'...",
+        message=f"🎙️ Initializing voiceover generation...",
         status="init"
     )
 
@@ -66,10 +62,6 @@ async def generate_voiceover(
     tts_result = await tts_client.generate(
         progress_callback=task.send_json,
         text=text,
-        # language="english",
-        # gender="female",
-        # voice_model_id="158880",
-        # age=35,
     )
 
     print("TTS result:", tts_result)

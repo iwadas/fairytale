@@ -2,10 +2,10 @@ from typing import Any, Dict, List, Optional
 import uuid
 from requests import session
 from sqlalchemy import select, delete, func
-from .models import PhotoDumpImage, Project, SceneImage, Voiceover, Place, Scene, Character, ImagesPackage, Music, project_images_package_association
+from .models import PhotoDumpImage, Project, SceneImage, Voiceover, Place, Scene, Character, ImagesPackage, Music, Settings, project_images_package_association
 from .decorators import with_session # Import your new tool
 from sqlalchemy.orm import selectinload
-from .serialization import serialize_music, serialize_project, serialize_scene_image, serialize_voiceover, serialize_scene
+from .serialization import serialize_settings, serialize_music, serialize_project, serialize_scene_image, serialize_voiceover, serialize_scene
 import json
 
 # PROJECTS
@@ -434,3 +434,42 @@ async def delete_music_db(id: str, session=None):
     stmt = delete(Music).where(Music.id == id)
     await session.execute(stmt)
     return {"message": "Music deleted successfully"}
+
+
+# SETTINGS
+@with_session
+async def get_settings_db(session=None):
+    # For now we only have one setting, but this can be expanded in the future
+    stmt = select(Settings)
+    result = await session.execute(stmt)
+    settings = result.scalars().first()
+    return serialize_settings(settings) if settings else None
+
+@with_session
+async def create_settings_db(
+    session=None,
+    **kwargs
+):
+    new_settings = Settings()
+    for key, value in kwargs.items():
+        if type(value) == dict:
+            value = json.dumps(value)
+        setattr(new_settings, key, value)
+    session.add(new_settings)
+    return serialize_settings(new_settings)
+
+@with_session
+async def update_settings_db(session=None, **kwargs):
+    stmt = select(Settings)
+    result = await session.execute(stmt)
+    settings = result.scalars().first()
+    if settings:
+        for key, value in kwargs.items():
+            if type(value) == dict:
+                value = json.dumps(value)
+            setattr(settings, key, value)
+        session.add(settings)
+        return {"message": "Settings updated successfully"}
+    else:
+        return {"message": "Settings not found"}
+    

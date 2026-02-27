@@ -2,7 +2,8 @@ from database.models import (
     Project, 
     Character,
     Place, 
-    Scene, 
+    Scene,
+    Settings, 
     Voiceover, 
     ImagesPackage, 
     PhotoDumpImage, 
@@ -102,4 +103,15 @@ def serialize_scene_image(image: SceneImage):
         "time": image.time,
         "prompt": image.prompt,
         "src": image.src
+    }
+
+def serialize_settings(settings: Settings):
+    return {
+        "id": settings.id,
+        "selected_tts_provider": settings.selected_tts_provider,
+        "selected_tts_provider": settings.selected_tts_provider,
+        "selected_diffusion_provider": settings.selected_diffusion_provider,
+        "tts_provider_settings": json.loads(settings.tts_provider_settings) if settings.tts_provider_settings else {},
+        "diffusion_provider_settings": json.loads(settings.diffusion_provider_settings) if settings.diffusion_provider_settings else {},
+        "llm_provider_settings": json.loads(settings.llm_provider_settings) if settings.llm_provider_settings else {}
     }

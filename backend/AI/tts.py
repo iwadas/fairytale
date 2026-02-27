@@ -10,6 +10,8 @@ import wave
 
 from typing import Callable, Optional
 
+from database.crud import get_settings_db
+
 from groq import AsyncGroq
 from camb.client import AsyncCambAI, save_async_stream_to_file
 from camb.types.stream_tts_output_configuration import StreamTtsOutputConfiguration
@@ -25,25 +27,46 @@ if project_root not in sys.path:
 load_dotenv()
 
 class TTS:
-    def __init__(self, provider: str = "camb"):
-        self.provider = provider
+    def __init__(self):
+        self.provider = None
         self.api_key = None
         self.duration = 0.0
         self.timestamps = []
         self.src = None
         self.text = None
+        self.provider_settings = {}
+        self.client = None
 
-        self.set_api_key()
+    @classmethod
+    async def create(cls):
+        instance = cls()
+        await instance.provide_settings()
+        return instance
 
-    def set_api_key(self):
+    async def provide_settings(self):
+        settings = await get_settings_db()
+
+        print("TTS Settings:", settings)
+        if not settings:
+            raise ValueError("Settings not found in database.")
+        if not settings.get("selected_tts_provider"):
+            raise ValueError("No TTS provider selected in settings.")
+        self.provider = settings["selected_tts_provider"]
+        tts_provider_settings = settings.get("tts_provider_settings", {})
+        if not tts_provider_settings:
+            raise ValueError("TTS provider settings not found in settings.")
+        api_key = tts_provider_settings.get(self.provider, {}).get("api_key")
+        if not api_key:
+            raise ValueError(f"API key for provider '{self.provider}' not found in settings.")
+        self.api_key = api_key
+        self.provider_settings = tts_provider_settings.get(self.provider, {})
+
         if self.provider == "gemini":
-            self.api_key = os.getenv("GENAI_API_KEY")
-            if not self.api_key:
-                raise ValueError("GENAI_API_KEY not found in environment variables.")
+            self.client = genai.Client(
+                api_key=self.api_key
+            )
         elif self.provider == "camb":
-            self.api_key = os.getenv("CAMB_AI_API_KEY")
-            if not self.api_key:
-                raise ValueError("CAMB_AI_API_KEY not found in environment variables.")
+            self.client = AsyncCambAI(api_key=self.api_key)
         else:
             raise ValueError(f"Unsupported TTS provider: {self.provider}")
 
@@ -148,7 +171,7 @@ class TTS:
             )
 
         if self.provider == "gemini":
-            success = await self.generate_gemini(**kwargs)
+            success = await self.generate_gemini()
             if success and self.src:
                 if progress_callback:
                     await progress_callback(
@@ -159,7 +182,7 @@ class TTS:
                 await self.add_timestamps_to_audio(self.src)
 
         elif self.provider == "camb":
-            success = await self.generate_camb(**kwargs)
+            success = await self.generate_camb()
             if success and self.src:
                 if progress_callback:
                     await progress_callback(
@@ -182,12 +205,11 @@ class TTS:
         }
 
 
-    async def generate_gemini(self, **kwargs):
+    async def generate_gemini(self):
         model = "gemini-2.5-flash-preview-tts"
-        voice_name = kwargs.get("voice_name", "Algenib")
+        voice_name = self.provider_settings.get("voice_name", "alloy")
 
-        voice_style = kwargs.get("voice_style", "Read aloud in a deep, fast-paced tone:")
-        self.text = kwargs.get("text", None)
+        voice_style = self.provider_settings.get("voice_style", "Read alound in a friendly tone.")
 
         output_file = f"{uuid.uuid4()}.wav"
         output_dir = os.getenv("VOICEOVER_DIR", "voiceovers")
@@ -208,13 +230,10 @@ class TTS:
             ),
         )
 
-        client = genai.Client(
-            api_key=self.api_key
-        )
 
         try:
             response = await asyncio.to_thread(
-                client.models.generate_content,
+                self.client.models.generate_content,
                 model=model,
                 contents=contents,
                 config=generate_content_config
@@ -242,18 +261,18 @@ class TTS:
         return False
 
 
-    async def generate_camb(self, **kwargs):
+    async def generate_camb(self):
         print("Starting TTS generation with Camb.ai SDK...")
 
         # Initialize the Async Client
-        client = AsyncCambAI(api_key=self.api_key)
+        
 
         # Parse arguments
-        raw_language = kwargs.get("language", "english")
+        raw_language = self.provider_settings.get("language", "english")
         language_code = self.language_to_code(raw_language)
         
         # Ensure voice_id is an integer
-        voice_model_id = kwargs.get("voice_model_id", 1)
+        voice_model_id = self.provider_settings.get("voice_model_id", 1)
         try:
             voice_id = int(voice_model_id)
         except (ValueError, TypeError):
@@ -267,7 +286,7 @@ class TTS:
 
         try:
             # Call the TTS endpoint (Stream)
-            response = client.text_to_speech.tts(
+            response = self.client.text_to_speech.tts(
                 text=self.text,
                 language=language_code,
                 voice_id=voice_id,
