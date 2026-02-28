@@ -60,7 +60,7 @@ class TTS:
             raise ValueError(f"Settings for selected TTS provider '{self.provider}' not found.")
         self.provider_settings = provider_settings
 
-        api_key = provider_settings.get(self.provider, {}).get("api_key")
+        api_key = provider_settings.get("api_key")
         if not api_key:
             raise ValueError(f"API key for provider '{self.provider}' not found in settings.")
 

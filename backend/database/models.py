@@ -87,6 +87,10 @@ class Music(Base):
     src = Column(String, nullable=True)
     start_time = Column(Float, nullable=False)
     duration = Column(Float, nullable=False)
+    
+    cut_start = Column(Float, nullable=True, default=0.0)
+    cut_end = Column(Float, nullable=True, default=0.0)
+    layer = Column(Integer, default=4, nullable=True)
 
 
 class ImagesPackage(Base):
@@ -121,6 +125,10 @@ class Voiceover(Base):
     timestamps = Column(Text, nullable=True)
     duration = Column(Float, nullable=True)
 
+    cut_start = Column(Float, nullable=True, default=0.0)
+    cut_end = Column(Float, nullable=True, default=0.0)
+    layer = Column(Integer, default=3, nullable=True)
+
 class Scene(Base):
     __tablename__ = "scenes"
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
@@ -137,6 +145,11 @@ class Scene(Base):
         back_populates="scenes"
     )
     places = relationship("Place", secondary=place_scene_association, back_populates="scenes")
+    
+    cut_start = Column(Float, nullable=True, default=0.0)
+    cut_end = Column(Float, nullable=True, default=0.0)
+    layer = Column(Integer, default=2, nullable=True)
+
 
 class Place(Base):
     __tablename__ = "places"
