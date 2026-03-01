@@ -2,19 +2,24 @@
   <div class="container mx-auto">
 
     <!-- REGENERATING PROMPT -->
- 
-
-
     <div class="preview mb-4 h-[600px]">
       <div
-        class="flex gap-10 h-full justify-center"
+        class="flex gap-10 h-full"
       >
         <!-- PREVIEW -->
-        <project-preview
-          v-model:currentTime="currentTime"
-          v-model:isPlaying="isPlaying"
-          :timelineElements="timelineElements"
-        />
+        <div class="flex flex-col justify-between w-[400px]">
+          <project-preview
+            v-model:currentTime="currentTime"
+            v-model:isPlaying="isPlaying"
+            :timelineElements="timelineElements"
+          />
+  
+          <timeline-element-maker
+            @add-timeline-element="addTimelineElement"
+            :currentTime="currentTime"
+            :projectId="projectId"
+          />
+        </div>
 
         <!-- EDIT TIMELINE ELEMENT -->
         <scene-editor
@@ -42,7 +47,7 @@
     <div
       v-if="timelineElements"
     >
-      <time-line 
+      <timeline 
         v-model:timeline_elements="timelineElements"
         v-model:is_playing="isPlaying"
         v-model:current_time="currentTime"
@@ -59,9 +64,10 @@ import { ref, onMounted, computed } from 'vue';
 import axios from 'axios'
 import VoiceoverEditor from '@/components/project_details/VoiceoverEditor.vue'
 import MusicEditor from '@/components/project_details/MusicEditor.vue'
-import TimeLine from '@/components/TimeLine.vue'
+import Timeline from '@/components/project_details/Timeline.vue'
 import SceneEditor from '@/components/project_details/SceneEditor.vue'
-import ProjectPreview from '@/components/Preview.vue'
+import ProjectPreview from '@/components/project_details/Preview.vue'
+import TimelineElementMaker from '@/components/project_details/TimelineElementMaker.vue'
 
 const route = 'http://localhost:8000/'
 let projectId = null;
@@ -77,6 +83,12 @@ const timelineElements = ref([]);
 
 
 const selectedTimelineElementIndex = ref(null);
+
+const addTimelineElement = (newElement) => {
+  console.log('Adding new timeline element:', newElement);
+  timelineElements.value.push(newElement);
+  // selectedTimelineElementIndex.value = timelineElements.value.length - 1;
+}
 
 const selectedTimelineElement = computed(()=>{
   if(typeof(selectedTimelineElementIndex.value) != 'number') return null;

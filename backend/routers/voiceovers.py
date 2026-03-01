@@ -11,8 +11,11 @@ import uuid
 router = APIRouter(prefix="/voiceovers", tags=["voiceovers"])
 
 @router.post("/{project_id}")
-async def create_voiceover(project_id: str):   
-    return await create_voiceover_db(project_id=project_id)
+async def create_voiceover(
+    project_id: str,
+    start_time: float = Body(0.0, embed=True),    
+):   
+    return await create_voiceover_db(project_id=project_id, text="", start_time=start_time)
 
 @router.post("/combine/{project_id}")
 async def combine_voiceovers(project_id: str):

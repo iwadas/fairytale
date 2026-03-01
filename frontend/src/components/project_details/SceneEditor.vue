@@ -85,8 +85,9 @@
     >
   
       <!-- CHANGE PROMPT -->
-      
-  
+      <p class="text-[8px] w-40">
+        {{ scene.images }}
+      </p>
   
   
   
@@ -350,7 +351,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, onMounted, watch } from 'vue';
 import axios from 'axios';
 import getSrc from '@/utils/getSrc';
 import FormInput from '@/components/FormInput.vue';
@@ -362,6 +363,7 @@ import Modal from '@/components/ModalContainer.vue';
 const scene = defineModel('scene', { required: true, type: Object });
 const sceneTasks = defineModel('scene_tasks', { required: true, type: Object });
 
+
 // Standard props for things the child shouldn't change
 const props = defineProps({
   projectId: String,
@@ -369,7 +371,6 @@ const props = defineProps({
 });
 
 const selectedSceneImageIndex = ref(0);
-
 
 // UPLOADS
 const handleSceneImageUpload = async (event) => {
@@ -598,6 +599,47 @@ const applyNewImagePrompt = (option) => {
 const addedReferenceImages = ref([]);
 const showReferenceImages = ref(false);
 
+
+const prepareImages = () => {
+  const timeSlots = [null, null]; // start, mid, end
+  scene.value.images.forEach(img => {
+    console.log('processing img:');
+    console.log(img);
+    let slotIndex = 0;
+    // if(img.time == 'mid') slotIndex = 1;
+    if(img.time == 'end') slotIndex = 1;
+
+    // Try to place in the desired slot or next available
+    for(let i = slotIndex; i < 2; i++) {
+      if(!timeSlots[i]) {
+        timeSlots[i] = img;
+        console.log('placed in slot ' + i);
+        break;
+      }
+    }
+    // fill empty timeslots with basic image data
+  });
+  for(let i = 0; i < 2; i++) {
+    if(!timeSlots[i]) {
+      timeSlots[i] = {
+        id: null,
+        scene_id: scene.value.id,
+        src: null,
+        time: i == 0 ? 'start' : 'end',
+        prompt: 'Change camera angle / add action description',
+      };
+    }
+  }
+  scene.value.images = timeSlots;
+}
+
+onMounted(()=>{
+  prepareImages();
+})
+
+watch(() => scene.value.id, () => {
+  prepareImages();
+})
 
 
 

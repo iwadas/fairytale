@@ -87,7 +87,7 @@
 import { ref, computed, onUnmounted, onMounted } from 'vue'
 import AudioElement from '@/components/project_details/AudioElement.vue'
 import VideoElement from '@/components/project_details/VideoElement.vue'
-import PreviewPlayer from '@/components/Preview.vue' // Adjust path as needed
+import PreviewPlayer from '@/components/project_details/Preview.vue' // Adjust path as needed
 const currentTime = ref(0)
 const isPlaying = ref(false)
 

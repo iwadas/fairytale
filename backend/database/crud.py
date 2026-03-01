@@ -266,7 +266,7 @@ async def create_voiceover_db(
         start_time: float = 0.0, 
         timestamps: Optional[Any] = None, 
         text_with_pauses: Optional[str] = None,
-        duration: Optional[float] = None,
+        duration: Optional[float] = 4.0,
         session=None
     ):
 
@@ -402,15 +402,18 @@ async def create_or_update_scene_image_db(id: Optional[str] = None, scene_id: Op
     return serialize_scene_image(scene_image)
 
 @with_session
-async def create_music_db(project_id: str, session=None):
+async def create_music_db(project_id: str, session=None, **kwargs):
     new_music = Music(
         id=str(uuid.uuid4()),
         project_id=project_id,
         name="",
         src="",
         start_time=0.0,
-        duration=30.0
+        duration=30.0,
+        layer=4
     )
+    for key, value in kwargs.items():
+        setattr(new_music, key, value)
     session.add(new_music)
     return serialize_music(new_music)
 

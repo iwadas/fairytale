@@ -14,7 +14,7 @@
           <div class="w-3 h-4 bg-primary rounded-b-sm -mt-0.5"></div>
         </div>
 
-        <div @mousedown="handleRulerClick" class="absolute top-0 left-0 w-full z-30 cursor-pointer" :style="{ height: `${rulerHeight}px` }">             
+        <div @mousedown="handleRulerClick" class="absolute top-0 left-0 w-full cursor-pointer" :style="{ height: `${rulerHeight}px` }">             
           <div v-for="i in timelineDuration + 1" :key="'tick-'+(i-1)" class="absolute bottom-0 border-l border-[var(--light-gray)]" :style="{ left: `${(i-1) * pixelsPerSecond}px`, height: (i-1) % 5 === 0 ? '12px' : '6px' }">
             <span v-if="(i-1) % 5 === 0 && (i-1) > 0" class="absolute bottom-full mb-1 -translate-x-1/2 text-[10px] text-[var(--light)] font-medium">
               {{ i - 1 }}s
@@ -35,13 +35,40 @@
           @click="selectTimelineElement(idx)"
           :style="getSegmentStyle(segment)"
           :class="[
-            'absolute rounded-md shadow-md flex items-center overflow-hidden border border-[var(--light-gray)] transition-shadow text-sm font-medium z-10 box-border',
+            'absolute rounded-md shadow-md flex items-center border border-[var(--light-gray)] transition-shadow text-sm font-medium box-border',
             AUDIO_TYPES.includes(segment.type) ? 'bg-medium text-light' : 'bg-gray-400 text-emerald-50',
-            dragState.activeId === segment.id && dragState.action === 'move' ? 'opacity-80 ring-2 ring-[var(--primary)] scale-[1.02] cursor-grabbing z-50' : 'cursor-grab hover:brightness-110',
-            selectedTimelineElementIndex === idx ? 'ring-2 ring-[var(--primary)]' : 'cursor-pointer'
+            selectedTimelineElementIndex === idx ? 'ring-2 ring-[var(--primary)] z-30' : 'cursor-pointer z-10',
+            dragState.activeId === segment.id && dragState.action === 'move' ? 'ring-2 ring-[var(--primary)] cursor-grabbing z-50' : 'cursor-grab'
           ]"
+
         >
-          <div class="relative w-full h-full overflow-hidden">
+
+          <div class="absolute left-full top-1/2 -translate-y-1/2 z-[100] ml-2 text-[9px] flex gap-1"
+            v-if="selectedTimelineElementIndex === idx"
+          >
+            <button
+              @click.stop="console.log('TO BE IMPLEMENTED')"
+              class="hover:text-white transition-colors cursor-pointer w-5 ring-1 ring-[var(--light-gray)] bg-medium hover:bg-[var(--light-gray)] rounded-md"
+            >
+              <font-awesome-icon 
+                icon="copy" 
+              />
+            </button>
+            <button
+              @click.stop="removeTimelineElement(idx)"
+              class="transition-colors cursor-pointer w-5 bg-[var(--primary)] text-light hover:text-white rounded-md hover:bg-[var(--primary-dark)]"
+            >
+              <font-awesome-icon 
+                icon="trash" 
+              />
+            </button>
+          </div>
+
+          <div 
+            class="relative w-full h-full rounded-md overflow-hidden"
+            :class="dragState.activeId === segment.id && dragState.action === 'move' ? '' : 'hover:brightness-110'"
+          >
+
             <div 
               v-if="selectedTimelineElementIndex === idx"
               @mousedown.stop="startDrag($event, segment, 'trimLeft', idx)" 
@@ -51,7 +78,7 @@
             </div>
 
             <!-- TIME ELEMENT BACKGROUND -->
-            <div class="absolute h-full -z-10"
+            <div class="absolute h-full -z-10 rounded-md"
               :style="getSegmentBackgroundStyle(segment)"
             >
               <video-element
@@ -95,6 +122,8 @@
 import { ref, computed, onUnmounted } from 'vue'
 import AudioElement from '@/components/project_details/AudioElement.vue'
 import VideoElement from '@/components/project_details/VideoElement.vue'
+import axios from 'axios'
+import route from '@/utils/route.js';
 
 const timelineElements = defineModel('timeline_elements', { required: true, type: Object });
 const currentTime = defineModel('current_time', { required: true, type: Number });
@@ -111,6 +140,25 @@ const handleRulerClick = (e) => {
   const newTime = Math.max(0, clickX / pixelsPerSecond.value)
   currentTime.value = newTime
 }
+
+const removeTimelineElement = async (index) => {
+  let segment = timelineElements.value[index]
+  try {
+    if(segment.type === 'scene') {
+      await axios.delete(route(`scenes/${segment.id}`))
+    } else if (segment.type === 'voiceover') {
+      await axios.delete(route(`voiceovers/${segment.id}`))
+    } else if (segment.type === 'music') {
+      await axios.delete(route(`music/${segment.id}`))
+    }
+  } catch (error) {
+    console.error("Error deleting timeline element:", error)
+  } finally {
+    selectedTimelineElementIndex.value = null;
+    timelineElements.value.splice(index, 1)
+  }
+}
+
 
 const selectTimelineElement = (index) => {
   selectedTimelineElementIndex.value = index;

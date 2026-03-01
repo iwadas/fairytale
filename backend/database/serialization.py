@@ -52,14 +52,18 @@ def serialize_place(place: Place):
 def serialize_scene(scene: Scene):
     return {
         "id": scene.id,
-        "start_time": scene.start_time,
-        "duration": scene.duration,
         "video_prompt": scene.video_prompt,
         "video_src": scene.video_src,
         # Using the helper makes this cleaner
         "characters": [serialize_character(c) for c in scene.characters] if is_loaded(scene, "characters") else [],
         "places": [serialize_place(p) for p in scene.places] if is_loaded(scene, "places") else [],
-        "images": [serialize_scene_image(i) for i in scene.images] if is_loaded(scene, "images") else []
+        "images": [serialize_scene_image(i) for i in scene.images] if is_loaded(scene, "images") else [],
+        
+        "start_time": scene.start_time,
+        "duration": scene.duration,
+        "cut_start": scene.cut_start or 0.0,
+        "cut_end": scene.cut_end or 0.0,
+        "layer": scene.layer or 2
     }
 
 def serialize_voiceover(voiceover: Voiceover):
@@ -68,18 +72,27 @@ def serialize_voiceover(voiceover: Voiceover):
         "text": voiceover.text,
         "text_with_pauses": voiceover.text_with_pauses,
         "src": voiceover.src,
+        "timestamps": json.loads(voiceover.timestamps) if voiceover.timestamps else [],
+        
         "start_time": voiceover.start_time,
         "duration": voiceover.duration,
-        "timestamps": json.loads(voiceover.timestamps) if voiceover.timestamps else []
+        "cut_start": voiceover.cut_start or 0.0,
+        "cut_end": voiceover.cut_end or 0.0,
+        "layer": voiceover.layer or 3
     }
+    
 
 def serialize_music(music: Music):
     return {
         "id": music.id,
         "name": music.name,
         "src": music.src,
+        
         "start_time": music.start_time,
-        "duration": music.duration
+        "duration": music.duration,
+        "cut_start": music.cut_start or 0.0,
+        "cut_end": music.cut_end or 0.0,
+        "layer": music.layer or 4
     }
 
 def serialize_images_package(package: ImagesPackage):

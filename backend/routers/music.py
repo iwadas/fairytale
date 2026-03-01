@@ -7,8 +7,11 @@ from database.crud import create_music_db, get_music_db, update_music_db, delete
 router = APIRouter(prefix="/music", tags=["music"])
 
 @router.post("/{project_id}")
-async def create_music(project_id: str):   
-    return await create_music_db(project_id=project_id)
+async def create_music(
+    project_id: str,
+    start_time: float = Body(..., embed=True),    
+):   
+    return await create_music_db(project_id=project_id, start_time=start_time)
 
 
 @router.put("/upload-music/{music_id}")

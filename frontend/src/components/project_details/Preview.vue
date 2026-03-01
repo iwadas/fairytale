@@ -1,14 +1,14 @@
 <template>
-  <div class="flex flex-col gap-3 w-full max-w-4xl mx-auto mb-6 select-none">
+  <div class="flex flex-col gap-3 min-w-[400px] w-[400px] max-w-4xl mx-auto mb-6 select-none">
     
-    <div class="relative w-full aspect-video bg-dark rounded-[10px] overflow-hidden shadow-2xl flex items-center justify-center">
+    <div class="relative size-[400px] aspect-video bg-dark rounded-[10px] overflow-hidden shadow-2xl flex items-center justify-center">
       
       <template v-for="clip in sortedActiveElements" :key="clip.id">
         <video
           v-if="clip.type === 'scene' && clip.video_src"
           :src="getSrc(clip.video_src)"
           :ref="el => setMediaRef(el, clip.id)"
-          class="absolute top-0 left-0 w-full h-full object-contain pointer-events-none"
+          class="absolute top-0 left-0 size-[400px] object-contain pointer-events-none"
           playsinline
         ></video>
         

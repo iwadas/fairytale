@@ -146,10 +146,7 @@ async def create_scene(
         start_time=start_time,
     )
 
-    return {
-        "message": "Scene created successfully",
-        "scene": new_scene
-    }
+    return new_scene
     
 
 @router.delete("/{scene_id}")
