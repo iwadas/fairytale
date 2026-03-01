@@ -1,4 +1,6 @@
 const getSrc = (src) => {
+    if(!src) return '';
+
     if (src.startsWith("blob:")) {
         return src;
     } else {

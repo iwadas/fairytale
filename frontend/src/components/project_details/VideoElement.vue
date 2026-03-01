@@ -4,12 +4,12 @@
     <div v-if="loading">
       <div class="flex rounded overflow-hidden">
         <div v-if="fistSceneImg">
-          <img :src="fistSceneImg" class="w-[50px] min-w-[50px] h-[50px] object-cover" />
+          <img :src="fistSceneImg" class="w-[54px] min-w-[54px] h-[54px] object-cover" />
         </div>
         <div 
           v-for="n in (NUMBER_OF_FRAMES - (fistSceneImg ? 1 : 0))" 
           :key="n" 
-          class="w-[50px] min-w-[50px] h-[50px] flex justify-center items-center"
+          class="w-[54px] min-w-[54px] h-[54px] flex justify-center items-center"
           :class="{
             'bg-stone-300' : n % 3 == 0,
             'bg-[var(--light-gray)]' : n % 3 == 1,
@@ -27,7 +27,7 @@
           v-for="(thumbUrl, index) in displayedThumbnails" 
           :key="index" 
           :src="thumbUrl" 
-          class="w-[50px] min-w-[50px] h-[50px] object-cover"
+          class="w-[54px] min-w-[54px] h-[54px] object-cover"
         />
       </div>
     </div>
@@ -85,6 +85,8 @@ const displayedThumbnails = computed(()=>{
 
 onMounted(async () => {
   loading.value = true;
+
+  return;
   if(!props.scene.video_src) {
     console.warn("No video source provided for the scene.");
     return;

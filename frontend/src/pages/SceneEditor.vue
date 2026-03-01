@@ -103,20 +103,6 @@
             class="w-full"
           />
           <form-input 
-            v-model="scene.cut_start" 
-            label="Cut Start"
-            type="text"
-            placeholder="Enter cut start..."
-            class="w-full"
-          />
-          <form-input 
-            v-model="scene.cut_end" 
-            label="Cut End"
-            type="text"
-            placeholder="Enter cut end..."
-            class="w-full"
-          />
-          <form-input 
             v-model="scene.duration" 
             label="Duration"
             type="text"
@@ -168,7 +154,7 @@
             v-if="scene.video_src" 
             :label="scene.video_src ? 'Regenerate Video' : 'Generate Video'" 
             :show_status="true"
-            :loading="sceneTasks.generating_video[scene.id]"
+            :loading="sceneTasks.generating_video[scene.value.id]"
             button_style="primary" 
             :rounded_t="false"
             @click="generateVideo"
