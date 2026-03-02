@@ -3,6 +3,7 @@ from fastapi import APIRouter, Body, UploadFile, File, HTTPException
 from services import save_file
 from database.crud import create_music_db, get_music_db, update_music_db, delete_music_db
 
+from typing import Optional
 
 router = APIRouter(prefix="/music", tags=["music"])
 
@@ -13,6 +14,34 @@ async def create_music(
 ):   
     return await create_music_db(project_id=project_id, start_time=start_time)
 
+
+@router.post("/{music_id}/duplicate")
+async def duplicate_music(
+    music_id: str,
+    
+    start_time: Optional[float] = Body(0.0, embed=True),
+    cut_start: Optional[float] = Body(0.0, embed=True),
+    cut_end: Optional[float] = Body(0.0, embed=True),
+    duration: Optional[float] = Body(0.0, embed=True),
+    layer: Optional[int] = Body(2, embed=True),
+    
+):
+    music = await get_music_db(music_id)
+    if not music:
+        raise HTTPException(status_code=404, detail="Music not found")
+
+    new_music = await create_music_db(
+        project_id=music["project_id"],
+        src=music["src"],
+        name=music["name"],
+
+        duration=duration or music["duration"],
+        start_time=start_time or music["start_time"] + music["duration"],
+        cut_start=cut_start or music["cut_start"],
+        cut_end=cut_end or music["cut_end"],
+        layer=layer or music["layer"],
+    )
+    return new_music
 
 @router.put("/upload-music/{music_id}")
 async def upload_music(

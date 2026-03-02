@@ -35,7 +35,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed, onBeforeUnmount } from 'vue';
+import { ref, onMounted, computed, onBeforeUnmount, watch } from 'vue';
 import { getMetadata, getThumbnails } from 'video-metadata-thumbnails';
 
 
@@ -83,10 +83,8 @@ const displayedThumbnails = computed(()=>{
 })
 
 
-onMounted(async () => {
+const loadThumbnails = async () => {
   loading.value = true;
-
-  return;
   if(!props.scene.video_src) {
     console.warn("No video source provided for the scene.");
     return;
@@ -123,6 +121,18 @@ onMounted(async () => {
       } else {
           if (!scrubberRef.value || thumbnails.value.length === 0) return;
       }
+  }
+}
+
+onMounted(async () => {
+  await loadThumbnails();
+});
+
+watch(() => props.scene.video_src, async (newSrc, oldSrc) => {
+  if (newSrc !== oldSrc) {
+    thumbnails.value.forEach(url => URL.revokeObjectURL(url));
+    thumbnails.value = [];
+    await loadThumbnails();
   }
 });
 

@@ -47,7 +47,7 @@
             v-if="selectedTimelineElementIndex === idx"
           >
             <button
-              @click.stop="console.log('TO BE IMPLEMENTED')"
+              @click.stop="duplicateTimelineElement(idx)"
               class="hover:text-white transition-colors cursor-pointer w-5 ring-1 ring-[var(--light-gray)] bg-medium hover:bg-[var(--light-gray)] rounded-md"
             >
               <font-awesome-icon 
@@ -142,20 +142,48 @@ const handleRulerClick = (e) => {
 }
 
 const removeTimelineElement = async (index) => {
-  let segment = timelineElements.value[index]
+  let element = timelineElements.value[index]
   try {
-    if(segment.type === 'scene') {
-      await axios.delete(route(`scenes/${segment.id}`))
-    } else if (segment.type === 'voiceover') {
-      await axios.delete(route(`voiceovers/${segment.id}`))
-    } else if (segment.type === 'music') {
-      await axios.delete(route(`music/${segment.id}`))
+    if(element.type === 'scene') {
+      await axios.delete(route(`scenes/${element.id}`))
+    } else if (element.type === 'voiceover') {
+      await axios.delete(route(`voiceovers/${element.id}`))
+    } else if (element.type === 'music') {
+      await axios.delete(route(`music/${element.id}`))
     }
   } catch (error) {
     console.error("Error deleting timeline element:", error)
   } finally {
     selectedTimelineElementIndex.value = null;
     timelineElements.value.splice(index, 1)
+  }
+}
+
+const duplicateTimelineElement = async (index) => {
+  let element = timelineElements.value[index]
+  try {
+    let response = null;
+
+    const payload = {
+      start_time: element.start_time + element.duration - element.cut_end,
+      cut_start: element.cut_start,
+      cut_end: element.cut_end,
+      layer: element.layer,
+      duration: element.duration,
+    }
+
+    if(element.type === 'scene') {
+      response = await axios.post(route(`scenes/${element.id}/duplicate`), payload)
+    } else if (element.type === 'voiceover') {
+      response = await axios.post(route(`voiceovers/${element.id}/duplicate`), payload)
+    } else if (element.type === 'music') {
+      response = await axios.post(route(`music/${element.id}/duplicate`), payload)
+    }
+    let newElement = response.data;
+    newElement["type"] = element.type;
+    timelineElements.value.push(newElement);
+  } catch (error) {
+    console.error("Error duplicating timeline element:", error)
   }
 }
 

@@ -52,6 +52,7 @@ def serialize_place(place: Place):
 def serialize_scene(scene: Scene):
     return {
         "id": scene.id,
+        "project_id": scene.project_id,
         "video_prompt": scene.video_prompt,
         "video_src": scene.video_src,
         # Using the helper makes this cleaner
@@ -69,6 +70,7 @@ def serialize_scene(scene: Scene):
 def serialize_voiceover(voiceover: Voiceover):
     return {
         "id": voiceover.id,
+        "project_id": voiceover.project_id,
         "text": voiceover.text,
         "text_with_pauses": voiceover.text_with_pauses,
         "src": voiceover.src,
@@ -81,10 +83,10 @@ def serialize_voiceover(voiceover: Voiceover):
         "layer": voiceover.layer or 3
     }
     
-
 def serialize_music(music: Music):
     return {
         "id": music.id,
+        "project_id": music.project_id,
         "name": music.name,
         "src": music.src,
         

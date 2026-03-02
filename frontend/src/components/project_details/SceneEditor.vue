@@ -83,15 +83,6 @@
     <div 
       class="text-gray-300 flex gap-6 container-background flex-1 p-4" 
     >
-  
-      <!-- CHANGE PROMPT -->
-      <p class="text-[8px] w-40">
-        {{ scene.images }}
-      </p>
-  
-  
-  
-  
       <!-- SCENE VIDEO -->
       <div>
           <!-- MORE FUNCTIONS -->
@@ -129,7 +120,7 @@
         <div class="h-[250px] w-[250px] rounded-t-lg mx-auto relative bg-dark">
           <video 
             v-if="scene.video_src" 
-            :src="`http://localhost:8000/${scene.video_src}?v=1}`"
+            :src="route(`${scene.video_src}?v=${Date.now()}`)"
             alt="Scene Video"
             class="w-full h-full object-cover rounded-md" 
             controls 
@@ -357,6 +348,7 @@ import getSrc from '@/utils/getSrc';
 import FormInput from '@/components/FormInput.vue';
 import FormButton from '@/components/FormButton.vue';
 import Modal from '@/components/ModalContainer.vue';
+import route from '@/utils/route.js';
 
 // defineModel automatically sets up the prop AND the emit for us!
 // It acts exactly like a ref that is synced with the parent.
@@ -383,7 +375,7 @@ const handleSceneImageUpload = async (event) => {
   formData.append('scene_image_prompt', scene.value.images[selectedSceneImageIndex.value].prompt ?? '');
   console.log(formData);
   try {
-    const response = await axios.put(`${route}scenes/upload-image/${scene.value.id}`, formData, {
+    const response = await axios.put(route(`scenes/upload-image/${scene.value.id}`), formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
     console.log(response.data);
@@ -397,10 +389,15 @@ const handleSceneVideoUpload = async (event) => {
   const video = event.target.files[0];
   const formData = new FormData();
   formData.append('video', video);
-  const response = await axios.put(`${route}scenes/upload-video/${scene.value.id}`, formData, {
-    headers: { 'Content-Type': 'multipart/form-data' }
-  });
-  scene.value.video_src = response.data.video_url;
+  try{
+    const response = await axios.put(route(`scenes/upload-video/${scene.value.id}`), formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+    scene.value.video_src = response.data.video_src;
+    scene.value.duration = response.data.duration;
+  } catch (error) {
+    console.error('Error uploading scene video:', error);
+  }
 }
 
 
@@ -452,7 +449,7 @@ const generateImage = async () => {
   }
 
   const response = await axios.post(
-    `${route}scenes/generate-image/${scene.value.id}`,
+    route(`scenes/generate-image/${scene.value.id}`),
     formData,
     {
       headers: { "Content-Type": "multipart/form-data" },
@@ -467,7 +464,7 @@ const generateImage = async () => {
 const generateVideo = async () => {
   try {
     sceneTasks.value.generating_video[scene.value.id] = true;
-    const response = await axios.post(`http://localhost:8000/scenes/generate-video/${scene.value.id}`, {
+    const response = await axios.post(route(`scenes/generate-video/${scene.value.id}`), {
       prompt: scene.value.video_prompt,
       duration: scene.value.duration,
     });
@@ -488,7 +485,7 @@ const fixImagePrompt = async () => {
   try {
     sceneTasks.value.fixing_image_prompt[scene.value.id + selectedSceneImageIndex.value] = true;
     const response = await axios
-      .post('http://localhost:8000/scenes/fix-image-prompt', { 
+      .post(route(`scenes/fix-image-prompt`), { 
         scene_prompt: scene.value.images[selectedSceneImageIndex.value].prompt,
         style: imageGenerationStyle.value,
         style_power: imageGenerationStylePower.value
@@ -543,7 +540,7 @@ const generateNewImagePrompts = async () => {
     ).join(' ');
 
     const response = await axios
-      .post('http://localhost:8000/scenes/generate-image-prompts', { 
+      .post(route(`scenes/generate-image-prompts`), { 
         project_id: props.projectId,
         full_voiceover_text: newImagePromptForm.value.full_voiceover_text,
         selected_voiceover_text_part: selectedVoiceoverTextPart,

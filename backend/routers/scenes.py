@@ -1,5 +1,8 @@
+import asyncio
+
 from fastapi import APIRouter, HTTPException, Body, UploadFile, File, Form, BackgroundTasks
 
+from moviepy import VideoFileClip
 from typing import Optional, List
 from AI.diffusion import Diffusion
 from AI.llm import LLM
@@ -135,6 +138,35 @@ async def fix_image_prompt(
 
 
 
+@router.post("/{scene_id}/duplicate")
+async def duplicate_scene(
+    scene_id: str,
+    
+    start_time: Optional[float] = Body(0.0, embed=True),
+    cut_start: Optional[float] = Body(0.0, embed=True),
+    cut_end: Optional[float] = Body(0.0, embed=True),
+    duration: Optional[float] = Body(0.0, embed=True),
+    layer: Optional[int] = Body(2, embed=True),
+    
+):
+    scene = await get_scene_db(scene_id)
+    if not scene:
+        raise HTTPException(status_code=404, detail="Scene not found")
+
+    new_scene = await create_scene_db(
+        project_id=scene["project_id"],
+        video_src=scene["video_src"],
+        duration=duration or scene["duration"],
+        start_time=start_time or scene["start_time"] + scene["duration"],
+        video_prompt=scene["video_prompt"],
+        cut_start=cut_start or scene["cut_start"],
+        cut_end=cut_end or scene["cut_end"],
+        layer=layer or scene["layer"],
+        images=scene["images"]
+    )
+    return new_scene
+
+
 @router.post("/{project_id}")
 async def create_scene(
     project_id: str,
@@ -166,6 +198,15 @@ async def generate_scene_image(
     # TODO
     pass
 
+def get_video_duration_sync(file_path: str) -> float:
+    """Returns video duration in seconds using moviepy."""
+    try:
+        with VideoFileClip(file_path) as clip:
+            return clip.duration
+    except Exception as e:
+        print(f"Error getting duration: {e}")
+        return 0.0
+
 @router.put("/upload-video/{scene_id}")
 async def upload_scene_video(
     scene_id: str,
@@ -176,9 +217,11 @@ async def upload_scene_video(
         raise HTTPException(status_code=404, detail="Scene not found")
     
     video_src = await save_file(video, type="scene_video")
+    
+    duration = await asyncio.to_thread(get_video_duration_sync, video_src)
 
-    await update_scene_db(scene_id, video_src=video_src)
-    return {"message": "Scene video uploaded successfully", "scene_id": scene_id, "video_url": video_src}
+    await update_scene_db(scene_id, video_src=video_src, duration=duration)
+    return {"message": "Scene video uploaded successfully", "scene_id": scene_id, "video_src": video_src, "duration": duration}
 
 
 @router.delete("/remove-image/{scene_image_id}")

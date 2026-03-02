@@ -1,10 +1,12 @@
-from fastapi import APIRouter, Body
+from fastapi import APIRouter, Body, HTTPException
 
 from database.crud import create_voiceover_db, get_project_voiceovers_db, remove_voiceover_db, get_voiceover_db, update_voiceover_db
 
 from AI.tts import TTS
 
 from websocket import WebSocketTaskManager 
+
+from typing import Optional
 
 import uuid
 
@@ -16,6 +18,38 @@ async def create_voiceover(
     start_time: float = Body(0.0, embed=True),    
 ):   
     return await create_voiceover_db(project_id=project_id, text="", start_time=start_time)
+
+
+@router.post("/{voiceover_id}/duplicate")
+async def duplicate_voiceover(
+    voiceover_id: str,
+    
+    start_time: Optional[float] = Body(0.0, embed=True),
+    cut_start: Optional[float] = Body(0.0, embed=True),
+    cut_end: Optional[float] = Body(0.0, embed=True),
+    duration: Optional[float] = Body(0.0, embed=True),
+    layer: Optional[int] = Body(2, embed=True),
+    
+):
+    voiceover = await get_voiceover_db(voiceover_id)
+    if not voiceover:
+        raise HTTPException(status_code=404, detail="Voiceover not found")
+
+    new_voiceover = await create_voiceover_db(
+        project_id=voiceover["project_id"],
+        src=voiceover["src"],
+        text=voiceover["text"],
+        text_with_pauses=voiceover["text_with_pauses"],
+        timestamps=voiceover["timestamps"],
+
+        duration=duration or voiceover["duration"],
+        start_time=start_time or voiceover["start_time"] + voiceover["duration"],
+        cut_start=cut_start or voiceover["cut_start"],
+        cut_end=cut_end or voiceover["cut_end"],
+        layer=layer or voiceover["layer"],
+    )
+    return new_voiceover
+
 
 @router.post("/combine/{project_id}")
 async def combine_voiceovers(project_id: str):

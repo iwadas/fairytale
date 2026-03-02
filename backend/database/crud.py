@@ -263,10 +263,16 @@ async def create_voiceover_db(
         id: Optional[str] = None, 
         project_id: str = "", 
         text: str = "", 
-        start_time: float = 0.0, 
         timestamps: Optional[Any] = None, 
         text_with_pauses: Optional[str] = None,
+        src: Optional[str] = None,
+
+        start_time: float = 0.0, 
         duration: Optional[float] = 4.0,
+        cut_start: Optional[float] = 0.0,
+        cut_end: Optional[float] = 0.0,
+        layer: Optional[int] = 3,
+
         session=None
     ):
 
@@ -281,7 +287,7 @@ async def create_voiceover_db(
     if timestamps is not None and not isinstance(timestamps, str):
         timestamps = json.dumps(timestamps)
 
-    new_vo = Voiceover(id=id, project_id=project_id, text=text, start_time=start_time, timestamps=timestamps, text_with_pauses=text_with_pauses, duration=duration)
+    new_vo = Voiceover(id=id, project_id=project_id, text=text, start_time=start_time, timestamps=timestamps, text_with_pauses=text_with_pauses, duration=duration, cut_start=cut_start, cut_end=cut_end, layer=layer, src=src)
     session.add(new_vo)
     return serialize_voiceover(new_vo)
 
@@ -315,9 +321,13 @@ async def get_scene_db(id: str, session=None):
 async def create_scene_db(
     project_id: str,
     scene_id: Optional[str] = None,
+    video_src: Optional[str] = None,
     duration: Optional[float] = 0.0,
-    start_time: Optional[float] = 0.0,
     video_prompt: Optional[str] = None,
+    start_time: Optional[float] = 0.0,
+    cut_start: Optional[float] = 0.0,
+    cut_end: Optional[float] = 0.0,
+    layer: Optional[int] = 2,
     session=None, 
     images: Optional[List[Dict[str, Any]]] = None,
 ):
@@ -326,10 +336,14 @@ async def create_scene_db(
 
     new_scene = Scene(
         id=scene_id,
-        project_id=project_id, 
+        project_id=project_id,
+        video_src=video_src, 
         duration=duration, 
         start_time=start_time,
-        video_prompt=video_prompt
+        video_prompt=video_prompt,
+        cut_start=cut_start,
+        cut_end=cut_end,
+        layer=layer
     )
     session.add(new_scene)
 
@@ -337,6 +351,7 @@ async def create_scene_db(
         for img in images:
             new_image = SceneImage(
                 scene_id=scene_id,
+                src=img.get("src", ""),
                 prompt=img.get("prompt", ""),
                 time=img.get("time", "start"),
             )
