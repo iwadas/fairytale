@@ -1,6 +1,6 @@
 <template>
   <div
-    class="text-light flex flex-col gap-6 container-background w-fit p-4 text-xs" 
+    class="text-light flex flex-col gap-6 h-fit p-4 text-xs w-full" 
   >
     <div class="flex gap-4 justify-center">
 
@@ -9,7 +9,7 @@
         label="Start Time"
         type="text"
         placeholder="Enter start time..."
-        class="w-[200px]"
+        class="w-full"
       />
 
       <form-input 
@@ -17,7 +17,7 @@
         label="Duration"
         type="text"
         placeholder="Enter duration..."
-        class="w-[200px]"
+        class="w-full"
       />
       
     </div>
@@ -26,7 +26,7 @@
       label="Text"
       type="textarea"
       placeholder="Enter text..."
-      class="w-[416px]"
+      class="w-full"
     />
 
     <form-input 
@@ -34,10 +34,10 @@
       label="Text With Pauses"
       type="textarea"
       placeholder="Enter text with pauses..."
-      class="w-[416px]"
+      class="w-full"
     />
     
-    <div v-if="voiceover.src" class="w-[416px]">
+    <div v-if="voiceover.src" class="w-full">
       <audio :src="getSrc(voiceover.src)" controls class="w-full mt-2"></audio>
     </div>
 

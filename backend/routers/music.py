@@ -1,9 +1,13 @@
+import os
+
 from fastapi import APIRouter, Body, UploadFile, File, HTTPException
 
 from services import save_file
 from database.crud import create_music_db, get_music_db, update_music_db, delete_music_db
 
 from typing import Optional
+
+from pydub import AudioSegment
 
 router = APIRouter(prefix="/music", tags=["music"])
 
@@ -43,6 +47,17 @@ async def duplicate_music(
     )
     return new_music
 
+# HELPER FUNCTION TO GET DURATION
+def get_audio_duration(audio_file_path: str) -> float:
+    if not os.path.exists(audio_file_path):
+        return 0.0
+    try:
+        audio = AudioSegment.from_file(audio_file_path)
+        return len(audio) / 1000.0
+    except Exception as e:
+        print(f"Error calculating duration: {e}")
+        return 0.0
+
 @router.put("/upload-music/{music_id}")
 async def upload_music(
     music_id: str,
@@ -54,13 +69,14 @@ async def upload_music(
     
     src = await save_file(music_file, type="music")
 
+    duration = get_audio_duration(src)
+
     updated_music = await update_music_db(
         id=music_id,
         src=src,
-        name=music_file.filename.replace(" ", "_")
-
+        name=music_file.filename.replace(" ", "_"),
+        duration=duration
     )
-
     return {"message": "Music uploaded successfully", "music": updated_music}
 
 @router.put("/{music_id}")
@@ -72,13 +88,17 @@ async def update_music(
     if not music:
         raise HTTPException(status_code=404, detail="Music not found")
     
+
+    duration = get_audio_duration(src)
+
     updated_music = await update_music_db(
         id=music_id,
         name=src.split("/")[-1].replace(" ", "_"),
-        src=src
+        src=src,
+        duration=duration
     )
 
-    return {"message": "Music updated successfully", "music": updated_music}
+    return updated_music
 
 
 

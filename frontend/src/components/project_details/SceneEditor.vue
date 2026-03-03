@@ -81,7 +81,7 @@
     </modal>
   
     <div 
-      class="text-gray-300 flex gap-6 container-background flex-1 p-4" 
+      class="text-gray-300 flex flex-1 p-4 gap-6" 
     >
       <!-- SCENE VIDEO -->
       <div>
@@ -92,20 +92,6 @@
             label="Start Time"
             type="text"
             placeholder="Enter start time..."
-            class="w-full"
-          />
-          <form-input 
-            v-model="scene.cut_start" 
-            label="Cut Start"
-            type="text"
-            placeholder="Enter cut start..."
-            class="w-full"
-          />
-          <form-input 
-            v-model="scene.cut_end" 
-            label="Cut End"
-            type="text"
-            placeholder="Enter cut end..."
             class="w-full"
           />
           <form-input 
@@ -120,7 +106,7 @@
         <div class="h-[250px] w-[250px] rounded-t-lg mx-auto relative bg-dark">
           <video 
             v-if="scene.video_src" 
-            :src="route(`${scene.video_src}?v=${Date.now()}`)"
+            :src="route(`${scene.video_src}`)"
             alt="Scene Video"
             class="w-full h-full object-cover rounded-md" 
             controls 

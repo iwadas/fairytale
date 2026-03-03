@@ -1,6 +1,6 @@
 <template>
 
-    <div class="flex gap-2 items-center mb-2">
+    <div class="flex gap-2 items-center">
       <button class="button-secondary text-xs text-light"
         @click="addScene"
       >

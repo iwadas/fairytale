@@ -11,7 +11,7 @@ import os
 from typing import List, Optional
 from generate import generate_mp4
 from generate_photo_dump import generate_photo_dump_mp4
-from database.crud import create_scene_db, create_voiceover_db, get_projects_db, get_project_db, remove_project_db, update_voiceover_db, update_scene_db, update_pd_project_db, create_project_db, copy_project_db
+from database.crud import create_scene_db, create_voiceover_db, get_projects_db, get_project_db, remove_project_db, update_music_db, update_voiceover_db, update_scene_db, update_pd_project_db, create_project_db, copy_project_db
 
 from script.generate_script import ScriptGenerator
 
@@ -209,25 +209,34 @@ async def delete_project(project_id: str):
 
 @router.put("/{project_id}")
 async def update_project(
-    scenes: list = Body(...),
-    voiceovers: list = Body(...),
+    timeline_elements: list = Body(..., embed=True),
 ):
     # === Load current scenes (only scalar fields for diff) ===
-    for scene in scenes:
-        await update_scene_db(
-            id=scene["id"],
-            start_time=scene["start_time"],
-            duration=scene["duration"],
-        )
-        
-    for vo in voiceovers:
-        await update_voiceover_db(
-            id=vo["id"],
-            text=vo["text"],
-            start_time=vo["start_time"],
-            duration=vo["duration"],
-            text_with_pauses=vo.get("text_with_pauses", "")
-        )
+
+    for element in timeline_elements:
+        kwargs = {
+            "id": element["id"],
+            "start_time": element.get("start_time", 0.0),
+            "duration": element.get("duration", 4.0),
+            "layer": element.get("layer", 0),
+            "cut_start": element.get("cut_start"),
+            "cut_end": element.get("cut_end"),
+        }
+
+        if element["type"] == "scene":
+            await update_scene_db(
+                video_prompt=element["video_prompt"],
+                **kwargs
+            )
+        elif element["type"] == "voiceover":
+            await update_voiceover_db(
+                text=element["text"],
+                **kwargs
+            )
+        elif element["type"] == "music":
+            await update_music_db(
+                **kwargs
+            )
     
     return {"message": "Update successful"}
 

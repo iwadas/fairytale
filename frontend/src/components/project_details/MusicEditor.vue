@@ -1,6 +1,6 @@
 <template>
   <div
-    class="text-light flex flex-col gap-6 container-background w-fit p-4 text-xs" 
+    class="text-light flex flex-col gap-6 w-full p-4 text-xs" 
   >
     <div class="flex gap-4 justify-center">
 
@@ -9,7 +9,7 @@
         label="Start Time"
         type="text"
         placeholder="Enter start time..."
-        class="w-[200px]"
+        class="w-full"
       />
 
       <form-input 
@@ -17,7 +17,7 @@
         label="Duration"
         type="text"
         placeholder="Enter duration..."
-        class="w-[200px]"
+        class="w-full"
       />
       
     </div>
@@ -49,7 +49,7 @@
     />
 
 
-    <div v-if="music.src" class="w-[416px]">
+    <div v-if="music.src" class="w-full">
       <audio :src="getSrc(music.src)" controls class="w-full mt-2"></audio>
     </div>
   </div>
@@ -58,7 +58,6 @@
 <script setup>
 
   import FormInput from '@/components/FormInput.vue';
-  import FormButton from '@/components/FormButton.vue';
   import getSrc from '@/utils/getSrc';
   import axios from 'axios';
   import { watch } from 'vue';
@@ -78,29 +77,46 @@
     
     if(newSrc && DEFAULT_MUSIC_OPTIONS.some(option => option.value === newSrc)) {
       // SEND REQUEST TO BACKEND TO UPDATE MUSIC SRC
-      axios.put(`${route}music/${music.value.id}`, { src: newSrc })
-        .then(response => {
-          console.log('Music src updated successfully');
-        })
-        .catch(error => {
-          console.error('Error updating music src:', error);
-        });
+
+      try{
+        axios.put(`${route}music/${music.value.id}`, { src: newSrc })
+          .then(response => {
+            console.log('Music src updated successfully');
+            music.value.src = response.data.src;
+            music.value.duration = response.data.duration;
+            music.value.name = response.data.name;
+          })
+          .catch(error => {
+            console.error('Error updating music src:', error);
+          });
+      } catch (error) {
+        console.error('Error updating music src:', error);
+      }
     }
   })
 
   const handleMusicUpload = async (event) => {
     const music_file = event.target.files[0];
     if(!music_file) return;
-    const formData = new FormData();
-    formData.append('music_file', music_file);
-    formData.append('music_id', music.value.id ?? '');
-    console.log(formData);
-    const response = await axios.put(`${route}music/upload-music/${music.value.id}`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-    });
-    console.log('-----------response--------------');
-    console.log(response.data);
-    music.value.src = response.data.music.src;
+
+    try{
+      const formData = new FormData();
+      formData.append('music_file', music_file);
+      formData.append('music_id', music.value.id ?? '');
+      
+      const response = await axios.put(`${route}music/upload-music/${music.value.id}`, formData, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      
+      console.log('-----------response--------------');
+      console.log(response.data);
+      music.value.src = response.data.src;
+      music.value.name = response.data.name;
+      music.value.duration = response.data.duration;
+    
+    } catch (error) {
+      console.error('Error uploading music:', error);
+    }
   }
 
 </script>
