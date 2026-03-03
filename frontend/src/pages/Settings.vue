@@ -2,11 +2,16 @@
 
     <div class="flex flex-col gap-10">
         <section class="container-background container mx-auto rounded-[10px] text-light p-6">
-            <h2 class="text-lg mb-6">
-                <font-awesome-icon icon="volume-up" class="mr-2"></font-awesome-icon>
-                TTS
-            </h2>
-            <div class="flex flex-col gap-4 text-xs">
+            <div class="flex items-center justify-between">
+                <h2 class="text-lg">
+                    <font-awesome-icon icon="volume-up" class="mr-2"></font-awesome-icon>
+                    TTS
+                </h2>
+                <button @click="showTTS = !showTTS">
+                    <font-awesome-icon :icon="showTTS ? 'caret-up' : 'caret-down'" class="text-light-gray"/>
+                </button>
+            </div>
+            <div class="flex flex-col gap-4 text-xs mt-6" v-show="showTTS">
                 <form-input 
                     :label="'TTS Provider'"
                     :type="'select'"
@@ -35,11 +40,16 @@
             </div>
         </section>
         <section class="container-background container mx-auto rounded-[10px] text-light p-6 ">
-            <h2 class="text-lg mb-6">
-                <font-awesome-icon icon="video" class="mr-2"></font-awesome-icon>
-                VIDEO DIFFUSION
-            </h2>
-            <div class="flex flex-col gap-4 text-xs">
+            <div class="flex items-center justify-between">
+                <h2 class="text-lg">
+                    <font-awesome-icon icon="video" class="mr-2"></font-awesome-icon>
+                    VIDEO DIFFUSION
+                </h2>
+                <button @click="showDiffusion = !showDiffusion">
+                    <font-awesome-icon :icon="showDiffusion ? 'caret-up' : 'caret-down'" class="text-light-gray"/>
+                </button>
+            </div>
+            <div class="flex flex-col gap-4 text-xs mt-6" v-show="showDiffusion">
                 <form-input 
                     :label="'Video Diffusion Provider'"
                     :type="'select'"
@@ -68,11 +78,16 @@
             </div>
         </section>
         <section class="container-background container mx-auto rounded-[10px] text-light p-6 ">
-            <h2 class="text-lg mb-6">
-                <font-awesome-icon icon="robot" class="mr-2"></font-awesome-icon>
-                LLM
-            </h2>
-            <div class="flex flex-col gap-4 text-xs">
+            <div class="flex items-center justify-between">
+                <h2 class="text-lg">
+                    <font-awesome-icon icon="robot" class="mr-2"></font-awesome-icon>
+                    LLM
+                </h2>
+                <button @click="showLLM = !showLLM">
+                    <font-awesome-icon :icon="showLLM ? 'caret-up' : 'caret-down'" class="text-light-gray"/>
+                </button>
+            </div>
+            <div class="flex flex-col gap-4 text-xs mt-6" v-show="showLLM">
                 <form-input 
                     :label="'LLM Provider'"
                     type="select"
@@ -112,6 +127,10 @@
     import FormButton from '@/components/FormButton.vue'
     import { onMounted, ref, reactive } from 'vue';
     import axios from 'axios'
+
+    const showTTS = ref(false);
+    const showDiffusion = ref(false);
+    const showLLM = ref(false);
 
     const selectedOptions = reactive({
         selected_tts_provider: 'gemini',
