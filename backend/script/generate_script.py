@@ -2,6 +2,8 @@ from typing import Optional
 from AI.llm import LLM
 from pydantic import BaseModel
 import asyncio
+from database.crud import get_settings_db
+
 
 class ScriptGenerator:
     def __init__(   self, 
@@ -44,10 +46,19 @@ class ScriptGenerator:
             )
         elif self.reference_stories:
             context_instruction = (
-                f"Base the story entirely on the following reference stories about the topic: \n{self.reference_stories}\n\n"
+                f"Take inspiration from reference stories about the topic: \n{self.reference_stories}\n\n"
             )
         else:
             context_instruction = ""
+
+        settings = await get_settings_db()
+
+        selected_script_generation_template = settings.get("selected_script_generation_template", None)
+        script_genneration_template = settings.get("script_generation_templates", {}).get(selected_script_generation_template, None)
+
+        if not script_genneration_template:
+            raise ValueError("Selected script generation template not found in settings.")
+
 
         role_message = {
             "role": "system",

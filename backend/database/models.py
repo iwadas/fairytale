@@ -49,6 +49,12 @@ class Settings(Base):
     tts_provider_settings = Column(Text, nullable=True)
     diffusion_provider_settings = Column(Text, nullable=True)
     llm_provider_settings = Column(Text, nullable=True)
+    
+    selected_style = Column(String, nullable = True)
+    styles = Column(Text, nullable=True)
+
+    selected_script_generation_template = Column(String, nullable=True)
+    script_generation_templates = Column(Text, nullable=True)
 
 
 # ORM models

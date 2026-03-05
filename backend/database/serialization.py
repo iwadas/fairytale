@@ -128,5 +128,9 @@ def serialize_settings(settings: Settings):
         "selected_diffusion_provider": settings.selected_diffusion_provider,
         "tts_provider_settings": json.loads(settings.tts_provider_settings) if settings.tts_provider_settings else {},
         "diffusion_provider_settings": json.loads(settings.diffusion_provider_settings) if settings.diffusion_provider_settings else {},
-        "llm_provider_settings": json.loads(settings.llm_provider_settings) if settings.llm_provider_settings else {}
+        "llm_provider_settings": json.loads(settings.llm_provider_settings) if settings.llm_provider_settings else {},
+        # SCRIPT
+        "selected_script_generation_template": settings.selected_script_generation_template,
+        "script_generation_templates": json.loads(settings.script_generation_templates) if settings.script_generation_templates else {},
+    
     }

@@ -114,6 +114,16 @@
                 />
             </div>
         </section>
+
+        <script-generation-prompt
+            v-if="selectedOptions.selected_script_generation_template !== undefined && selectedOptions.script_generation_templates !== undefined"
+            :selected-script-generation-template="selectedOptions.selected_script_generation_template"
+            :script-generation-templates="selectedOptions.script_generation_templates"
+        />
+
+        
+
+
     </div>
 
 
@@ -127,10 +137,16 @@
     import FormButton from '@/components/FormButton.vue'
     import { onMounted, ref, reactive } from 'vue';
     import axios from 'axios'
+    import ScriptGenerationPrompt from '@/components/settings/ScriptGenerationPrompt.vue';
 
     const showTTS = ref(false);
     const showDiffusion = ref(false);
     const showLLM = ref(false);
+
+
+
+
+    
 
     const selectedOptions = reactive({
         selected_tts_provider: 'gemini',
@@ -552,7 +568,10 @@
 
                 if (!data) return;
 
-                // Update selected providers
+                selectedOptions.selected_script_generation_template = data.selected_script_generation_template || '';
+                selectedOptions.script_generation_templates = data.script_generation_templates || {};
+
+                // PROVIDER SELECTION
                 selectedOptions.selected_tts_provider = data.selected_tts_provider || "gemini";
                 selectedOptions.selected_diffusion_provider = data.selected_diffusion_provider || "runware";
                 selectedOptions.selected_llm_provider = data.selected_llm_provider || "xai";

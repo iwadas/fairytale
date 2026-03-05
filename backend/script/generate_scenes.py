@@ -150,7 +150,7 @@ async def generate_scenes(
                     f"Reasoning: {concept.reasoning}\n"
                     f"Raw Visual: {concept.raw_visual_concept}\n\n"
                     f"### STYLE INSTRUCTIONS:\n{style}\n\n"
-                    "1. Translate the raw visual into a detailed `image_prompt` using the strict geometry and material rules.\n"
+                    "1. Translate the raw visual into a detailed `image_prompt` using the strict style instructions.\n"
                     "2. Write a `video_prompt` for the AI video generator (Format: [Camera Movement], [Subject Movement], [Speed/Vibe]). Keep the video prompt focused purely on motion."
                 )
             }
