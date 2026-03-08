@@ -97,6 +97,7 @@
             button_style="primary"
             @clicked="addScriptTemplate"
             class="w-1/4"
+ 
           />
           <form-button
             label="Cancel"

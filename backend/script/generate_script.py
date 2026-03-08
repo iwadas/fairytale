@@ -125,7 +125,7 @@ class ScriptGenerator:
         response = await self.llm_client.generate(
             messages=[role_message, user_message],
             response_format=RefinedScriptResponse
-        )
+        ) 
 
         return response.refined_script.strip()
     

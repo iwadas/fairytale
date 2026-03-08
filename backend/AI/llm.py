@@ -66,20 +66,18 @@ class LLM:
             raise ValueError(f"Unsupported LLM provider: {self.provider}")
     
 
-    async def generate(self, messages: Any=None, response_format: Any=None):
+    async def generate(self, messages: Any=None, response_format: Any=None, temperature: float=0.7):
         if not self.client:
             raise ValueError("LLM client not initialized.")
         
         if self.provider == "xai":
-            return await self.generate_xai(messages=messages, response_format=response_format)
+            return await self.generate_xai(messages=messages, response_format=response_format, temperature=temperature)
         elif self.provider == "openai":
-            return await self.generate_openai(messages=messages, response_format=response_format)
+            return await self.generate_openai(messages=messages, response_format=response_format, temperature=temperature)
         else:
             return None
         
-    async def generate_xai(self, messages: Any=None, response_format: Any=None):
-        
-
+    async def generate_xai(self, messages: Any=None, response_format: Any=None, temperature: float=0.7):
         ai_model = self.provider_settings.get("ai_model", None)
         if not ai_model:
             raise ValueError("AI model not specified in provider settings.")
@@ -95,6 +93,7 @@ class LLM:
             model=ai_model,
             messages=messages,
             response_model=response_format,
+            temperature=temperature
         )
         print("GOT RESPONSE FROM XAI:")
         print("="*20)
@@ -102,6 +101,6 @@ class LLM:
         print("="*20)
         return response
     
-    async def generate_openai(self, messages: Any=None, response_format: Any=None):
-        return await self.generate_xai(messages=messages, response_format=response_format)
+    async def generate_openai(self, messages: Any=None, response_format: Any=None, temperature: float=0.7):
+        return await self.generate_xai(messages=messages, response_format=response_format, temperature=temperature)
         
