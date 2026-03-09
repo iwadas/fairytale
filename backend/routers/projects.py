@@ -175,19 +175,33 @@ async def create_project(
         )
 
         
+        layer = 2
+
         for i, scene in enumerate(script_part["scenes"]):
+
+            # BECAUSE THERE IS OVERFLOW OF SCENES, WE SPREAD THEM OUT ON 2 LAYERS
             await create_scene_db(
                 project_id=project_id,
-                start_time=start_time + (i * 3.0),
+                start_time=start_time,
                 video_prompt=scene["video_prompt"],
                 duration= 3.0,
+                layer=layer,
                 images=[
                     {
                         "prompt": scene["image_prompt"],
-                        "time": "start"
+                        "time": "start",
+                        "idea": scene["idea"],
                     }
                 ]
             )
+            
+            # add 3 seconds to time for every other scene (2)
+            if layer == 1:
+                start_time += 3.0
+            # toggle layer
+            layer = 2 if layer == 1 else 1
+            
+
 
     await task.send_json(
         message=f"🎉 Project created successfully!",

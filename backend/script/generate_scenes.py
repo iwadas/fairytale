@@ -12,54 +12,86 @@ import re
 # ==========================================
 # (AVAILABLE_STYLES dict remains exactly the same as before)
 AVAILABLE_STYLES = {
-    "macro_shatter": {
-        "use_case": "Use for hyper-fixation, intrusive thoughts, or breaking down a specific microscopic detail of human behavior. Focuses on extreme, uncomfortable close-ups.",
+    # ==============================
+    # MACRO (Extreme Close-Ups & Portraits)
+    # ==============================
+    "macro_literal": {
+        "use_case": "Use for extreme close-ups of specific physical actions or biological forms mentioned in the script (e.g., an eye twitching, a hand clenching).",
         "technical_prompt": (
-            "Extreme macro photography, tight framing on a single object. "
-            "Everything must be sharp, fractured, and splintered geometric forms. "
+            "Extreme macro photography, tight framing on a specific physical or biological subject from the script. "
+            "STRICTLY NO literal text, typography, or spelled-out words. "
+            "The subject must be highly recognizable but constructed entirely from non-organic materials. "
             "Materials strictly limited to: Polished Black Obsidian, Liquid Chrome/Mercury, Iridescent Oil Slick, Smoked Deep Crimson Glass, Vantablack, or Matte Bone White. "
-            "Background must be a blurred abstract geometric pattern. "
-            ", hyper-realistic 3D render, fractured dark-aesthetic sculpture, flawless ultra-reflective surfaces, stark chiaroscuro studio lighting, piercing crimson and cold cyan rim lights, engulfing pitch-black shadows, extreme macro photography depth of field, Octane render, raytracing, heavy caustics, psychological thriller mood, 8k"
+            "Visual motif: pristine Matte Bone White being slowly overtaken by creeping Iridescent Oil Slick. "
+            "Background is blurred deep shadow. "
+            ", hyper-realistic 3D render, stark chiaroscuro studio lighting, piercing crimson and cold cyan rim lights (signaling aggression/manipulation), extreme macro photography depth of field, Octane render, raytracing, heavy caustics, psychological thriller mood, 8k. 1:1 aspect ratio."
         )
     },
-    "liminal_void": {
-        "use_case": "Use for themes of isolation, hopelessness, emotional distance, or feeling incredibly small compared to a manipulator or a grand psychological concept.",
+    "macro_metaphor": {
+        "use_case": "Use for extreme close-ups of symbolic objects representing an idea (e.g., a fractured mirror for identity, a heavy chain for addiction).",
         "technical_prompt": (
-            "Wide-angle monolithic scale, tiny subject surrounded by massive, infinite, and overwhelming space. "
-            "Everything must be sharp, fractured, and splintered geometric forms. "
+            "Extreme macro photography, tight framing on a symbolic object representing the script's core theme. "
+            "STRICTLY NO literal text, typography, or spelled-out words. "
+            "The symbolic object is physically grounded but surreal, fracturing or trapped by sharp geometric forms. "
             "Materials strictly limited to: Polished Black Obsidian, Liquid Chrome/Mercury, Iridescent Oil Slick, Smoked Deep Crimson Glass, Vantablack, or Matte Bone White. "
-            "Background is an endless geometric abyss. "
-            ", hyper-realistic 3D render, fractured dark-aesthetic sculpture, flawless ultra-reflective surfaces, stark chiaroscuro studio lighting, piercing crimson and cold cyan rim lights, engulfing pitch-black shadows, deep focus, Octane render, raytracing, heavy caustics, psychological thriller mood, 8k"
+            ", hyper-realistic 3D render, flawless ultra-reflective surfaces, stark chiaroscuro studio lighting, flickering sodium yellow rim lights (signaling anxiety/paranoia), engulfing pitch-black shadows, shallow depth of field, Octane render, raytracing, heavy caustics, paranoia aesthetic, 8k. 1:1 aspect ratio."
         )
     },
-    "fluid_distortion": {
-        "use_case": "Use for gaslighting, loss of identity, shifting realities, or toxic influence seeping into a situation. Focuses on melting, rippling, or warping elements.",
+    "macro_portrait": {
+        "use_case": "Use to give a 'face' to the emotion without showing a real human. Best for representing the manipulator, the victim, or a shattered ego.",
         "technical_prompt": (
-            "Warped, rippling, and melting composition. Hard shapes dissolving into viscous liquids. "
-            "Everything must be sharp, fractured, and splintered geometric forms interacting with fluid dynamics. "
+            "Extreme macro portrait photography of a faceless, humanoid feature—like a shattered porcelain mask, a featureless chrome silhouette, or a bone-white hand. "
+            "STRICTLY NO literal text, real human skin, or recognizable eyes. "
             "Materials strictly limited to: Polished Black Obsidian, Liquid Chrome/Mercury, Iridescent Oil Slick, Smoked Deep Crimson Glass, Vantablack, or Matte Bone White. "
-            "Background must be a shifting abstract geometric setting. "
-            ", hyper-realistic 3D render, fractured dark-aesthetic sculpture, flawless ultra-reflective surfaces, stark chiaroscuro studio lighting, piercing crimson and cold cyan rim lights, engulfing pitch-black shadows, macro photography depth of field, Octane render, raytracing, heavy caustics, psychological thriller mood, 8k"
+            "Visual motif: A pristine surface fracturing to reveal Vantablack underneath. "
+            ", hyper-realistic 3D render, stark chiaroscuro studio lighting, clinical cold white rim light against pure pitch-black shadows (signaling isolation/depression), shallow depth of field, Octane render, raytracing, heavy caustics, psychological thriller mood, 8k. 1:1 aspect ratio."
         )
     },
-    "claustrophobic_cage": {
-        "use_case": "Use for anxiety, feeling trapped, overthinking, or being cornered in a toxic dynamic. Focuses on dense, overlapping obstacles blocking the view.",
+
+    # ==============================
+    # MEDIUM (Action & Power Dynamics)
+    # ==============================
+    "medium_dynamic": {
+        "use_case": "Use for scenes showing interaction, power struggles, mirroring, or gaslighting between two entities.",
         "technical_prompt": (
-            "Cramped framing, dense overlapping foreground elements acting like bars or cages, blocking the camera's view of the subject. "
-            "Everything must be sharp, fractured, and splintered geometric forms. "
-            "Materials strictly limited to: Polished Black Obsidian, Liquid Chrome/Mercury, Iridescent Oil Slick, Smoked Deep Crimson Glass, Vantablack, or Matte Bone White. "
-            "Background must be a dense, heavy geometric labyrinth. "
-            ", hyper-realistic 3D render, fractured dark-aesthetic sculpture, flawless ultra-reflective surfaces, stark chiaroscuro studio lighting, piercing crimson and cold cyan rim lights, engulfing pitch-black shadows, narrow depth of field, Octane render, raytracing, heavy caustics, psychological thriller mood, 8k"
+            "Medium shot, dynamic composition showing two distinct abstract humanoid figures interacting in a power struggle. "
+            "STRICTLY NO literal text or real humans. "
+            "Figures must be constructed of contrasting materials: a towering Polished Black Obsidian figure casting a shadow over a fragile Matte Bone White or Smoked Crimson Glass figure. "
+            ", hyper-realistic 3D render, striking contrast, stark chiaroscuro studio lighting, piercing crimson rim light against cold cyan fill (signaling conflict and dominance), heavy shadows, cinematic depth of field, Octane render, raytracing, psychological tension aesthetic, 8k. 1:1 aspect ratio."
         )
     },
-    "suspended_chaos": {
-        "use_case": "Use for sudden realizations, trauma, emotional outbursts, or snapping under pressure. Focuses on explosive, frozen-in-time destruction.",
+    "kinetic_tethers": {
+        "use_case": "Use to visually represent the hidden mechanisms of control, such as trauma bonding, emotional attachments, or manipulation.",
         "technical_prompt": (
-            "Zero-gravity time-freeze, explosive debris, shards suspended mid-air in a chaotic but beautiful arrangement. "
-            "Everything must be sharp, fractured, and splintered geometric forms. "
+            "Medium-close shot focusing entirely on the physical connection between two unseen points. "
+            "STRICTLY NO literal text. "
+            "Visual focus on kinetic elements of control: heavy Liquid Chrome chains, glowing Smoked Deep Crimson glass threads, or Iridescent Oil Slick bridging a gap. "
+            "Background is an infinite dark void. "
+            ", hyper-realistic 3D render, glowing internal light transmission, stark chiaroscuro lighting, flickering sodium yellow rim lights, deep focus, Octane render, raytracing, heavy caustics, clinical psychological mood, 8k. 1:1 aspect ratio."
+        )
+    },
+
+    # ==============================
+    # WIDE & TEXTURE (Environments / Pure Mood)
+    # ==============================
+    "wide_metaphor": {
+        "use_case": "Use for themes of feeling trapped, cornered, or navigating a complex psychological issue (e.g., a maze, a cage, a giant monolithic obstacle).",
+        "technical_prompt": (
+            "Wide-angle monolithic scale, a tiny focal point surrounded by massive, overwhelming, metaphorical architecture (like a cage, labyrinth, or imposing monolith). "
+            "STRICTLY NO literal text, typography, or spelled-out words. "
+            "The tiny subject provides emotional scale against architecture entirely constructed from sharp, fractured, and splintered geometric forms. "
             "Materials strictly limited to: Polished Black Obsidian, Liquid Chrome/Mercury, Iridescent Oil Slick, Smoked Deep Crimson Glass, Vantablack, or Matte Bone White. "
-            "Background is a shattered abstract geometric environment. "
-            ", hyper-realistic 3D render, fractured dark-aesthetic sculpture, flawless ultra-reflective surfaces, stark chiaroscuro studio lighting, piercing crimson and cold cyan rim lights, engulfing pitch-black shadows, dynamic focal length, Octane render, raytracing, heavy caustics, psychological thriller mood, 8k"
+            ", hyper-realistic 3D render, claustrophobic but vast composition, flawless ultra-reflective surfaces, stark chiaroscuro studio lighting, pure clinical white and Vantablack contrast (signaling hopelessness), deep focus, Octane render, raytracing, isolation aesthetic, 8k. 1:1 aspect ratio."
+        )
+    },
+    "texture_abstract": {
+        "use_case": "Use as b-roll for pure tension, transitions, shifting brain chemistry, or to represent the abstract 'feeling' of an emotional breakdown.",
+        "technical_prompt": (
+            "Frame completely filled with chaotic abstract fluid dynamics, shifting particles, and fracturing geometry. "
+            "STRICTLY NO literal text or recognizable macroscopic/human objects. "
+            "A pure study of tension: melting surfaces, warping viscous liquids, or sharp splinters. "
+            "Materials strictly limited to: Polished Black Obsidian, Liquid Chrome/Mercury, Iridescent Oil Slick, Smoked Deep Crimson Glass, Vantablack, or Matte Bone White. "
+            ", hyper-realistic 3D render, fluid simulation, stark chiaroscuro studio lighting, piercing crimson rim lights pulsing through engulfing pitch-black shadows, macro photography depth of field, Octane render, raytracing, heavy caustics, gaslighting aesthetic, 8k. 1:1 aspect ratio."
         )
     }
 }
@@ -89,7 +121,7 @@ def split_script(script: str) -> list:
             })
             current_time += duration
         elif part == '<br>':
-            current_time += 0.5
+            current_time += 2.0
             print("Split script into sentences with timing:")
     for sentence in sentences:
         print(f"Start: {sentence['start_time']}s, Duration: {sentence['duration']}s, Text: {sentence['text']}")
@@ -183,23 +215,32 @@ async def _process_script_part(
         # --- AGENT 1: IDEA GENERATION ---
         agent_1_styles_formatted = "\n".join([f"- {name}: {data['use_case']}" for name, data in AVAILABLE_STYLES.items()])
         
-
         agent_1_messages = [
             {
                 "role": "system",
-                "content": f"You are a highly creative Visual Director for a video production pipeline. Your job is to brainstorm short, high-impact scene ideas for specific parts of a script. You do not need to worry about character or location consistency. We are generating many short, rapid-fire scenes to cherry-pick the best ones later - so try to use variety of ideas. Here is full script just for the context:\n\n{script}"
+                "content": (
+                    "You are a highly creative Visual Director for a video production pipeline. "
+                    "Your job is to brainstorm short, high-impact scene ideas for specific parts of a script. "
+                    "CRITICAL INSTRUCTION: You must build your visual concepts AROUND the provided available styles. "
+                    "Do not brainstorm an idea and then assign a style. Instead, you must first select an available style, "
+                    "read its 'use_case', and let those specific constraints dictate what happens in the scene. "
+                    "You do not need to worry about character or location consistency. We are generating many short, "
+                    "rapid-fire scenes to cherry-pick the best ones later - so try to use a variety of ideas. "
+                    f"Here is the full script just for context:\n\n{script}"
+                )
             },
             {
                 "role": "user",
                 "content": (
                     f"Generate EXACTLY {num_scenes} raw visual concepts for this sentence: \"{script_part['text']}\".\n\n"
-                    "For each visual concept specify:\n"
-                    "- \"idea\" - Brief description of the visual scene, concise—focus on the core visual subject and environment\n"
-                    "- \"style\" - Name of the best suiting style for this generation\n"
-                    "- \"reasoning\" - Why visual fits the context\n\n"
-                    "Diversity Rule: Do not use the same style more than 3 Times in a row.\n"
-                    "Available styles:\n"
-                    f"{agent_1_styles_formatted}"       
+                    "Available styles and their use cases:\n"
+                    f"{agent_1_styles_formatted}\n\n"
+                    "To ensure the style drives the visual, you MUST generate your output in this STRICT ORDER:\n"
+                    "- \"style\": FIRST, pick the name of the most appropriate style from the available list.\n"
+                    "- \"reasoning\": SECOND, explain why this style's specific 'use_case' fits the emotional or narrative context of the sentence.\n"
+                    "- \"idea\": FINALLY, describe the visual scene. This description MUST strictly adhere to the style and use case you just selected. "
+                    "Keep it concise—focus on the core visual subject and environment.\n\n"
+                    "Diversity Rule: Do not use the same style more than 3 times in a row."
                 )
             }
         ]

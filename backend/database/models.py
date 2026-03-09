@@ -189,5 +189,6 @@ class SceneImage(Base):
     scene_id = Column(String(36), ForeignKey("scenes.id"), nullable=False, index=True)
     time = Column(String(20), nullable=False, default="start")
     prompt = Column(Text, nullable=True)
+    idea = Column(Text, nullable=True)
     src = Column(String, nullable=True)
     scene = relationship("Scene", back_populates="images")

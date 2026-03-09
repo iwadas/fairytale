@@ -117,7 +117,8 @@ def serialize_scene_image(image: SceneImage):
         "id": image.id,
         "time": image.time,
         "prompt": image.prompt,
-        "src": image.src
+        "src": image.src,
+        "idea": image.idea
     }
 
 def serialize_settings(settings: Settings):

@@ -67,7 +67,6 @@ class StyledScenesResponse(BaseModel):
 
 
 # --- REFACTORED GENERATOR ---
-
 async def generate_scenes(
     llm_client: LLM,
     script: str,

@@ -328,6 +328,7 @@ async def create_scene_db(
     cut_start: Optional[float] = 0.0,
     cut_end: Optional[float] = 0.0,
     layer: Optional[int] = 2,
+    idea: Optional[str] = None,
     session=None, 
     images: Optional[List[Dict[str, Any]]] = None,
 ):
@@ -343,7 +344,7 @@ async def create_scene_db(
         video_prompt=video_prompt,
         cut_start=cut_start,
         cut_end=cut_end,
-        layer=layer
+        layer=layer,
     )
     session.add(new_scene)
 
@@ -354,6 +355,7 @@ async def create_scene_db(
                 src=img.get("src", ""),
                 prompt=img.get("prompt", ""),
                 time=img.get("time", "start"),
+                idea=img.get("idea", "")
             )
             session.add(new_image)
 
