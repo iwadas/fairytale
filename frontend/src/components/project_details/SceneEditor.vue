@@ -248,6 +248,14 @@
   
         <!-- PROMPT TEXT AREA -->
         <form-input 
+          v-model="scene.images[selectedSceneImageIndex].idea" 
+          label="Idea"
+          type="textarea"
+          placeholder="Enter your idea..."
+          class="w-full"
+        />
+
+        <form-input 
           v-model="scene.images[selectedSceneImageIndex].prompt" 
           label="Image Prompt"
           type="textarea"

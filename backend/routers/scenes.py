@@ -243,7 +243,7 @@ async def upload_scene_image(
     if not scene:
         raise HTTPException(status_code=404, detail="Scene not found")
     
-    src = await save_file(image, type="scene_image")
+    src = await save_file(image, type="scene_image", remove_watermark_if_present=True)
 
     updated_scene_image = await create_or_update_scene_image_db(
         id=scene_image_id,
@@ -270,7 +270,6 @@ async def process_video_task(scene_id: str, prompt: str, duration: float, frames
             fps=24, 
             # 480p horizontal
             resolution=(1280, 720),
-            steps=40, 
             diffusion_model="bytedance:seedance@1.5-pro"
         )
 
