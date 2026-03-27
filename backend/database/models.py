@@ -191,4 +191,5 @@ class SceneImage(Base):
     prompt = Column(Text, nullable=True)
     idea = Column(Text, nullable=True)
     src = Column(String, nullable=True)
+    style = Column(String, nullable=True)
     scene = relationship("Scene", back_populates="images")

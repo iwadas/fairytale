@@ -118,6 +118,7 @@ def serialize_scene_image(image: SceneImage):
         "time": image.time,
         "prompt": image.prompt,
         "src": image.src,
+        "style": image.style,
         "idea": image.idea
     }
 

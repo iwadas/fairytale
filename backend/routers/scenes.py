@@ -265,17 +265,11 @@ async def process_video_task(scene_id: str, prompt: str, duration: float, frames
         task_id = str(uuid.uuid4())
         await socket_manager.broadcast_json(message={"status": "init", "type": "scene_generation", "message": "🌐 Connecting to video generation provider...", "task_id": task_id})
 
-        diffusion = Diffusion(
-            provider="runware", 
-            fps=24, 
-            # 480p horizontal
-            resolution=(1280, 720),
-            diffusion_model="bytedance:seedance@1.5-pro"
-        )
+        diffusion_client = await Diffusion.create()
 
         await socket_manager.broadcast_json(message={"status": "in_progress", "type": "scene_generation", "message": "🎞️ Generating video...", "task_id": task_id})
 
-        video_src = await diffusion.generate(
+        video_src = await diffusion_client.generate(
             prompt=prompt,
             frames=frames,
             duration=int(duration),
@@ -283,7 +277,7 @@ async def process_video_task(scene_id: str, prompt: str, duration: float, frames
         )
 
         await socket_manager.broadcast_json(message={"status": "in_progress", "type": "scene_generation", "message": "📁 Saving video...", "task_id": task_id})
-        await update_scene_db(scene_id, video_src=video_src)
+        await update_scene_db(scene_id, video_src=video_src, duration=duration)
 
         await socket_manager.broadcast_json(message={"status": "finished", "type": "scene_generation", "message": "✅ Video saved successfully!", "task_id": task_id})
         await socket_manager.broadcast_json(type="scene_generation", scene_id=scene_id, message={"video_src": video_src})

@@ -12,7 +12,26 @@ import aiofiles
 from fastapi import HTTPException
 from dotenv import load_dotenv
 
-from runware import Runware, IVideoInference, IFrameImage, IBytedanceProviderSettings
+from database.crud import get_settings_db
+from runware import Runware, IVideoInference, IFrameImage, IVideoInputs, IBytedanceProviderSettings
+
+
+class DictWrapper:
+    def __init__(self, data_dict):
+        self.data_dict = data_dict
+        
+    def to_request_dict(self):
+        # When the SDK asks for the data, we hand it the raw dictionary
+        return self.data_dict
+
+class DynamicProviderSettings:
+    def __init__(self, provider_name: str, settings: dict):
+        self.provider_name = provider_name
+        self.settings = settings
+        
+    def to_request_dict(self):
+        # Outputs exactly what the API wants: {"klingai": {"sound": False}}
+        return {self.provider_name: self.settings}
 
 class Diffusion:
     def __init__(
@@ -37,6 +56,48 @@ class Diffusion:
         self.fps = fps
         self.api_key = None
         self.client = None
+        self.set_client()
+
+
+    @classmethod
+    async def create(cls):
+        instance = cls()
+        await instance.provide_settings()
+        return instance
+    
+    async def provide_settings(self):
+        settings = await get_settings_db()
+
+        print("Diffusion Settings:", settings)
+        if not settings:
+            raise ValueError("Settings not found in database.")
+        if not settings.get("selected_diffusion_provider"):
+            raise ValueError("No diffusion provider selected in settings.")
+        self.provider = settings["selected_diffusion_provider"]
+        diffusion_provider_settings = settings.get("diffusion_provider_settings", None)
+        if not diffusion_provider_settings:
+            raise ValueError("Diffusion provider settings not found in settings.")
+        provider_settings = diffusion_provider_settings.get(self.provider, None)
+        if not provider_settings:
+            raise ValueError(f"Settings for selected diffusion provider '{self.provider}' not found.")
+        self.provider_settings = provider_settings
+
+        api_key = provider_settings.get("api_key")
+        if not api_key:
+            raise ValueError(f"API key for provider '{self.provider}' not found in settings.")
+        
+        self.api_key = api_key
+
+        diffusion_model = provider_settings.get("diffusion_model")
+        if not diffusion_model:
+            raise ValueError(f"Diffusion model for provider '{self.provider}' not found in settings.")
+        self.diffusion_model = diffusion_model
+
+        resolution = provider_settings.get("resolution")
+        if not resolution:
+            raise ValueError(f"Resolution for provider '{self.provider}' not found in settings.")
+        self.resolution = tuple(map(int, resolution.split('x')))
+
         self.set_client()
 
 
@@ -71,6 +132,41 @@ class Diffusion:
         return normalized[:50]
     
     async def get_frames_runware(self, frames: list) -> list:
+        """
+        Prepares the frame images for the API by encoding them as base64 data URLs 
+        and structuring them as raw dictionaries to bypass SDK serialization errors.
+        """
+        DB_TO_RUNWARE_FRAME_MAPPING = {
+            "start": "first",
+            "end": "last"
+        }
+
+        prepared_frames = []
+        for frame in frames:
+            if not os.path.exists(frame["src"]):
+                raise ValueError(f'Image path not found: {frame["src"]}')
+            
+            image_data_uri = await run_in_threadpool(self.encode_image_to_base64, frame["src"])
+            print("Including image in payload")
+            
+            # Build a raw dictionary instead of using the broken IFrameImage class
+            if len(frames) == 1:
+                frame_dict = {
+                    "image": image_data_uri,
+                    "frame": "first"  # Explicitly setting 'first' as the Kling API seems to expect it
+                }
+            else:
+                runware_time = DB_TO_RUNWARE_FRAME_MAPPING.get(frame["time"], "first")
+                frame_dict = {
+                    "image": image_data_uri,
+                    "frame": runware_time
+                }
+                
+            prepared_frames.append(frame_dict)
+        
+        return prepared_frames
+
+    async def get_frames_runware_old(self, frames: list) -> list:
         """
         Prepares the frame images for the Runware API by encoding them as base64 data URLs and structuring them according to the API's requirements.
         
@@ -131,6 +227,8 @@ class Diffusion:
             return await self.generate_runware(prompt=prompt, frames=frames, duration=duration, filename=filename)
 
 
+
+
     async def generate_runware(self, prompt: str=None, frames: Optional[list]=None, duration: Optional[int]=3, filename: Optional[str]=None):
         if not prompt:
             raise ValueError("Prompt is required for video generation.")
@@ -148,19 +246,38 @@ class Diffusion:
         try:
             await self.client.connect()
 
-            frames = await self.get_frames_runware(frames) if frames else None
+            frames = await self.get_frames_runware_old(frames) if frames else None
 
-            request = IVideoInference(
-                positivePrompt=prompt,
-                model=self.diffusion_model if self.diffusion_model else "bytedance:1@1",
-                width=self.resolution[0],
-                height=self.resolution[1],
-                fps=self.fps,
-                duration=duration,
-                numberResults=1,
-                frameImages=frames,
-                providerSettings=IBytedanceProviderSettings(audio=False)
-            )
+            print("diffusion_model:", self.diffusion_model)
+
+            # KLINGAI
+            if "klingai" in self.diffusion_model.lower():
+                request = IVideoInference(
+                    positivePrompt=prompt,
+                    model=self.diffusion_model,
+                    # resolution=tuple(self.resolution),
+                    # fps=self.fps,
+                    duration=duration,
+                    numberResults=1,
+                    inputs=IVideoInputs(
+                        frameImages=frames
+                    ),
+                    # providerSettings=IBytedanceProviderSettings(audio=False)
+                    # providerSettings=IKlingAIProviderSettings(
+                    #     sound=False
+                    # )
+                    providerSettings=DynamicProviderSettings("klingai", {"sound": False})
+                )
+            elif "seedance" in self.diffusion_model.lower():
+                request = IVideoInference(
+                    positivePrompt=prompt,
+                    model=self.diffusion_model,
+                    resolution='480p',
+                    duration=duration,
+                    numberResults=1,
+                    frameImages=frames,
+                    providerSettings=IBytedanceProviderSettings(audio=False)
+                )
 
             task_response = await self.client.videoInference(requestVideo=request)
             task_uuid = task_response.taskUUID

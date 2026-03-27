@@ -355,7 +355,8 @@ async def create_scene_db(
                 src=img.get("src", ""),
                 prompt=img.get("prompt", ""),
                 time=img.get("time", "start"),
-                idea=img.get("idea", "")
+                idea=img.get("idea", ""),
+                style=img.get("style", "")
             )
             session.add(new_image)
 
