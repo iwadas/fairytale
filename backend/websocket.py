@@ -45,6 +45,7 @@ class ConnectionManager:
                 except Exception:
                     self.disconnect(connection)
         elif type == "scene_generation":
+            print("Broadcasting message to scene generation clients")
             scene_id = kwargs.get("scene_id")
             if scene_id in self.scene_generation_connections:
                 connections = self.scene_generation_connections[scene_id]

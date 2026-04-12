@@ -280,6 +280,7 @@ async def process_video_task(scene_id: str, prompt: str, duration: float, frames
         await update_scene_db(scene_id, video_src=video_src, duration=duration)
 
         await socket_manager.broadcast_json(message={"status": "finished", "type": "scene_generation", "message": "✅ Video saved successfully!", "task_id": task_id})
+        print("SENDING TO NOT GLOBAL WEBSOCKET")
         await socket_manager.broadcast_json(type="scene_generation", scene_id=scene_id, message={"video_src": video_src})
 
     except Exception as e:
@@ -317,6 +318,71 @@ async def generate_scene_video(
     return {
         "message": "Video generation started in background"
     }
+
+
+class VideoPromptUpdate(BaseModel):
+    new_video_prompt: str = Field(
+        ..., 
+        description="The updated video prompt following the exact [Camera Movement], [Subject Movement], [Speed/Vibe] format."
+    )
+
+@router.post("/fix-video-prompt/{scene_id}")
+async def fix_video_prompt(
+    background_tasks: BackgroundTasks,
+    scene_id: str,
+    new_camera_movement: str = Body(..., embed=True),
+    additional_info: Optional[str] = Body(None, embed=True)
+):
+    scene = await get_scene_db(scene_id)
+    if not scene or not scene.get("images"):
+        raise HTTPException(404, "Scene or images not found")
+    
+    current_image_prompt = scene["images"][0].get("prompt", "")
+    current_idea = scene["images"][0].get("idea", "")
+    current_video_prompt = scene.get("video_prompt", "")
+
+    info_instruction = f"User provided additional adjustments: {additional_info}" if additional_info else "No additional user adjustments provided."
+
+    messages = [
+        {
+            "role": "system",
+            "content": (
+                "You are an expert AI Prompt Engineer specializing in Image-to-Video diffusion models. "
+                "Your task is to rewrite an existing video prompt to seamlessly integrate a NEW camera movement "
+                "requested by the user, while maintaining generation stability and realistic physics."
+            )
+        },
+        {
+            "role": "user",
+            "content": (
+                "Here is the context of the scene:\n"
+                f"- Base Idea: {current_idea}\n"
+                f"- Reference Image Prompt (Already generated, DO NOT re-describe lighting/style): {current_image_prompt}\n"
+                f"- Current Video Prompt: {current_video_prompt}\n\n"
+                "--- TASK ---\n"
+                f"1. Change the camera movement to: **{new_camera_movement}**\n"
+                f"2. {info_instruction}\n\n"
+                "--- RULES & CONSTRAINTS ---\n"
+                "1. Format: You MUST strictly use the format: [Camera Movement], [Subject Movement], [Speed/Vibe].\n"
+                "2. Motion Only: Do NOT describe lighting, style, colors, or static elements. The AI already has the reference image.\n"
+                "3. Balance of Dynamics: The new camera movement and the subject's movement must work together without causing generation failure. If the subject performs macro-movements (like walking or interacting), apply stabilizing or smoothing modifiers to the camera movement. Avoid mixing highly chaotic camera action with fast subject action.\n"
+                "4. Physical Realism: Subject movements must be anatomically and physically natural. Strictly avoid surrealism, morphing objects, or impossible physics.\n"
+                "5. Secondary Motion: To enhance the dynamic feel without breaking the model's physics, utilize secondary motion in the environment or on the subject (e.g., wind effects, particles, clothing reacting to movement) rather than overcomplicating the subject's primary action.\n\n"
+                "Generate ONLY the new prompt based on these rules."
+            )
+        }
+    ]
+
+    llm = await LLM.create()
+
+    response = await llm.generate(
+        messages=messages,
+        response_format=VideoPromptUpdate
+    )
+
+    updated_scene = await update_scene_db(scene_id, video_prompt=response.new_video_prompt)
+    
+    return updated_scene
 
 
 

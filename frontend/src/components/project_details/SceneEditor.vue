@@ -79,9 +79,67 @@
         </div>
       </div>
     </modal>
+    
+    <modal v-if="newVideoPromptForm.scene_id">
+      <div class="flex flex-col gap-4 text-xs text-light">
+        
+        <div class="flex justify-between">
+          <h2 class="text-2xl">
+            <font-awesome-icon icon="rotate-right" class="text-base text-primary"/>
+            Regenerate video prompt
+          </h2>
+          <form-button label="Cancel" class="w-fit" button_type="secondary" @clicked="newVideoPromptForm.scene_id = null"/>
+        </div>
+        
+        <div>
+          <form-input
+            label="Camera Movement"
+            :optional="true"
+            class="w-full"
+            type="select"
+           :options="[
+            { value: '', label: 'No specific camera movement' },
+            { value: 'static', label: 'Static / Lock off (no movement)' },
+            { value: 'pan left', label: 'Pan left' },
+            { value: 'pan right', label: 'Pan right' },
+            { value: 'nodal pan left', label: 'Nodal pan left' },
+            { value: 'nodal pan right', label: 'Nodal pan right' },
+            { value: 'tilt up', label: 'Tilt up' },
+            { value: 'tilt down', label: 'Tilt down' },
+            { value: 'pan and tilt', label: 'Pan and tilt (diagonal/combined)' },
+            { value: 'dolly in', label: 'Dolly in / Track forward' },
+            { value: 'dolly out', label: 'Dolly out / Track backward' },
+            { value: 'lateral track left', label: 'Lateral track / Crab left' },
+            { value: 'lateral track right', label: 'Lateral track / Crab right' },
+            { value: 'crane up', label: 'Crane / Pedestal up' },
+            { value: 'crane down', label: 'Crane / Pedestal down' },
+            { value: 'handheld', label: 'Handheld' },
+            { value: 'stabilized', label: 'Stabilized (Gimbal/Steadicam)' },
+            { value: 'aerial', label: 'Aerial / Drone' }
+          ]"
+            v-model="newVideoPromptForm.camera_movement"
+          />
+          
+        </div>
+        <form-input 
+          label="Additional Information" 
+          :optional="true"
+          class="w-full"
+          type="textarea"
+          placeholder="E.g. specific details you want in the image, or details you want to avoid..."
+          v-model="newVideoPromptForm.additional_info"
+        />
+        <form-button 
+          label="Generate new prompts" 
+          :loading="sceneTasks.generating_prompt[scene.id]" 
+          :show_status="true" @clicked="generateNewVideoPrompt"
+          type="primary"  
+        />
+      </div>
+    </modal>
   
     <div 
-      class="text-gray-300 flex flex-1 p-4 gap-6" 
+      class="text-gray-300 p-4 pb-4 mb-4 flex gap-6 max-h-[580px] overflow-y-auto container-background rounded-lg" 
     >
       <!-- SCENE VIDEO -->
       <div>
@@ -132,7 +190,7 @@
           <textarea class="w-[180px] text-white bg-gray-800 border p-1 rounded-sm h-24" v-model="scene.video_prompt"></textarea>
           <form-button label="Fix Prompt" :show_status="true" :loading="fixingVideoPrompt" @clicked="fixVideoPrompt"/>
         </form-input> -->
-        <div class="flex flex-col mt-4 text-xs">
+        <div class="flex flex-col mt-4 text-xs gap-4">
           <form-input 
             v-model="scene.video_prompt" 
             label="Video Prompt" 
@@ -142,23 +200,22 @@
           />
           <!-- :loading="generatingVideo.includes(scene.id)"  -->
   
-          <form-button 
-            v-if="scene.video_src" 
-            :label="scene.video_src ? 'Regenerate Video' : 'Generate Video'" 
-            :show_status="true"
-            :loading="sceneTasks.generating_video[scene.id]"
-            button_style="primary" 
-            :rounded_t="false"
-            @click="generateVideo"
-          />
-          <form-button 
-            v-else 
-            label="Generate Video"
-            :show_status="true" 
-            button_style="primary" 
-            :rounded_t="false"
-            @click="generateVideo"
-          />
+          <div class="flex gap-4 *:flex-1">
+            <form-button 
+              :label="scene.video_src ? 'Regenerate' : 'Generate'" 
+              :show_status="true"
+              :loading="sceneTasks.generating_video[scene.id]"
+              button_style="primary" 
+              @click="generateVideo"
+            />
+            <form-button 
+              label="Regenerate" 
+              :show_status="true"
+              :loading="sceneTasks.generating_prompt[scene.id]"
+              button_style="Secondary" 
+              @click="openNewVideoPromptForm"
+            />
+          </div>
         </div>
       </div>
       
@@ -247,6 +304,14 @@
         </div>
   
         <!-- PROMPT TEXT AREA -->
+        <form-input 
+          v-model="scene.images[selectedSceneImageIndex].style" 
+          label="Style"
+          type="text"
+          placeholder="Enter your style..."
+          class="w-full"
+        />
+        
         <form-input 
           v-model="scene.images[selectedSceneImageIndex].idea" 
           label="Idea"
@@ -455,16 +520,37 @@ const generateImage = async () => {
   console.log(response.data);
   scene.value.images[selectedSceneImageIndex.value].image_src = response.data.image_url;
 };
+
+
 const generateVideo = async () => {
+  if(sceneTasks.value.generating_video[scene.value.id]) return; // Prevent multiple clicks
+
   try {
+    // conntect to the websocket
+    let scene_generation_socket = new WebSocket(`ws://localhost:8000/ws/scene/generate-video/${scene.value.id}`);
+    scene_generation_socket.onopen = () => {
+      console.log("✅ WebSocket Connected");
+    };
+    scene_generation_socket.onmessage = (event) => {
+      try {
+        const jsonData = JSON.parse(event.data);
+        console.log(jsonData);
+        if(jsonData.video_src){
+          scene.value.video_src = jsonData.video_src;
+          scene_generation_socket.close();
+        }
+      } catch (e) {
+        console.error("Error parsing WebSocket message:", e);
+      }
+    };
+
     sceneTasks.value.generating_video[scene.value.id] = true;
-    const response = await axios.post(route(`scenes/generate-video/${scene.value.id}`), {
+    await axios.post(route(`scenes/generate-video/${scene.value.id}`), {
       prompt: scene.value.video_prompt,
       duration: scene.value.duration,
     });
     
     // We mutate the model directly! Vue automatically emits this up to the parent.
-    scene.value.video_src = response.data.video_url;
 
   } catch (error) {
     console.error('Error generating scene video:', error);
@@ -498,6 +584,44 @@ const fixImagePrompt = async () => {
   }
 }
 
+
+// NEW VIDEO PROMPT
+const newVideoPromptForm = ref({
+  scene_id: null,
+  camera_movement: null,
+  additional_info: null,
+});
+
+const openNewVideoPromptForm = async () => {
+  newVideoPromptForm.value.scene_id = scene.value.id;
+  newVideoPromptForm.value.camera_movement = '';
+  newVideoPromptForm.value.additional_info = '';
+}
+
+const generateNewVideoPrompt = async () => {
+  try {
+    sceneTasks.value.generating_prompt[scene.value.id] = true;
+    const response = await axios
+      .post(route(`scenes/fix-video-prompt/${scene.value.id}`), { 
+        new_camera_movement: newVideoPromptForm.value.camera_movement,
+        additional_info: newVideoPromptForm.value.additional_info
+      })
+      .catch((error) => {
+        console.error('Error response from server:', error.response ? error.response.data : error.message);
+        throw error; // Re-throw the error after logging it
+      })
+    console.log(response.data.new_video_prompts);
+    scene.value.video_prompt = response.data.video_prompt;
+  } catch (error) {
+    console.error('Error regenerating scene video prompt:', error);
+  } finally {
+    newVideoPromptForm.value.scene_id = null;
+    sceneTasks.value.generating_prompt[scene.value.id] = false;
+  }
+}
+
+
+// NEW IMAGE PROMPT
 const newImagePromptForm = ref({
   scene_id: null,
   scene_image_id: null,
@@ -526,7 +650,6 @@ const openNewImagePromptForm = async () => {
 
 const generateNewImagePrompts = async () => {
   try {
-    
     sceneTasks.value.generating_prompt[scene.value.id + selectedSceneImageIndex.value] = true;
     const selectedVoiceoverTextPart = newImagePromptForm.value.full_voiceover_text.split(' ').slice(
       newImagePromptForm.value.start_word_idx,

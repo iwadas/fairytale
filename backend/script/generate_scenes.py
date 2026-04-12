@@ -499,7 +499,7 @@ AVAILABLE_STYLES_ANTIR = {
 }
 
 
-AVAILABLE_STYLES = {
+AVAILABLE_STYLES_ALCHEMY_V1 = {
     # ==============================
     # MACRO (Close-ups, Details, Single Reactions)
     # ==============================
@@ -567,6 +567,521 @@ AVAILABLE_STYLES = {
     }
 }
 
+AVAILABLE_STYLES_ALCHEMY_V2 = {
+    # ==============================
+    # MACRO (Close-ups, Details, Single Reactions)
+    # ==============================
+    "alchemy_macro_roots": {
+        "use_case": "Use for extreme close-ups of a single alchemical reaction, growing neural roots, or a magical transformation taking place at the micro-level.",
+        "technical_prompt": (
+            "Extreme macro photography, tight framing. Neural Dreamcore Alchemy style. "
+            "A single, hyper-detailed neural root made of obsidian-black ink splitting and weeping luminous liquid gold. "
+            "Surreal alchemical transformations occurring at the microscopic level, set in an abyssal, pitch-black void. "
+            "Atmosphere: suspended shimmering gold particles, wisps of dissolving ink smoke, and heavy volumetric mist catching the light. "
+            "Aggressive ultra-shallow depth of field (f/1.2), macro lens compression focusing sharply on the exact point where gold meets ink, "
+            "with the surrounding environment melting into a creamy, swirling dark bokeh background. "
+            "Cinematic lighting, glowing internal luminescence from the gold contrasting with harsh, cold rim light on the ink. "
+            "Hyper-detailed, 8k, Octane render, raytracing, heavy caustics. 1:1 aspect ratio."
+        )
+    },
+
+    # ==============================
+    # MEDIUM (Entities, Artifacts, Focal Points)
+    # ==============================
+    "alchemy_entity_medium": {
+        "use_case": "Use for medium shots of an abstract entity, a character silhouette, or a central artifact formed by the alchemical process.",
+        "technical_prompt": (
+            "Medium shot, dynamic composition. Neural Dreamcore Alchemy style. "
+            "An abstract, surreal humanoid silhouette or mysterious alchemical artifact forming entirely out of twisting, dense ink neural roots and pulsating veins of flowing liquid gold. "
+            "Suspended in an infinite, pitch-black void. Surreal alchemical transformations: the entity appears to be constantly dissolving into ink and reforming from gold. "
+            "Atmosphere: heavy particle simulation of dripping gold droplets and evaporating ink ash, sharp volumetric light beams cutting through the dark void. "
+            "Cinematic rack-focus effect: the central entity is razor-sharp and hyper-tactile, while the background falls into a deep, dark atmospheric blur "
+            "with subtle chromatic aberration on the extreme edges of the frame to give a dreamlike, unstable feel. "
+            "Dramatic chiaroscuro lighting, striking contrast between the blinding, warm glowing gold and the matte, light-absorbing black ink. "
+            "Hyper-detailed, 8k, Unreal Engine 5 render, raytracing. 1:1 aspect ratio."
+        )
+    },
+
+    # ==============================
+    # WIDE (Mindscapes, Vast Environments)
+    # ==============================
+    "alchemy_void_wide": {
+        "use_case": "Use for establishing shots of a mindscape, vast endless voids, or massive, sprawling alchemical networks.",
+        "technical_prompt": (
+            "Wide-angle, vast monolithic scale. Neural Dreamcore Alchemy style. "
+            "A massive, boundless network of colossal ink neural roots sprawling across an endless, dark void, glowing with pulsating rivers of liquid gold functioning like a cosmic nervous system. "
+            "Surreal alchemical transformations: distant geometric monoliths in the void slowly dissolving into golden liquid. "
+            "Atmosphere: dense, rolling cosmic fog, thousands of floating golden embers, and complex anamorphic light flares cutting through the cinematic lighting. "
+            "Tilt-shift lens effect: a narrow band of sharp focus on a central nexus of roots, while the immense scale of the foreground and deep background "
+            "dissolves into a heavy, smeared lens blur and double-exposure phantom reflections, emphasizing the terrifying, infinite scale of the void. "
+            "Deep, immersive shadows, hyper-detailed, 8k, Octane render, breathtaking sense of scale and cosmic mystery. 1:1 aspect ratio."
+        )
+    },
+
+    # ==============================
+    # TEXTURE (B-roll, Transitions, Pure Emotion)
+    # ==============================
+    "alchemy_fluid_abstract": {
+        "use_case": "Use as b-roll, scene transitions, mind-bending visual metaphors, or to represent the shifting state of a mind or magic system.",
+        "technical_prompt": (
+            "Frame completely filled with chaotic, abstract fluid dynamics. Neural Dreamcore Alchemy style. "
+            "STRICTLY NO recognizable objects. Pure surreal alchemical transformations: heavy, viscous liquid gold violently colliding, mixing, and marbled with deep, abyssal black ink. "
+            "Fragile neural roots flash-freezing and shattering in the void. "
+            "Atmosphere: macro particle suspension, intense optical bloom radiating from the liquid gold, heavy shadow haze. "
+            "Dynamic focal shifts: razor-sharp, hyper-focused points on the collision of the fluids, fading seamlessly into a soft, hypnotic, swirling motion blur. "
+            "Low-key studio lighting with stark chiaroscuro, pure black engulfing shadows pushing the golden highlights to maximum intensity. "
+            "Hyper-detailed, 8k, fluid simulation render, heavy liquid caustics, mesmerizing, psychedelic mood. 1:1 aspect ratio."
+        )
+    }
+}
+
+AVAILABLE_STYLES_ALCHEMY_V3 = {
+    # ==============================
+    # MACRO (Close-ups, Details, Single Reactions)
+    # ==============================
+    "alchemy_macro_reaction": {
+        "use_case": "Use this when the narrative focuses on a small detail, a flashpoint, a microscopic change, the birth of a new thought, or a physical alchemical reaction at the cellular level.",
+        "technical_prompt": (
+            "Extreme macro photography, tight framing. Neural Dreamcore Alchemy style. "
+            "[LLM INSERTS METALLIC, OBSIDIAN OR MONOCHROMATIC DETAIL/OBJECT HERE, e.g., A single bleeding mechanical eye / A fragile dark memory crystal] "
+            "being overtaken by hyper-detailed neural roots made of obsidian-black ink, splitting and weeping luminous liquid gold. "
+            "Surreal alchemical transformations occurring at the microscopic level. "
+            "Atmosphere: dense, swirling cosmic fog, thousands of floating golden embers, and complex anamorphic light flares cutting through the cinematic lighting, set within an abyssal, pitch-black void. "
+            "Aggressive ultra-shallow depth of field (f/1.2), macro lens compression focusing sharply on the exact point of transformation, "
+            "with the surrounding environment melting into a creamy, swirling dark textured bokeh background rich with distant gold-streaked monoliths. "
+            "Cinematic lighting, glowing internal luminescence from the gold contrasting with harsh, cold rim light on the ink. "
+            "Hyper-detailed, 8k, Octane render, raytracing, heavy caustics. 1:1 aspect ratio."
+        )
+    },
+
+    # ==============================
+    # MEDIUM (Entities, Artifacts, Focal Points)
+    # ==============================
+    "alchemy_entity_medium": {
+        "use_case": "Use this when you want to show a specific character, entity, archetype, or central artifact in its full glory, standing as the focal point and manifesting its presence.",
+        "technical_prompt": (
+            "Medium shot, dynamic composition. Neural Dreamcore Alchemy style. "
+            "[LLM INSERTS SURREAL NON-HUMAN ENTITY/ARTIFACT FUSED HERE, e.g., A faceless obsidian figure made of sorrow / A non-human humanoid silhouette of complex geometry] "
+            "forming entirely out of twisting, dense ink neural roots and pulsating veins of flowing liquid gold "
+            "Suspended in an infinite, pitch-black void with complex, gold-streaked distant monoliths "
+            "Surreal alchemical transformations: the entity appears to be constantly dissolving into ink and reforming from molten gold within a strict palette of abyssal black and metallic gold, avoiding human faces or greenery. "
+            "Deep, complex atmospheric void background:, with dense smoke, thousands of floating golden embers, and scattered gold-bleeding monoliths creating a rich, deep bokeh effect. "
+            "Cinematic rack-focus effect: the central entity is razor-sharp and hyper-tactile, while the complex background falls into a deep, dark atmospheric blur. "
+            "Dramatic chiaroscuro lighting, striking contrast between the blinding, warm glowing gold and the matte, light-absorbing black ink. "
+            "Subtle chromatic aberration on frame edges. Hyper-detailed, 8k, Unreal Engine 5 render, raytracing. 1:1 aspect ratio."
+        )
+    },
+
+    # ==============================
+    # WIDE (Mindscapes, Vast Environments)
+    # ==============================
+    "alchemy_mindscape_wide": {
+        "use_case": "Use this when you need to establish a setting, show the massive scale of the subconscious, endless voids, or a sprawling mindscape.",
+        "technical_prompt": (
+            "Wide-angle, vast monolithic scale. Neural Dreamcore Alchemy style. "
+            "[LLM INSERTS DEAD BRUTALIST OR OBSIDIAN LANDSCAPE/STRUCTURE HERE, e.g., A sprawling ruined brutalist cathedral / A monolithic landscape of forgotten stone memories] "
+            "integrated into a boundless network of colossal ink neural roots sprawling across an endless, dark void, glowing with pulsating rivers of liquid gold functioning like a cosmic nervous system. "
+            "The background void is complex and rich, smoky void, featuring countless distant floating gold-streaked monoliths, dense smoke, and vast clouds of golden embers. "
+            "Surreal alchemical transformations: distant geometric monoliths slowly decaying into golden liquid, devoid of blue skies or greenery. "
+            "Atmosphere: dense, rolling cosmic fog, thousands of floating golden embers, and complex anamorphic light flares. "
+            "Tilt-shift lens effect: a narrow band of sharp focus on a central nexus, while the immense scale of the foreground and deep background "
+            "dissolves into a heavy, smeared lens blur and double-exposure phantom reflections, emphasizing frightening, infinite scale. "
+            "Deep, immersive shadows, hyper-detailed, 8k, Octane render, breathtaking sense of scale and cosmic mystery. 1:1 aspect ratio."
+        )
+    },
+
+    # ==============================
+    # TEXTURE (Pure Emotion, Decay, B-roll)
+    # ==============================
+    "alchemy_fluid_abstract": {
+        "use_case": "Use this as b-roll, scene transitions, mind-bending visual metaphors, or to represent the shifting state of a mind or magic system.",
+        "technical_prompt": (
+            "Frame completely filled with chaotic, abstract fluid dynamics. Neural Dreamcore Alchemy style. "
+            "STRICTLY NO recognizable objects. Pure surreal alchemical transformations: heavy, viscous liquid gold violently colliding, mixing, and marbled with deep, abyssal black ink and matte black ferrofluid. "
+            "[LLM CAN ADD EMOTION OR PHYSICS HERE, e.g., Aggressive, tearing tension / Slow, suffocating melancholia]. "
+            "Sharp, aggressive magnetic spikes of matte black ferrofluid tearing through smooth surfaces, slowly cracking and weeping heavy, viscous liquid gold. Fragile structures flash-freezing and shattering into dust. "
+            "Set within a deep, smoky background, with floating golden particles. "
+            "Atmosphere: macro particle suspension, intense optical bloom radiating from the liquid gold, heavy shadow haze. "
+            "Dynamic focal shifts: razor-sharp, hyper-focused points on the textural collision fading seamlessly into a soft, hypnotic, swirling motion blur. "
+            "Low-key studio lighting with stark chiaroscuro, pure black engulfing shadows pushing the golden highlights to maximum intensity. "
+            "Hyper-detailed, 8k, fluid simulation render, unsettling and heavy psychological mood. 1:1 aspect ratio."
+        )
+    },
+
+    # ==============================
+    # PSYCHOLOGICAL: LIMINAL (Dark and Infected)
+    # ==============================
+    "alchemy_liminal_dark": {
+        "use_case": "Use this to evoke feelings of paranoia, claustrophobia, and isolation. Ideal for empty, dark, unnatural brutalist architectures infected by the alchemy.",
+        "technical_prompt": (
+            "Uncanny liminal space architecture, dark and endless. Neural Dreamcore Alchemy style. "
+            "[LLM INSERTS MONOCHROMATIC SPACE HERE, e.g., An endless, silent corridor of monolithic textured obsidian blocks / A massive, silent brutalist dark concrete structure lost in the void]. "
+            "The sterile, artificial dark geometry is violently infected by organic, creeping neural roots of pitch-black ink, and seeping pools of liquid gold emerging from cracks in the walls and floor. "
+            "Set within a complex, smoky background, featuring distant floating gold-bleeding monoliths. "
+            "Slight, unsettling Dutch angle to the camera composition. "
+            "Lighting contrast: harsh, buzzing, clinical fluorescent lighting on the dark architecture clashing with the warm, mystical glow of the alchemical gold, creating dramatic shadows. "
+            "Deep depth of field showing frightening endlessness, inspired by a dark backrooms aesthetic. "
+            "Hyper-realistic architectural render, 8k, strong sense of paranoia and industrial decay. 1:1 aspect ratio."
+        )
+    },
+
+    # ==============================
+    # PSYCHOLOGICAL: DOUBLE EXPOSURE
+    # ==============================
+    "alchemy_internal_conflict": {
+        "use_case": "Use this to show a character's direct internal conflict. Great for portraits where the alchemical process is literally happening 'inside' the character's head or silhouette.",
+        "technical_prompt": (
+            "Cinematic double exposure portrait photography. Neural Dreamcore Alchemy style. "
+            "STRICTLY limited color palette: abyssal black, metallic gold, and silver fog. NO flat shadows, NO greenery. "
+            "The stark, deep shadow silhouette profile of [LLM INSERTS FACELESS SILHOUETTE OR STATUE HERE, e.g., A decaying marble bust / A faceless obsidian figure], inspired by the humanoid from image_1.png, "
+            "set against a dense, swirling cinematic fog in monochrome silver and gray, completely devoid of other colors. "
+            "Inside the boundaries of the silhouette, a sprawling, hyper-detailed macro landscape is visible: "
+            "twisting ink neural networks and violent bursts of liquid gold bleeding through the negative space of the mind, inspired by the texture of image_1.png. "
+            "Surreal blending of scales: the portrait acts as a window into a vast alchemical reaction. "
+            "Sharp contrast, moody, melancholic and deeply introspective. "
+            "Perfect blending of photography and abstract 3D simulation. "
+            "8k, volumetric lighting inside the silhouette, raw emotional impact. 1:1 aspect ratio."
+        )
+    },
+
+    # ==============================
+    # PSYCHOLOGICAL: RORSCHACH
+    # ==============================
+    "alchemy_rorschach_test": {
+        "use_case": "Use this to create a hypnotic, unsettling image based on symmetry. Perfect for testing the psyche, finding hidden meanings, and putting the viewer in a trance.",
+        "technical_prompt": (
+            "Perfect, absolute central mirror symmetry. Psychological Rorschach inkblot test. Neural Dreamcore Alchemy style. "
+            "A massive, morphing, abstract structure made entirely of dense, dripping black ink roots and pooling liquid gold, identical in color and texture to the entity in image_1.png, "
+            "[LLM SUGGESTS SUBTLE SHAPE HERE, e.g., Subtly resembling a demonic moth / Hinting at a fractured skull], "
+            "placed on a heavily textured, aged alchemical parchment or a scratched dark metallic plate to emulate a physical artifact. "
+            "The ink appears wet, tactile, and thick, with the gold acting as a glowing core within the symmetrical pattern, set against a dark textured void background rich with floating golden embers and complex smoke. "
+            "Flat, clinical overhead lighting mixed with intense specular highlights on the wet fluids. "
+            "Hyper-detailed, 8k, unsettling clinical aesthetic, hypnotic and deeply paranoid mood. 1:1 aspect ratio."
+        )
+    },
+
+    # ==============================
+    # SYMBOLISM (Metaphors, Still Life, Shadows)
+    # ==============================
+    "alchemy_symbolic_shadow": {
+        "use_case": "Use this when you want to show a specific, highly symbolic object (like a chess piece, a coin, or a key) acting as a metaphor for power, control, or hidden truths. The focus is on dramatic lighting, quiet dominance, and meaningful shadows.",
+        "technical_prompt": (
+            "Cinematic still life photography, heavy metaphorical symbolism. Neural Dreamcore Alchemy style. "
+            "STRICTLY limited color palette: pitch black, stark shadows, cool monochrome highlights, and metallic gold embers. NO gradient backgrounds. "
+            "[LLM INSERTS MONOCHROMATIC OBJECT AND METAPHOR HERE, e.g., A single small obsidian pawn casting the giant, dominant shadow of a king on the stone wall]. "
+            "The object sits on a heavily textured monolithic stone slab or brushed titanium surface, deeply enveloped in shadow within a complex, smoky void, complete with dry smoke and distant floating monoliths. "
+            "Subtle alchemical influence: faint, floating golden embers and slow-moving, dark ethereal smoke lingering in the deep background. "
+            "Dramatic, high-contrast spotlighting (chiaroscuro) carving the subject out of the pitch-black environment and projecting sharp, meaningful shadows. "
+            "Hyper-realistic materials, raytraced lighting, sharp focus on the object. "
+            "8k, Octane render, quiet but intensely powerful and dominant mood. 1:1 aspect ratio."
+        )
+    },
+}
+
+AVAILABLE_STYLES_ALCHEMY_V4 = {
+
+
+    # ==============================
+    # MEDIUM (Entities, Artifacts, Focal Points)
+    # ==============================
+    "alchemy_entity_medium": {
+        "use_case": "Use this when you want to show a specific character, entity, archetype, or central artifact in its full glory, standing as the focal point and manifesting its presence.",
+        "technical_prompt": (
+            "Medium shot, dynamic composition. Neural Dreamcore Alchemy style. "
+            "[LLM SELECTS ONE CAMERA ANGLE: Low-angle hero shot looking up at the entity | Dutch angle to convey unease | Over-the-shoulder perspective from another entity]. "
+            "[LLM INSERTS SURREAL NON-HUMAN ENTITY/ARTIFACT FUSED HERE, e.g., A faceless obsidian figure made of sorrow / A non-human humanoid silhouette of complex geometry] "
+            "forming entirely out of twisting, dense ink neural roots and pulsating veins of flowing liquid gold. "
+            "Surreal alchemical transformations: the entity appears to be constantly dissolving into wet, tactile ink and reforming from molten gold within a strict palette of abyssal black and metallic gold. "
+            "Background: A complex, infinite pitch-black void with distant floating obsidian monoliths streaked with gold, "
+            "which melts into a rich, deep, atmospheric, color-matched gold and black bokeh field. "
+            "Cinematic rack-focus effect: the central entity is razor-sharp and hyper-tactile, while the complex background falls into a deep, beautiful, dark atmospheric blur. "
+            "Dramatic chiaroscuro lighting, striking contrast between the blinding, warm glowing gold and the matte, light-absorbing black ink. "
+            "Subtle chromatic aberration on frame edges. Hyper-detailed, 8k, Unreal Engine 5 render, raytracing. 1:1 aspect ratio."
+        )
+    },
+
+    # ==============================
+    # MACRO (Close-ups, Details, Single Reactions)
+    # ==============================
+    "alchemy_macro_reaction": {
+        "use_case": "Use this when the narrative focuses on a small detail, a flashpoint, a microscopic change, the birth of a new thought, or a physical alchemical reaction at the cellular level.",
+        "technical_prompt": (
+            "Extreme macro photography, tight framing. Neural Dreamcore Alchemy style. "
+            "[LLM SELECTS ONE CAMERA POSITION: Close-up profile view | Oblique top-down angle looking into the heart of transformation | Head-on microscopic perspective]. "
+            "[LLM INSERTS METALLIC, OBSIDIAN OR MONOCHROMATIC DETAIL/OBJECT HERE, e.g., A single bleeding mechanical eye / A fragile dark memory crystal] "
+            "being overtaken by hyper-detailed neural roots made of obsidian-black ink, splitting and weeping luminous liquid gold. "
+            "Surreal alchemical transformations occurring at the microscopic level. "
+            "Atmosphere: dense, swirling cosmic fog, thousands of floating golden embers, and complex anamorphic light flares cutting through the cinematic lighting. "
+            "Set within a deep, smoky background rich with complex, distant gold-streaked obsidian monoliths, "
+            "melting into a dense, color-matched gold and black geometric bokeh field. "
+            "Aggressive ultra-shallow depth of field (f/1.2), macro lens compression focusing sharply on the exact point of transformation. "
+            "Cinematic lighting, glowing internal luminescence from the gold contrasting with harsh, cold rim light on the ink. "
+            "Hyper-detailed, 8k, Octane render, raytracing, heavy caustics. 1:1 aspect ratio."
+        )
+    },
+    
+
+    # ==============================
+    # WIDE (Mindscapes, Vast Environments)
+    # ==============================
+    "alchemy_mindscape_wide": {
+        "use_case": "Use this when you need to establish a setting, show the massive scale of the subconscious, endless voids, or a sprawling mindscape.",
+        "technical_prompt": (
+            "Wide-angle, vast monolithic scale. Neural Dreamcore Alchemy style. "
+            "[LLM SELECTS ONE CAMERA POSITION: High-angle establishing shot (bird's-eye view) | Sweeping aerial drone perspective following an ink river | Low-angle looking across the sprawling architecture]. "
+            "[LLM INSERTS DEAD BRUTALIST OR OBSIDIAN LANDSCAPE/STRUCTURE HERE, e.g., A sprawling ruined brutalist cathedral / A monolithic landscape of forgotten stone memories] "
+            "integrated into a boundless network of colossal ink neural roots sprawling across an endless, dark void, glowing with pulsating rivers of liquid gold functioning like a cosmic nervous system. "
+            "The background is complex and rich, featuring countless distant floating gold-streaked monoliths, dense smoke, and vast clouds of golden embers creating a deep sense of complex depth. "
+            "Surreal alchemical transformations: distant geometric monoliths slowly decaying into golden liquid, devoid of blue skies or greenery. "
+            "Atmosphere: dense, rolling cosmic fog, thousands of floating golden embers, and complex anamorphic light flares. "
+            "Tilt-shift lens effect: a narrow band of sharp focus on a central nexus, while the immense scale of the foreground and deep background "
+            "dissolves into a heavy, smeared lens blur and double-exposure phantom reflections. "
+            "Deep, immersive shadows, hyper-detailed, 8k, Octane render, breathtaking sense of scale and cosmic mystery. 1:1 aspect ratio."
+        )
+    },
+
+    # ==============================
+    # TEXTURE (Pure Emotion, Decay, B-roll)
+    # ==============================
+    "alchemy_fluid_abstract": {
+        "use_case": "Use this as b-roll, scene transitions, mind-bending visual metaphors, or to represent the shifting state of a mind or magic system.",
+        "technical_prompt": (
+            "Frame completely filled with chaotic, abstract fluid dynamics. Neural Dreamcore Alchemy style. "
+            "[LLM SELECTS ONE CAMERA ANGLE: Microscopic top-down view | Macro side-profile showing the height of magnetic spikes | Dutch angle to emphasize chaos]. "
+            "STRICTLY NO recognizable objects. Pure surreal alchemical transformations: heavy, viscous liquid gold violently colliding, mixing, and marbled with deep, abyssal black ink and matte black ferrofluid. "
+            "[LLM CAN ADD EMOTION OR PHYSICS HERE, e.g., Aggressive, tearing tension / Slow, suffocating melancholia]. "
+            "Sharp, aggressive magnetic spikes of matte black ferrofluid tearing through smooth surfaces, slowly cracking and weeping heavy, viscous liquid gold. Fragile structures flash-freezing and shattering into dust. "
+            "Set against a deep, smoky cosmic void background, featuring a dense, color-matched gold and black geometric bokeh, with floating golden particles. "
+            "Atmosphere: macro particle suspension, intense optical bloom radiating from the liquid gold, heavy shadow haze. "
+            "Dynamic focal shifts: razor-sharp, hyper-focused points on the textural collision fading seamlessly into a soft, hypnotic, swirling motion blur. "
+            "Low-key studio lighting with stark chiaroscuro, pure black engulfing shadows pushing the golden highlights to maximum intensity. "
+            "Hyper-detailed, 8k, fluid simulation render, unsettling and heavy psychological mood. 1:1 aspect ratio."
+        )
+    },
+
+    # ==============================
+    # PSYCHOLOGICAL: LIMINAL (Dark and Infected)
+    # ==============================
+    "alchemy_liminal_dark": {
+        "use_case": "Use this to evoke feelings of paranoia, claustrophobia, and isolation. Ideal for empty, dark, unnatural brutalist architectures infected by the alchemy.",
+        "technical_prompt": (
+            "Uncanny liminal space architecture, dark and endless. Neural Dreamcore Alchemy style. "
+            "[LLM SELECTS ONE CAMERA ANGLE: Voyeuristic high-angle CCTV view | Severe, unsettling Dutch angle | High-angle looking down an endless corridor]. "
+            "[LLM INSERTS MONOCHROMATIC SPACE HERE, e.g., An endless, silent corridor of monolithic textured obsidian blocks / A massive, silent brutalist dark concrete structure lost in the void]. "
+            "The sterile, artificial dark geometry is violently infected by organic, creeping neural roots of pitch-black ink and seeping pools of liquid gold emerging from cracks in the walls and floor. "
+            "Set within a complex, smoky void background, featuring distant floating gold-bleeding monoliths that melt into a color-matched gold and black geometric bokeh. "
+            "Lighting contrast: harsh, buzzing, clinical fluorescent lighting on the dark architecture clashing with the warm, mystical glow of the alchemical gold, creating dramatic shadows. "
+            "Deep depth of field showing frightening endlessness, inspired by a dark backrooms aesthetic. "
+            "Hyper-realistic architectural render, 8k, strong sense of paranoia and industrial decay. 1:1 aspect ratio."
+        )
+    },
+
+    # ==============================
+    # PSYCHOLOGICAL: DOUBLE EXPOSURE
+    # ==============================
+    "alchemy_internal_conflict": {
+        "use_case": "Use this to show a character's direct internal conflict. Great for portraits where the alchemical process is literally happening 'inside' the character's head or silhouette.",
+        "technical_prompt": (
+            "Cinematic double exposure portrait photography. Neural Dreamcore Alchemy style. "
+            "[LLM SELECTS ONE PORTRAIT CAMERA ANGLE: Direct profile view | Three-quarter view looking away | High-angle shot looking down at the bust]. "
+            "STRICTLY limited color palette: abyssal black, metallic gold, and silver fog. NO flat shadows, NO greenery. "
+            "The stark, deep shadow silhouette profile of [LLM INSERTS FACELESS SILHOUETTE OR STATUE HERE, e.g., A decaying marble bust / A faceless obsidian figure], "
+            "set against a dense, swirling cinematic fog in monochrome silver and gray, completely devoid of other colors. "
+            "Inside the boundaries of the silhouette, a sprawling, hyper-detailed macro landscape is visible: "
+            "twisting ink neural networks and violent bursts of liquid gold bleeding through the negative space of the mind. "
+            "Surreal blending of scales: the portrait acts as a window into a vast alchemical reaction. "
+            "Sharp contrast, moody, melancholic and deeply introspective. "
+            "Perfect blending of photography and abstract 3D simulation. "
+            "8k, volumetric lighting inside the silhouette, raw emotional impact. 1:1 aspect ratio."
+        )
+    },
+
+    # ==============================
+    # PSYCHOLOGICAL: RORSCHACH
+    # ==============================
+    "alchemy_rorschach_test": {
+        "use_case": "Use this to create a hypnotic, unsettling image based on symmetry. Perfect for testing the psyche, finding hidden meanings, and putting the viewer in a trance.",
+        "technical_prompt": (
+            "Perfect, absolute central mirror symmetry. Psychological Rorschach inkblot test. Neural Dreamcore Alchemy style. "
+            "[LLM SELECTS ONE CAMERA POSITION: Strict flat lay top-down (god's-eye view) | Close-up oblique angle emphasizing fluid texture while maintaining symmetry]. "
+            "A massive, morphing, abstract structure made entirely of dense, dripping black ink roots and pooling liquid gold, "
+            "[LLM SUGGESTS SUBTLE SHAPE HERE, e.g., Subtly resembling a demonic moth / Hinting at a fractured skull], "
+            "placed on a heavily textured, aged alchemical parchment or a scratched dark metallic plate to emulate a physical artifact. "
+            "The ink appears wet, tactile, and thick, with the gold acting as a glowing core within the symmetrical pattern. "
+            "Set against a dark textured void background rich with complex cosmic smoke and a dense, color-matched gold and black geometric bokeh. "
+            "Flat, clinical overhead lighting mixed with intense specular highlights on the wet fluids. "
+            "Hyper-detailed, 8k, unsettling clinical aesthetic, hypnotic and deeply paranoid mood. 1:1 aspect ratio."
+        )
+    },
+
+    # ==============================
+    # SYMBOLISM (Metaphors, Still Life, Shadows)
+    # ==============================
+    "alchemy_symbolic_shadow": {
+        "use_case": "Use this when you want to show a specific, highly symbolic object (like a chess piece, a coin, or a key) acting as a metaphor for power, control, or hidden truths. The focus is on dramatic lighting, quiet dominance, and meaningful shadows.",
+        "technical_prompt": (
+            "Cinematic still life photography, heavy metaphorical symbolism. Neural Dreamcore Alchemy style. "
+            "[LLM SELECTS ONE CAMERA ANGLE: Imposing low-angle looking up (worm's-eye view) | High-angle shot looking down at the pawn and shadow | Uneasy Dutch angle still-life]. "
+            "Shoot through blurred foreground elements (e.g., out-of-focus golden embers) to create immediate depth. "
+            "STRICTLY limited color palette: pitch black, stark shadows, cool monochrome highlights, and metallic gold embers. NO gradient backgrounds. "
+            "[LLM INSERTS MONOCHROMATIC OBJECT AND METAPHOR HERE, e.g., A single small obsidian pawn casting the giant, dominant shadow of a king on the stone wall]. "
+            "The object sits on a heavily textured monolithic stone slab or brushed titanium surface, shot with a wide-open aperture (f/1.4). "
+            "Background: A complex, gold-streaked abyssal environment, which melts into a rich, dense field of color-matched gold and black geometric bokeh shapes. "
+            "Dramatic, high-contrast spotlighting (chiaroscuro) carving the subject out of the pitch-black environment and projecting sharp, meaningful shadows. "
+            "Hyper-realistic materials, raytraced lighting, sharp focus on the object. "
+            "8k, Octane render, quiet but intensely powerful and dominant mood. 1:1 aspect ratio."
+        )
+    },
+}
+
+AVAILABLE_STYLES = {
+
+    # ==============================
+    # WIDE (Mindscapes, Vast Environments, Scale)
+    # ==============================
+    "alchemy_mindscape_wide": {
+        "use_case": "Use this when you need to establish a setting, show the massive scale of the subconscious, endless voids, or a sprawling mindscape.",
+        "technical_prompt": (
+            "Wide-angle, vast monolithic scale. Neural Dreamcore Alchemy style. "
+            "[LLM SELECTS ONE CAMERA POSITION AND LENS: High-angle establishing shot (bird's-eye view) using a 14mm ultra-wide lens | Sweeping aerial drone perspective following an ink river shot on an 11mm rectilinear lens | Low-angle looking across the sprawling architecture with a 24mm wide lens]. "
+            "[LLM INSERTS DEAD BRUTALIST OR OBSIDIAN LANDSCAPE/STRUCTURE HERE, e.g., A sprawling ruined brutalist cathedral / A monolithic landscape of forgotten stone memories] "
+            "integrated into a boundless network of colossal ink neural roots sprawling across an endless, dark void, glowing with pulsating rivers of liquid gold functioning like a cosmic nervous system. "
+            "The background is complex and rich, featuring countless distant floating gold-streaked monoliths, dense smoke, and vast clouds of golden embers creating a deep sense of complex depth. "
+            "Surreal alchemical transformations: distant geometric monoliths slowly decaying into golden liquid, devoid of blue skies or greenery. "
+            "Atmosphere: dense, rolling cosmic fog, thousands of floating golden embers, and complex anamorphic light flares. "
+            "Tilt-shift lens effect: a narrow band of sharp focus on a central nexus, while the immense scale of the foreground and deep background "
+            "dissolves into a heavy, smeared lens blur and double-exposure phantom reflections. "
+            "Deep, immersive shadows, hyper-detailed, 8k, Octane render, breathtaking sense of scale and cosmic mystery. 1:1 aspect ratio."
+        )
+    },
+
+    # ==============================
+    # MACRO (Close-ups, Details, Single Reactions)
+    # ==============================
+    "alchemy_macro_reaction": {
+        "use_case": "Use this when the narrative focuses on a small detail, a flashpoint, a microscopic change, the birth of a new thought, or a physical alchemical reaction at the cellular level.",
+        "technical_prompt": (
+            "Extreme macro photography, tight framing. Neural Dreamcore Alchemy style. "
+            "[LLM SELECTS ONE CAMERA POSITION: Dizzying oblique high-angle looking directly into the vortex of transformation | Microscopic head-on perspective, immersive and overwhelming | Strict 90-degree lateral profile view, capturing the object perfectly from the side | True side profile macro shot, emphasizing the precise cross-section of the reaction]. "
+            "STRICT COLOR PALETTE: Only matte abyssal black, dark obsidian, and warm metallic gold. STRICTLY NO blue, NO cyan, NO electric arcs, NO transparent elements. "
+            "[LLM INSERTS METALLIC, OBSIDIAN OR MONOCHROMATIC DETAIL/OBJECT HERE (MUST BE OPAQUE), e.g., A single weeping mechanical gold eye / A fragile dark obsidian memory core] "
+            "being overtaken by hyper-detailed neural roots made of obsidian-black ink, splitting and weeping luminous liquid gold. "
+            "Surreal alchemical transformations occurring at the microscopic level. "
+            "[LLM OPTIONALLY INSERTS 1-2 SUBTLE BACKGROUND ACCENTS (STRICTLY LUMINOUS GOLD ONLY): e.g., Microscopic Enochian glyphs / Golden transmutational circles / Ethereal floating text labels (psychical, biological, alchemical) made of structured gold light with thin energy lines pointing to the reaction. Keep it minimal to not distract from the main object]. "
+            "Cinematic lighting, glowing internal luminescence from the gold contrasting with harsh, cold rim light on the ink. "
+            "Aggressive ultra-shallow depth of field (f/1.2), macro lens compression focusing sharply on the exact point of opaque transformation. "
+            "Background: An enveloping, cinematic, extremely blurred dark expanse, completely devoid of sharp edges or recognizable shapes, built on a smooth gradient. Near the edges, matte abyssal black seamlessly transitions into complex, moody dark tones of burnt umber, deep sepia, and dark mahogany, creating a complex, luxurious darkness. Floating within this infinite void are large, perfectly soft, circular golden bokeh light blooms, reminiscent of distant glowing fire embers, warm streetlights, or polished brass points of light in a steampunk or dark fantasy world. These soft glows transition flawlessly from deep copper and mosiądz (brass) tones on the periphery, through warm miodowy (honey) and bursztynowy (amber), to pure, incandescent gold highlights at their centers.Heavy, purely black edge vignetting fades seamlessly into the infinite, velvety dark void. The golden lights remain strictly in the background as scattered, subtle bokeh. STRICTLY NO large framing rings, NO golden borders, NO halo effects around the edges. "
+            "Hyper-detailed, 8k, Octane render, raytracing, heavy caustics. 1:1 aspect ratio."
+        )
+    },
+
+    # ==============================
+    # PSYCHOLOGICAL: LIMINAL (Dark and Infected)
+    # ==============================
+    "alchemy_liminal_dark": {
+        "use_case": "Use this to evoke feelings of paranoia, claustrophobia, and isolation. Ideal for empty, dark, unnatural brutalist architectures infected by the alchemy, featuring a single, isolated entity.",
+        "technical_prompt": (
+            "Uncanny liminal space architecture, dark and endless. Neural Dreamcore Alchemy style. "
+            "[LLM SELECTS ONE CAMERA ANGLE: Voyeuristic high-angle CCTV view | Severe, unsettling Dutch angle | High-angle looking down an endless corridor]. "
+            "[LLM INSERTS MONOCHROMATIC SPACE HERE, e.g., An endless, silent corridor of monolithic textured obsidian blocks / A massive, silent brutalist dark concrete structure lost in the void]. "
+            "STRICTLY NO REAL HUMANS. Somewhere in this desolate space stands a single, isolated synthetic humanoid with a perfectly smooth, featureless high-gloss obsidian oval head, a matte pitch-black porcelain neck, and delicate 24k gold filigree circuitry subtly wrapping around its sleek curves. "
+            "The sterile, artificial dark geometry around the entity is violently infected by organic, creeping neural roots of pitch-black ink and seeping pools of liquid gold emerging from cracks in the walls and floor. "
+            "Set within a complex, smoky void background, featuring distant floating gold-bleeding monoliths that melt into a color-matched gold and black geometric bokeh. "
+            "Lighting contrast: harsh, buzzing, clinical fluorescent lighting on the dark architecture clashing with the warm, mystical glow of the alchemical gold, creating dramatic shadows. "
+            "Deep depth of field showing frightening endlessness, inspired by a dark backrooms aesthetic. "
+            "Hyper-realistic architectural render, 8k, strong sense of paranoia, isolation, and industrial decay. 1:1 aspect ratio."
+        )
+    },
+
+    # ==============================
+    # DYNAMICS: SOCIAL & HIERARCHY
+    # ==============================
+    "alchemy_social_dynamics": {
+        "use_case": "Use this for psychological interactions between 2-8 entities. Perfect for social rituals, tension, hierarchy, control, boardroom cults. Focus on deep, oppressive darkness and stark contrast.",
+        "technical_prompt": (
+            "Cinematic medium-wide group shot, dramatic psychological tension. Neural Dreamcore Alchemy style. "
+            "[LLM SELECTS ONE CAMERA ANGLE: Voyeuristic over-the-shoulder | Low-angle emphasizing hierarchy and dominance | Symmetrical wide shot of a ritualistic gathering]. "
+            "[LLM INSERTS GROUP SCENE HERE, e.g., Several entities sitting at a brutalist stone table]. "
+            "The entities are elegant synthetic humanoids. Each features a perfectly smooth, featureless high-gloss obsidian oval head, a matte pitch-black porcelain neck, and delicate 24k gold filigree circuitry subtly wrapping around their sleek curves. They have no facial anatomy whatsoever. "
+            "Strong focus on the physical proximity, posture, and power dynamics of these featureless, mannequin-like forms. "
+            "Set within a vast, pitch-black monolithic architecture. The background is swallowed by pure, deep shadows and dark obsidian structures with minimal, faint gold veins. Strictly NO glowing bokeh, NO bright elements in the background. "
+            "Extreme high-contrast chiaroscuro lighting: subjects are sharply rim-lit by harsh cool light to separate them from the pitch-black surroundings, intentionally highlighting the smooth, reflective surfaces of their blank obsidian heads. The air is clear, stark, and devoid of fog or mist, emphasizing the oppressive, empty darkness of the room. "
+            "Hyper-detailed, 8k, Unreal Engine 5 render, cinematic framing, heavy psychological weight, underexposed atmosphere, true deep blacks. 1:1 aspect ratio."
+        )
+    },
+
+    # ==============================
+    # THEME: RELIQUARY MIND (Ideas & Core)
+    # ==============================
+    "alchemy_psyche_reliquary": {
+        "use_case": "Use this to represent abstract psychological concepts (greed, ego, shame, love, memory). A humanoid head or torso mechanically opened like a reliquary, revealing a symbolic engine or object inside.",
+        "technical_prompt": (
+            "Surreal conceptual portrait, mechanical mind interior. Neural Dreamcore Alchemy style. "
+            "[LLM SELECTS ONE CAMERA ANGLE: Symmetrical monumental front-facing shot evoking a disturbing idol, shot past a heavily blurred dark obsidian shoulder in the extreme foreground (dirty foreground) | High-angle shot peering down into the exposed core, emphasizing vulnerability, framed by out-of-focus golden mechanisms in the foreground | Extreme macro shot with a shallow depth of field, intimately focusing on the internal clockwork | Dramatic profile cutaway shot highlighting the exact split of the obsidian shell]. "
+            "An elegant synthetic humanoid bust or torso, featuring a perfectly smooth high-gloss obsidian oval head and a matte pitch-black porcelain neck with delicate 24k gold filigree circuitry, mechanically unfurled, split, and opened like a sacred reliquary or complex puzzle box. "
+            "Inside the opened sanctum of the head/chest: a hyper-detailed, glowing internal engine crafted STRICTLY of 24k gold and deep obsidian. Features delicate pure golden gears, pulsing liquid gold wires, and matte black alchemical mechanisms. EXCLUSIVELY BLACK AND GOLD PALETTE, NO OTHER COLORS ALLOWED. "
+            "At the exact center of this internal mechanism rests [LLM INSERTS SYMBOLIC OBJECT HERE - THE OBJECT MUST BE DESCRIBED EXPLICITLY AS PURE GOLD AND/OR BLACK OBSIDIAN ONLY, e.g., a glowing 24k gold heart of greed / a suspended weeping black obsidian eye of guilt / a shattered pure gold crown of ego]. "
+            
+            "[LLM OPTIONALLY INSERTS 1-2 SUBTLE BACKGROUND ACCENTS TO AMPLIFY THE PSYCHIC AND ALCHEMICAL EFFECT (STRICTLY LUMINOUS GOLD LIGHT ONLY): e.g., A stream of ethereal floating text labels consisting of abstract psychological and alchemical terms, rendered as minimalist gold light scripts, integrated into the deep background space | A complex alchemical transmutational circle diagram, formed from fine golden lines, that subtly flows and warps along gravitational lines in the extreme deep black background | Ethereal data-script text labels of abstract concepts (psychological, biological, alchemical), rendered in geometric gold lines, appearing to drift around the opened head. KEEP THIS MINIMAL TO AVOID DISTRACTING FROM THE PRIMARY RELIQUARY]. "
+            
+            "STRICTLY NO FOG in the background. The background is pure, deep black, punctuated only by sparse, subtle golden geometric bokeh elements. Strictly no monoliths in the background. "
+            "Lighting: Intense, warm, volumetric golden luminescence radiating from INSIDE the opened reliquary, casting dramatic shadows on the outer obsidian shell. "
+            "Hyper-detailed, strictly bichromatic black and gold interior and background elements, 8k, Octane render, profound symbolic and psychological impact, deep black background. 1:1 aspect ratio."
+        )
+    },
+
+    "alchemy_threshold_presence": {
+        "use_case": "Use this when the subject is defined by being at the threshold of a place: entering, exiting, standing in a doorway, facing a portal, or existing between two psychological or architectural states.",
+        "technical_prompt": (
+            "Cinematic threshold composition, symbolic spatial transition. Neural Dreamcore Alchemy style. "
+            "[LLM SELECTS ONE CAMERA ANGLE: Rear three-quarter shot approaching the threshold, shot past a blurred dark archway edge in the extreme foreground | Frontal symmetrical shot with the subject framed inside a doorway or gate, breaking perfect symmetry with an out-of-focus massive dark pillar in the foreground | Low-angle from the ground emphasizing monumental entry architecture, with blurred shattered obsidian fragments in the immediate foreground]. "
+            "[LLM INSERTS THRESHOLD SCENE HERE, e.g., A faceless obsidian humanoid standing beneath a colossal black archway / A dark figure paused at the entrance of a gold-veined monolithic chamber / A solitary entity crossing from a narrow corridor into an immense ritual hall]. "
+            "The entity is an elegant synthetic humanoid with a perfectly smooth, featureless high-gloss obsidian oval head, a matte pitch-black porcelain neck, and delicate 24k gold filigree circuitry subtly wrapping around its sleek curves. "
+            "The threshold itself is the dominant compositional anchor: doorway, portal, gate, corridor opening, stair crest, or dimensional rupture rendered with clear architectural legibility. "
+            "STRICT COLOR PALETTE: only matte abyssal black, obsidian, dark stone, and warm metallic gold. STRICTLY NO blue, NO cyan, NO transparent effects, NO daylight sky. "
+            "The surrounding architecture is massive, brutalist, and oppressive, with carved seams leaking liquid gold and subtle alchemical symbols integrated into the structure. "
+            "Lighting contrast is narrative-driven: the space beyond the threshold emits a controlled warm gold glow, while the foreground remains swallowed in deep black shadow, creating a strong silhouette and clear transition between states. "
+            "Atmosphere: sparse floating golden embers and restrained dark haze, never obscuring the doorway silhouette or environmental readability. "
+            "Hyper-detailed, 8k, cinematic tension, strong symbolic sense of crossing, Octane render / Unreal Engine 5 realism. 1:1 aspect ratio."
+        )
+    },
+
+    "alchemy_situational_dof": {
+        "use_case": "Use this for 'everyday' or situational actions (e.g., sitting at a desk, driving, looking over a ledge) grounded in the alchemical world. Focuses on the intimate interaction between the humanoid and a foreground object, with a heavily blurred, out-of-focus background.",
+        "technical_prompt": (
+            "Intimate situational vignette, extreme shallow depth of field. Neural Dreamcore Alchemy style. "
+            "[LLM SELECTS ONE CAMERA ANGLE: Intimate over-the-shoulder shot focusing on the humanoid's interaction with the object | Strict side profile medium close-up, highlighting the golden light reflecting on the obsidian face | Low-angle medium shot, framing the humanoid and foreground object against an obliterated, blurred background]. "
+            "STRICT COLOR PALETTE: Only matte abyssal black, dark obsidian, and warm metallic gold. STRICTLY NO blue, NO cyan, NO neon, NO daylight, NO human skin. "
+            "A single synthetic humanoid is the absolute focal point. It features a perfectly smooth, featureless high-gloss obsidian oval head, a matte pitch-black porcelain neck, and delicate 24k gold filigree circuitry subtly wrapping around its sleek curves. "
+            "[LLM INSERTS THE SITUATION/ACTION HERE TRANSLATED INTO ALCHEMICAL AESTHETICS, e.g., sitting at a monolithic obsidian workstation interacting with glowing liquid gold geometric interfaces / gripping the matte black controls of a brutalist dark vehicle interior / resting hands on a massive black block overlooking an endless void]. "
+            "The camera focus is strictly locked on the humanoid and the immediate foreground object they are interacting with. "
+            "Lighting: Dramatic interactive lighting. The foreground object or interface MUST emit a warm, luminous 24k gold glow. This golden light catches and reflects brilliantly off the humanoid's high-gloss obsidian head and smooth shoulders, creating stark contrast with the deep, heavy shadows on their unlit side. "
+            "Aggressive ultra-shallow depth of field (f/1.2), macro-like lens compression. Everything behind the immediate foreground dissolves instantly into an extreme, creamy background blur, completely obliterating all distant details and structures. "
+            "Background: An enveloping, totally out-of-focus dark expanse built on smooth gradients of abyssal black, burnt umber, and dark mahogany. Floating within this heavily blurred void are massive, perfectly soft, circular golden bokeh light blooms, resembling completely out-of-focus distant city streetlights or massive abstract glowing embers. Heavy, purely black edge vignetting fades seamlessly into the infinite dark void. "
+            "Hyper-detailed foreground materials, 8k, Octane render, raytraced reflections, cinematic intimacy, moody atmosphere. 1:1 aspect ratio."
+        )
+    },
+
+    # ==============================
+    # THEME: FIXATION ALTAR (Obsession)
+    # ==============================
+    "alchemy_metaphorical": {
+        "use_case": "Użyj tego, aby pokazać konkretny, metaforyczny obiekt jako centrum intensywnej psychologicznej fiksacji. Obiekt działa jak czarna dziura, zniekształcając fizykę i otoczenie, a jednocześnie jest otoczony bogatym, kinowym tłem z bokehem, latającymi orbitami światła i napisami. Surowo wzbronione postacie - tylko obiekt i otoczenie.",
+        "technical_prompt": (
+            "Cinematic abstract still life, intense psychological gravity. Neural Dreamcore Alchemy style. "
+            "[LLM SELECTS ONE DYNAMIC CAMERA ANGLE, CONSIDERING THE FLYING ACCENTS: Severe low-angle with a wide-angle lens, making the anomaly look impossibly massive and geometrically oppressive as light orbits warp around it | Extreme Dutch angle capturing the massive, sweeping distortion of the surrounding architecture and the bending golden light paths | Extreme top-down zenith shot staring directly into the gravity well and the spiral of texts ]. "
+            "STRICT COLOR PALETTE: Dominated by matte abyssal black, dark obsidian, and glowing metallic gold. The background expands this into moody dark tones of burnt umber, deep sepia, dark mahogany, with warm honey and amber highlights. STRICTLY NO blue, NO cyan, NO neon, NO transparent crystals, NO glass. "
+            "[LLM INSERTS METAPHORICAL OBJECT HERE (MUST BE OPAQUE BLACK OR GOLD), e.g., A brutalist mechanical gold heart / A massive, impossibly heavy matte obsidian coin / A shattered metallic crown] "
+            "acting as a crushing psychological anomaly. "
+            "The object levitates in the center, generating a terrifying psychic gravity. Massive, brutalist blocks of textured obsidian environment are visibly crumbling, fracturing, and bending inward toward the artifact. "
+            "Thick, viscous droplets and torn veins of liquid gold are defying gravity, floating upwards and being violently sucked into the object like a black hole's event horizon. "
+            "[LLM OPTIONALLY INSERTS 1-2 SUBTLE BACKGROUND ACCENTS REACTING TO GRAVITY (STRICTLY LUMINOUS GOLD ONLY): e.g., Golden transmutational circles warping and twisting along gravitational lines | Ethereal floating text labels (psychological, biological, alchemical) made of glowing gold light being pulled into the mass | Complex geometric light orbits bending around the object. Keep it minimal to not distract from the main object]. "
+            "Lighting: Stark, high-contrast chiaroscuro with aggressive rim lighting on the fractured stone, while the floating gold droplets and light orbits catch brilliant, warm specular highlights. Glowing internal luminescence from the gold contrasts with the deep shadows. "
+            "Background: An enveloping, cinematic, extremely blurred dark expanse, completely devoid of sharp edges or recognizable shapes, built on a smooth gradient. Near the edges, matte abyssal black seamlessly transitions into complex, moody dark tones of burnt umber, deep sepia, and dark mahogany. Floating within this infinite void are large, perfectly soft, circular golden bokeh light blooms transitioning flawlessly from deep copper and brass tones to pure, incandescent gold highlights at their centers. Heavy, purely black edge vignetting fades seamlessly into the infinite, velvety dark void. The golden lights remain strictly in the background as scattered, subtle bokeh. STRICTLY NO large framing rings, NO golden borders, NO halo effects around the edges. "
+            "Hyper-realistic opaque materials, particle simulation, raytraced lighting, 8k, Unreal Engine 5 render, suffocating mood of inescapable obsession. 1:1 aspect ratio."
+        )
+    }
+}
 
 def estimate_duration(text: str) -> float:
     words_per_minute: float = 200.0
@@ -724,7 +1239,6 @@ async def _process_script_part(
                     "- \"reasoning\": SECOND, explain why this style's specific 'use_case' fits the emotional or narrative context of the sentence.\n"
                     "- \"idea\": FINALLY, describe the visual scene. This description MUST strictly adhere to the style and use case you just selected. "
                     "Keep it concise—focus on the core visual subject and environment.\n\n"
-                    "Diversity Rule: Do not use the same style more than 3 times in a row."
                 )
             }
         ]

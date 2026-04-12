@@ -1,6 +1,6 @@
 <template>
   <div
-    class="text-light flex flex-col gap-6 w-full p-4 text-xs" 
+    class="text-light flex flex-col gap-6 w-full p-4 text-xs container-background rounded-lg" 
   >
     <div class="flex gap-4 justify-center">
 

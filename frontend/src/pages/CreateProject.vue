@@ -30,94 +30,92 @@
     </div>
 
     <div v-else class="container-background p-8 rounded-[10px] shadow-2xl transition-all duration-300 border border-gray-700/50">
-      <div class="space-y-8"> <div class="space-y-5">
+      <div class="space-y-8"> 
+        <div class="space-y-5">
           <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-            <div>
-              <label class="block text-sm font-medium text-gray-300 mb-1">Topic</label>
-              <input
-                v-model="scriptPrompt.topic"
-                type="text"
-                class="w-full p-3 bg-transparent border border-[var(--light-gray)] rounded-[10px] focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:border-transparent text-white transition-all"
-                placeholder="E.g., The History of Rome"
-              />
-            </div>
-            
-            <div>
-              <label class="block text-sm font-medium text-gray-300 mb-1">Film Duration (seconds)</label>
-              <input
-                v-model="scriptPrompt.duration"
-                type="number"
-                class="w-full p-3 bg-transparent border border-[var(--light-gray)] rounded-[10px] focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:border-transparent text-white transition-all"
-                placeholder="60"
-              />
-            </div>
-          </div>
+            <form-input 
+              v-model="scriptPrompt.topic" 
+              label="Topic"
+              type="text"
+              placeholder="E.g., The History of Rome"
+              class="w-full"
+            />
 
-          <div>
-            <label class="block text-sm font-medium text-gray-300 mb-1">Description</label>
-            <textarea
-              v-model="scriptPrompt.description"
-              class="w-full p-3 bg-transparent border border-[var(--light-gray)] rounded-[10px] focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:border-transparent text-white transition-all min-h-[100px] resize-y"
-              placeholder="Briefly describe what happens in the script..."
+            <form-input 
+              v-model="scriptPrompt.duration" 
+              label="Film Duration (seconds)"
+              type="number"
+              placeholder="60"
+              class="w-full"
             />
           </div>
+
+          <form-input 
+            v-model="scriptPrompt.style" 
+            label="Description"
+            type="textarea"
+            placeholder="Briefly describe what happens in the script..."
+            class="w-full"
+          />  
         </div>
 
         <hr class="border-[var(--light-gray)]" />
 
         <div class="flex flex-wrap gap-6">
-          <div class="flex gap-3 items-center p-3 rounded-[10px] border border-[var(--light-gray)] hover:bg-white/5 transition-colors cursor-pointer w-full sm:w-auto">
-            <input
-              v-model="scriptPrompt.gather_data"
-              type="checkbox"
-              id="gatherData"
-              class="w-4 h-4 text-[var(--primary)] bg-transparent border-[var(--light-gray)] rounded focus:ring-[var(--primary)] focus:ring-2 cursor-pointer"
-            />
-            <label for="gatherData" class="block text-sm font-medium text-gray-300 cursor-pointer select-none">
-              Gather External Data
-            </label>
-          </div>
-
-          <div class="flex gap-3 items-center p-3 rounded-[10px] border border-[var(--light-gray)] hover:bg-white/5 transition-colors cursor-pointer w-full sm:w-auto">
-            <input
-              v-model="scriptPrompt.persistant_characters"
-              type="checkbox"
-              id="persistantChars"
-              class="w-4 h-4 text-[var(--primary)] bg-transparent border-[var(--light-gray)] rounded focus:ring-[var(--primary)] focus:ring-2 cursor-pointer"
-            />
-            <label for="persistantChars" class="block text-sm font-medium text-gray-300 cursor-pointer select-none">
-              Persistent Characters
-            </label>
-          </div>
+          <form-input
+            v-model="scriptPrompt.gather_data" 
+            label="Gather External Data"
+            type="checkbox"
+          />
+          <form-input
+            v-model="scriptPrompt.persistant_characters" 
+            label="Persistent Characters"
+            type="checkbox"
+          />
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-          <div>
-            <label class="block text-sm font-medium text-gray-300 mb-1">Existing Data <span class="text-[var(--light-gray)] font-normal">(Optional)</span></label>
-            <textarea
-              v-model="scriptPrompt.data"
-              class="w-full p-3 bg-transparent border border-[var(--light-gray)] rounded-[10px] focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:border-transparent text-white transition-all min-h-[120px] resize-y"
-              placeholder="Paste any pre-gathered data here..."
-            />
-          </div>
+          <form-input 
+            v-model="scriptPrompt.data" 
+            :optional="true"
+            label="Existing Data"
+            type="textarea"
+            placeholder="Paste any pre-gathered data here..."
+            class="w-full"
+          />
+          <form-input 
+            v-model="scriptPrompt.reference_stories" 
+            :optional="true"
+            label="Reference Stories"
+            type="textarea"
+            placeholder="Paste any reference stories or style guides here..."
+            class="w-full"
+          />
 
-          <div>
-            <label class="block text-sm font-medium text-gray-300 mb-1">Reference Stories <span class="text-[var(--light-gray)] font-normal">(Optional)</span></label>
-            <textarea
-              v-model="scriptPrompt.reference_stories"
-              class="w-full p-3 bg-transparent border border-[var(--light-gray)] rounded-[10px] focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:border-transparent text-white transition-all min-h-[120px] resize-y"
-              placeholder="Paste reference stories or style guides..."
-            />
-          </div>
         </div>
 
-        <div class="pt-2 flex justify-center">
-          <button
+        <div class="pt-2 flex justify-center gap-4">
+          <form-button
+            @clicked="createScripts"
+            button_style="primary"
+            :show_status="true"
+            :loading="generatingScripts"
+            label="Generate Script Samples"
+          />
+
+          <form-button
+            @clicked="skipGeneratingScripts"
+            button_style="secondary"
+            label="I already have a script"
+          />
+        
+
+          <!-- <button
             @click="createScripts"
             class="w-full sm:w-auto px-10 py-3 bg-[var(--primary)] text-white font-bold rounded-[10px] hover:bg-[var(--primary-dark)] transition-all duration-300 shadow-lg hover:shadow-red-500/25 flex justify-center items-center gap-2"
           >
             Generate Script
-          </button>
+          </button> -->
         </div>
       </div>
     </div>
@@ -129,6 +127,8 @@
 import { reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import axios from 'axios';
+import FormButton from '@/components/FormButton.vue';
+import FormInput from '@/components/FormInput.vue';
 
 const router = useRouter();
 const scriptPrompt = reactive({
@@ -166,9 +166,12 @@ const selectScript = (index) => {
 };
 
 const scriptSamples = ref([]);
+const generatingScripts = ref(false);
 
 const createScripts = async () => {
+  if(generatingScript.value) return;
   console.log('Creating project with:', scriptPrompt);
+  generatingScripts.value = true;
   await axios.post('http://localhost:8000/projects/generate-script', scriptPrompt)
     .then(response => {
       console.log(response.data)
@@ -178,6 +181,21 @@ const createScripts = async () => {
     })
     .catch(error => {
       console.error('Error generating script:', error);
+    })
+    .finally(() => {
+      generatingScripts.value = false;
     });
 };
+
+const skipGeneratingScripts = () => {
+  if(!scriptPrompt.topic) {
+    alert('Please enter a topic for your project before proceeding.');
+    return;
+  }
+  projectPrompt.script = scriptPrompt.description;
+  projectPrompt.topic = scriptPrompt.topic;
+  scriptSamples.value = ["Insert your script here..."];
+  console.log('Skipping script generation. Creating project with:', projectPrompt);
+}
+
 </script>

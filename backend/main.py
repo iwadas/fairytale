@@ -43,6 +43,16 @@ async def global_ws(websocket: WebSocket):
     except WebSocketDisconnect:
         socket_manager.disconnect(websocket)
 
+
+@app.websocket("/ws/responses")
+async def responses_ws(websocket: WebSocket):
+    await socket_manager.connect(websocket, type="responses")
+    try:
+        while True:
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        socket_manager.disconnect(websocket)
+
 @app.websocket("/ws/scene/generate-video/{scene_id}")
 async def scene_generation_ws(websocket: WebSocket, scene_id: str):
     await socket_manager.connect(websocket, type="scene_generation", scene_id=scene_id)

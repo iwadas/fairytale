@@ -25,7 +25,8 @@
           />
         </div>
 
-        <div class="container-background max-h-[600px] overflow-y-auto flex-1 h-fit">
+        <div class="flex-1 *:container-background">
+
           <scene-editor
             v-if="selectedTimelineElement && selectedTimelineElement.type === 'scene'"
             v-model:scene="timelineElements[selectedTimelineElementIndex]"
@@ -34,11 +35,13 @@
             :voiceovers="voiceovers"
           />
           <voiceover-editor
+            class="max-h-[600px] overflow-y-auto"
             v-else-if="selectedTimelineElement && selectedTimelineElement.type === 'voiceover'"
             v-model:voiceover="timelineElements[selectedTimelineElementIndex]"
             v-model:voiceover_tasks="voiceoverTasks"
           />
           <music-editor
+            class="max-h-[600px] overflow-y-auto"
             v-else-if="selectedTimelineElement && selectedTimelineElement.type === 'music'"
             v-model:music="timelineElements[selectedTimelineElementIndex]"
           />
@@ -75,6 +78,7 @@ import SceneEditor from '@/components/project_details/SceneEditor.vue'
 import ProjectPreview from '@/components/project_details/Preview.vue'
 import TimelineElementMaker from '@/components/project_details/TimelineElementMaker.vue'
 import ProjectActions from '@/components/project_details/ProjectActions.vue'
+import Modal from '@/components/ModalContainer.vue'
 
 const route = 'http://localhost:8000/'
 let projectId = null;

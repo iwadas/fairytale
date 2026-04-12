@@ -12,7 +12,7 @@
     />
 
     <!-- Main Content -->
-    <div class="flex-1 py-6 px-10 overflow-auto">
+    <div class="flex-1 py-6 px-10">
       <router-view />
     </div>
 

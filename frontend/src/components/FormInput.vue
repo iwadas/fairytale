@@ -1,7 +1,7 @@
 <template>
   <div class="-mb-1">
     <div class="flex gap-2 items-center mb-1">
-      <label v-if="label" class="block text-sm font-medium text-light">
+      <label v-if="label && type !== 'checkbox'" class="block text-sm font-medium text-light">
         {{ label }} <span class="text-[var(--light-gray)] font-normal" v-if="optional">(Optional)</span>
       </label>
       <div class="relative group" v-if="helper">
@@ -36,6 +36,18 @@
         {{ option.label !== undefined ? option.label : option }}
       </option>
     </select>
+
+    <div v-else-if="type === 'checkbox'" class="flex gap-3 items-center p-3 rounded-[10px] border border-[var(--light-gray)] hover:bg-white/5 transition-colors cursor-pointer w-full sm:w-auto">
+      <input
+        v-model="model"
+        type="checkbox"
+        :id="label.toLowerCase().replace(' ', '-')"
+        class="w-4 h-4 text-[var(--primary)] bg-transparent border-[var(--light-gray)] rounded focus:ring-[var(--primary)] focus:ring-2 cursor-pointer"
+      />
+      <label :for="label.toLowerCase().replace(' ', '-')" class="block text-sm font-medium text-gray-300 cursor-pointer select-none">
+        {{ label }}
+      </label>
+    </div>
 
     <input
       v-else

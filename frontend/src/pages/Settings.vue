@@ -168,7 +168,7 @@
             runware: {
                 api_key: '',
                 diffusion_model: '',
-                image_resolution: '1080x1080',
+                resolution: '1080x1080',
                 fps: '24',
             }
         },
@@ -434,7 +434,7 @@
             },
             {
                 label: "Image Resolution",
-                name: "image_resolution",
+                name: "resolution",
                 type: "select",
                 optional: true,
                 options: [
@@ -457,6 +457,10 @@
                     {
                         label: "960x960 (1:1)",
                         value: "960x960"
+                    },
+                    {
+                        label: "640x640 (1:1)",
+                        value: "640x640"
                     }
                 ]
             },
@@ -594,7 +598,7 @@
                     const diffusion_provider_settings = data.diffusion_provider_settings;
                     selectedOptions.diffusion_provider_settings['runware']['api_key'] = diffusion_provider_settings.runware?.api_key || '';
                     selectedOptions.diffusion_provider_settings['runware']['diffusion_model'] = diffusion_provider_settings.runware?.diffusion_model || '';
-                    selectedOptions.diffusion_provider_settings['runware']['image_resolution'] = diffusion_provider_settings.runware?.image_resolution || '1080x1080';
+                    selectedOptions.diffusion_provider_settings['runware']['resolution'] = diffusion_provider_settings.runware?.resolution || '1080x1080';
                     selectedOptions.diffusion_provider_settings['runware']['fps'] = diffusion_provider_settings.runware?.fps || '24';
                 }
 
