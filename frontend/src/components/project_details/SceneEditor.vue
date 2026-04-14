@@ -204,7 +204,7 @@
             <form-button 
               :label="scene.video_src ? 'Regenerate' : 'Generate'" 
               :show_status="true"
-              :loading="sceneTasks.generating_video[scene.id]"
+              :loading="isTaskRunning(`scene_video_generation_${scene.id}`)"
               button_style="primary" 
               @click="generateVideo"
             />
@@ -409,6 +409,8 @@ import FormButton from '@/components/FormButton.vue';
 import Modal from '@/components/ModalContainer.vue';
 import route from '@/utils/route.js';
 
+import { isTaskRunning, activeTasks } from '@/utils/useWebSocket';
+
 // defineModel automatically sets up the prop AND the emit for us!
 // It acts exactly like a ref that is synced with the parent.
 const scene = defineModel('scene', { required: true, type: Object });
@@ -527,35 +529,12 @@ const generateVideo = async () => {
 
   try {
     // conntect to the websocket
-    let scene_generation_socket = new WebSocket(`ws://localhost:8000/ws/scene/generate-video/${scene.value.id}`);
-    scene_generation_socket.onopen = () => {
-      console.log("✅ WebSocket Connected");
-    };
-    scene_generation_socket.onmessage = (event) => {
-      try {
-        const jsonData = JSON.parse(event.data);
-        console.log(jsonData);
-        if(jsonData.video_src){
-          scene.value.video_src = jsonData.video_src;
-          scene_generation_socket.close();
-        }
-      } catch (e) {
-        console.error("Error parsing WebSocket message:", e);
-      }
-    };
-
-    sceneTasks.value.generating_video[scene.value.id] = true;
     await axios.post(route(`scenes/generate-video/${scene.value.id}`), {
       prompt: scene.value.video_prompt,
       duration: scene.value.duration,
     });
-    
-    // We mutate the model directly! Vue automatically emits this up to the parent.
-
   } catch (error) {
     console.error('Error generating scene video:', error);
-  } finally {
-    sceneTasks.value.generating_video[scene.value.id] = false;
   }
 }
 

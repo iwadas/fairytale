@@ -69,7 +69,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, computed, watch } from 'vue';
 import axios from 'axios'
 import VoiceoverEditor from '@/components/project_details/VoiceoverEditor.vue'
 import MusicEditor from '@/components/project_details/MusicEditor.vue'
@@ -79,6 +79,7 @@ import ProjectPreview from '@/components/project_details/Preview.vue'
 import TimelineElementMaker from '@/components/project_details/TimelineElementMaker.vue'
 import ProjectActions from '@/components/project_details/ProjectActions.vue'
 import Modal from '@/components/ModalContainer.vue'
+import { completedTasksQueue } from '@/utils/useWebSocket.js';
 
 const route = 'http://localhost:8000/'
 let projectId = null;
@@ -87,7 +88,6 @@ const currentTime = ref(0)
 const isPlaying = ref(false)
 
 const timelineElements = ref([]);
-
 
 const selectedTimelineElementIndex = ref(null);
 
@@ -101,6 +101,31 @@ const selectedTimelineElement = computed(()=>{
   if(typeof(selectedTimelineElementIndex.value) != 'number') return null;
   return timelineElements.value[selectedTimelineElementIndex.value];
 })
+
+watch( completedTasksQueue, (newQueue) => {
+    const lastCompletedTask = newQueue[newQueue.length - 1];
+    let { type, task_id, source, data } = lastCompletedTask;
+    console.log("Received completed task update in ProjectDetails.vue:", lastCompletedTask);
+
+    switch(type) {
+      case 'scene_video_generation':
+        console.log("Received completed task for scene video generation:", lastCompletedTask);
+        // find the scene that this task corresponds to, and update the video src
+        let scene = timelineElements.value.find(el => el.type === 'scene' && el.id == source.scene_id);
+        if(!scene){
+          console.warn(`Scene with ID ${source.scene_id} not found for video generation update.`);
+          return;
+        }
+        scene.video_src = data.video_src;
+        console.log("Updated scene with new video src:", scene);
+
+        break;
+
+    }
+
+
+
+}, { deep: true });
 
 
 const sceneTasks = ref({

@@ -83,6 +83,13 @@ a:hover {
   .bg-light {
     background-color: var(--light);
   }
+  .bg-primary {
+    background-color: var(--primary);
+  }
+  .bg-primary-dark {
+    background-color: var(--primary-dark);
+  }
+
 }
 
 

@@ -85,7 +85,7 @@ const displayedThumbnails = computed(()=>{
 
 const loadThumbnails = async () => {
   loading.value = true;
-  // return;
+  return;
   if(!props.scene.video_src) {
     console.warn("No video source provided for the scene.");
     return;

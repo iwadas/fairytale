@@ -34,6 +34,7 @@ from routers.settings import router as settings_router
 
 @app.websocket("/ws")
 async def global_ws(websocket: WebSocket):
+    print("New WebSocket connection established.")
     await socket_manager.connect(websocket)
     try:
         while True:
@@ -43,24 +44,15 @@ async def global_ws(websocket: WebSocket):
     except WebSocketDisconnect:
         socket_manager.disconnect(websocket)
 
-
 @app.websocket("/ws/responses")
 async def responses_ws(websocket: WebSocket):
-    await socket_manager.connect(websocket, type="responses")
+    print("New Responses WebSocket connection established.")
+    await socket_manager.connect(websocket, connection_type="responses")
     try:
         while True:
             await websocket.receive_text()
     except WebSocketDisconnect:
         socket_manager.disconnect(websocket)
-
-@app.websocket("/ws/scene/generate-video/{scene_id}")
-async def scene_generation_ws(websocket: WebSocket, scene_id: str):
-    await socket_manager.connect(websocket, type="scene_generation", scene_id=scene_id)
-    try:
-        while True:
-            await websocket.receive_text()
-    except WebSocketDisconnect:
-        socket_manager.disconnect(websocket, scene_id=scene_id)
 
 # app.include_router(characters_router)
 app.include_router(projects_router)

@@ -1,5 +1,5 @@
 from fastapi import WebSocket
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 import uuid
 
 class ConnectionManager:
@@ -7,105 +7,91 @@ class ConnectionManager:
     Singleton class to manage WebSocket connections and broadcasting.
     """
     def __init__(self):
-        # This list stores all currently active connections in memory
-        self.global_connections: List[WebSocket] = []
-        self.scene_generation_connections: Dict[str, List[WebSocket]] = {}
+        # Use a dictionary to map connection types. This scales infinitely!
+        self.active_connections: Dict[str, List[WebSocket]] = {
+            "global": [],
+            "responses": []
+        }
 
-    async def connect(self, websocket: WebSocket, type: str = "global", **kwargs):
-        """Accepts a new connection and adds it to the list."""
+    async def connect(self, websocket: WebSocket, connection_type: str = "global"):
+        """Accepts a new connection and routes it to the correct pool."""
         await websocket.accept()
-        if type == "global":
-            self.global_connections.append(websocket)
-        elif type == "scene_generation":
-            scene_id = kwargs.get("scene_id")
-            if scene_id not in self.scene_generation_connections:
-                self.scene_generation_connections[scene_id] = []
-            self.scene_generation_connections[scene_id].append(websocket)
+        print(f"✅ New WebSocket connection established for '{connection_type}'")
+
+        if connection_type in self.active_connections:
+            self.active_connections[connection_type].append(websocket)
+        else:
+            # Fallback/Error handling if an unknown type is passed
+            print(f"Warning: Attempted to connect with unknown type '{connection_type}'")
 
     def disconnect(self, websocket: WebSocket):
-        """Removes a connection from the list."""
-        if websocket in self.global_connections:
-            self.global_connections.remove(websocket)
-        # Remove from scene generation connections if it exists
-        for _, connections in self.scene_generation_connections.items():
-            if websocket in connections:
-                connections.remove(websocket)
-                break
+        """Removes a connection from whichever list it belongs to."""
+        for conn_list in self.active_connections.values():
+            if websocket in conn_list:
+                conn_list.remove(websocket)
+                return # Exit early once found and removed
 
-    async def broadcast_message(self, message: str, type: str = "global", **kwargs):
+    async def broadcast_json(self, message: Dict[str, Any], connection_type: str = "global"):
         """
-        Public method to broadcast a message to all connected clients.
-        Call this from anywhere in your app.
+        Sends JSON to all clients in the specified connection pool.
         """
-        if type == "global":
-            print(f"Broadcasting message to {len(self.global_connections)} global clients: {str(message)}")
-            for connection in self.global_connections[:]:
-                try:
-                    await connection.send_text(message)
-                except Exception:
-                    self.disconnect(connection)
-        elif type == "scene_generation":
-            print("Broadcasting message to scene generation clients")
-            scene_id = kwargs.get("scene_id")
-            if scene_id in self.scene_generation_connections:
-                connections = self.scene_generation_connections[scene_id]
-                print(f"Broadcasting message to {len(connections)} scene generation clients for scene {scene_id}: {str(message)}")
-                for connection in connections[:]:
-                    try:
-                        await connection.send_text(message)
-                    except Exception:
-                        self.disconnect(connection)
+        if connection_type not in self.active_connections:
+            return
 
-    async def broadcast_json(self, type: str = "global", message: Dict[str, Any] = None, **kwargs):
-        """
-        Automatically serializes a Python dict to a JSON string
-        and sends it to all clients.
-        """
-        if type == "global":
-            print(f"Broadcasting JSON message to {len(self.global_connections)} global clients: {str(message)}")
-            for connection in self.global_connections[:]:
-                try:
-                    await connection.send_json(message)
-                except Exception:
-                    self.disconnect(connection)
-        elif type == "scene_generation":
-            scene_id = kwargs.get("scene_id")
-            if scene_id in self.scene_generation_connections:
-                connections = self.scene_generation_connections[scene_id]
-                print(f"Broadcasting JSON message to {len(connections)} scene generation clients for scene {scene_id}: {str(message)}")
-                for connection in connections[:]:
-                    try:
-                        await connection.send_json(message)
-                    except Exception:
-                        self.disconnect(connection)
+        connections = self.active_connections[connection_type]
+        print(f"Broadcasting JSON to {len(connections)} '{connection_type}' clients.")
+        
+        # Iterate over a copy of the list [:] to allow safe removal during iteration
+        for connection in connections[:]:
+            try:
+                await connection.send_json(message)
+            except Exception as e:
+                print(f"Error sending message, disconnecting socket. Error: {e}")
+                self.disconnect(connection)
+
+
 
 class WebSocketTaskManager:
     """
-    Manages long-running tasks and their associated WebSocket connections.
-    This is a placeholder for future functionality where you might want to track
-    specific tasks and their progress.
+    Helper class to easily send status updates for a specific task.
     """
-    def __init__(self, connection_type: str = "global", message_type: str = "generation"):
-        self.connection_type = connection_type
+    def __init__(self, message_type: str, task_id: Optional[str] = None, connection_type: str = "global"):
+        # We pass task_id IN, so it matches what the REST API gave the frontend
+        if(not task_id):
+            task_id = str(uuid.uuid4())
+        self.task_id = task_id 
         self.message_type = message_type
-        self.id = str(uuid.uuid4())
+        self.connection_type = connection_type
 
-    async def send_json(self, status: str, message: str):
+    async def send_notification(self, status: str, message: Any):
         """
-        Helper method to send a standardized JSON message about task status.
+        Helper method to send a standardized JSON payload.
         """
         payload = {
-            "type": self.message_type,
-            "status": status,
-            "task_id": self.id,
-            "message": message
+            "type": self.message_type, 
+            "status": status,  
+            "task_id": self.task_id,    
+            "data": message             
         }
-        await socket_manager.broadcast_json(type=self.connection_type, message=payload)
+        await socket_manager.broadcast_json(message=payload, connection_type=self.connection_type)
 
-# Create a single global instance
+    async def send_response(self, status: str = "pending", data: Optional[Any] = None, source = None):
+        """
+        Helper method to send a response payload. Can include an optional 'source' field.
+        """
+        payload = {
+            "type": self.message_type, 
+            "status": status,  
+            "task_id": self.task_id,    
+            "data": data             
+        }
+
+        if source:
+            payload["source"] = source
+        await socket_manager.broadcast_json(message=payload, connection_type=self.connection_type)
+
+
+
+
+# Create the single global instance
 socket_manager = ConnectionManager()
-
-
-
-
-        

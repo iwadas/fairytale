@@ -12,7 +12,7 @@
     />
 
     <!-- Main Content -->
-    <div class="flex-1 py-6 px-10">
+    <div class="flex-1 py-6 px-10 max-h-screen overflow-y-auto">
       <router-view />
     </div>
 
@@ -26,10 +26,13 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue';
+import { onMounted } from 'vue';
 import BackgroundTasks from './components/BackgroundTasks.vue';
 import BackgroundPattern from './components/main_layout/BackgroundPattern.vue';
 import SideBar from './components/main_layout/SideBar.vue';
+import { useWebSockets, notifications } from '@/utils/useWebSocket';
+
+const { connectGlobalWS, connectResponsesWS } = useWebSockets();
 
 const tabs = [
   { 
@@ -53,41 +56,10 @@ const tabs = [
   { name: 'Settings', path: '/settings', icon: 'fa-cog' },
 ];
 
-let socket = null;
-const notifications = ref([]);
-
 onMounted(() => {
-  // 1. Connect to your FastAPI WebSocket route
-  // Make sure the port (8000) and path (/ws) match your backend configuration
-  socket = new WebSocket("ws://localhost:8000/ws");
-
-  // 2. Listener: Connection Opened
-  socket.onopen = () => {
-    console.log("✅ WebSocket Connected");
-  };
-
-  // 3. Listener: Receiving Messages (This is what you asked for)
-  socket.onmessage = (event) => {
-    try {
-      const jsonData = JSON.parse(event.data);
-      console.log(jsonData.message);
-      console.log(jsonData);
-      notifications.value.push(jsonData);
-    } catch (e) {
-      // It's just a text string
-    }
-  };
-
-  // 4. Listener: Errors
-  socket.onerror = (error) => {
-    console.error("❌ WebSocket Error:", error);
-  };
+  connectGlobalWS();
+  connectResponsesWS();
 });
 
-onUnmounted(() => {
-  // Close connection if the component unmounts to prevent memory leaks
-  if (socket) {
-    socket.close();
-  }
-});
+
 </script>

@@ -12,7 +12,7 @@ from database.crud import get_scene_db, get_script_db, update_scene_db, create_s
 from pydantic import BaseModel, Field
 from services.save_file import save_file
 
-from websocket import socket_manager
+from websocket import WebSocketTaskManager, socket_manager
 
 router = APIRouter(prefix="/scenes", tags=["scenes"])
 
@@ -260,30 +260,38 @@ async def process_video_task(scene_id: str, prompt: str, duration: float, frames
     This function runs in the background. 
     It handles the slow diffusion process and DB updates.
     """
+    socket_notification_manager = WebSocketTaskManager(message_type="scene_video_generation", connection_type="global")
+    socket_response_manager = WebSocketTaskManager(task_id=f"scene_video_generation_{scene_id}", message_type="scene_video_generation", connection_type="responses")
     try:
+        await socket_notification_manager.send_notification(status="init", message="🌐 Connecting to video generation provider...")
+        await socket_response_manager.send_response()
+        # diffusion_client = await Diffusion.create()
 
-        task_id = str(uuid.uuid4())
-        await socket_manager.broadcast_json(message={"status": "init", "type": "scene_generation", "message": "🌐 Connecting to video generation provider...", "task_id": task_id})
+        await socket_notification_manager.send_notification(status="in_progress", message="🎞️ Generating video...")
 
-        diffusion_client = await Diffusion.create()
+        # video_src = await diffusion_client.generate(
+        #     prompt=prompt,
+        #     frames=frames,
+        #     duration=int(duration),
+        #     filename=f"scene_{scene_id}"
+        # )
+        await asyncio.sleep(5)  # Simulate long-running process
 
-        await socket_manager.broadcast_json(message={"status": "in_progress", "type": "scene_generation", "message": "🎞️ Generating video...", "task_id": task_id})
+        video_src = "static/videos/scenes\scene_f2a35ec5-009b-493d-818a-72f8808dd2df.mp4"
 
-        video_src = await diffusion_client.generate(
-            prompt=prompt,
-            frames=frames,
-            duration=int(duration),
-            filename=f"scene_{scene_id}"
-        )
 
-        await socket_manager.broadcast_json(message={"status": "in_progress", "type": "scene_generation", "message": "📁 Saving video...", "task_id": task_id})
+        await socket_notification_manager.send_notification(status="in_progress", message="📁 Saving video...")
         await update_scene_db(scene_id, video_src=video_src, duration=duration)
 
-        await socket_manager.broadcast_json(message={"status": "finished", "type": "scene_generation", "message": "✅ Video saved successfully!", "task_id": task_id})
+        await socket_notification_manager.send_notification(status="finished", message="✅ Video saved successfully!")
+        
+        
         print("SENDING TO NOT GLOBAL WEBSOCKET")
-        await socket_manager.broadcast_json(type="scene_generation", scene_id=scene_id, message={"video_src": video_src})
+        await socket_response_manager.send_response(status="completed", data={"video_src": video_src}, source={"scene_id": scene_id})
 
     except Exception as e:
+        await socket_notification_manager.send_notification(status="error", message=f"❌ Video generation failed. Error: {e}")
+        await socket_response_manager.send_response()
         print(f"Background task FAILED for scene {scene_id}: {e}")
 
 @router.post("/generate-video/{scene_id}")

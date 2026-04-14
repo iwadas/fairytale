@@ -3,26 +3,22 @@
 
   <div v-if="tasks.length != 0 && closed">
     <!-- ADD TOGGLE BUTTON TO SHOW TASKS - MINIMAL NOT TO OVERTHOW THE MAIN SUBJECTS ON THE SCREEN -->
-    <div class="fixed bottom-4 right-8 bg-blue-600 text-white p-2 rounded-full shadow-lg cursor-pointer hover:bg-blue-700 transition-colors" @click="closed = false">
-      <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <polyline points="6 9 12 15 18 9"></polyline>
-      </svg>
+    <div class="fixed bottom-4 right-8 bg-primary text-white size-10 grid place-items-center rounded-full shadow-lg cursor-pointer hover:bg-primary-dark transition-colors" @click="closed = false">
+      <font-awesome-icon icon="chevron-up" class="w-4 h-4" />
     </div>
   </div>
 
-  <div v-if="tasks.length !== 0 && !closed" class="text-center">
-    <div class="flex flex-col space-y-4 px-4 py-2 max-h-[600px] overflow-y-auto bg-slate-50 rounded-xl border border-slate-200 shadow-inner
-      fixed bottom-4 right-8
-    ">
+  <div v-if="tasks.length !== 0 && !closed" class="text-center flex flex-col fixed bottom-4 right-8">
+    <div class="flex justify-end text-white">
+        <button class="text-[var(--light)] rounded-t-full hover:text-[var(--light-hover)] px-2 transition-colors bg-primary" @click="closed = true" title="Hide Tasks">
+          <font-awesome-icon icon="chevron-down" class="w-4 h-4" />
+        </button>
+    </div>
+
+    <div class="flex flex-col space-y-4 px-4 py-2 max-h-[600px] overflow-y-auto container-background rounded-xl border border-[var(--light)] shadow-inner">
 
       <!-- ADD BUTTON TO HIDE TASKS -->
-      <div class="flex justify-end">
-        <button class="text-slate-400 hover:text-blue-600 hover:bg-blue-50 p-2 rounded-full transition-colors" @click="closed = true" title="Hide Tasks">
-          <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 transform rotate-180" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="6 9 12 15 18 9"></polyline>
-          </svg>
-        </button>
-      </div>
+      
 
       <div 
         v-for="task in tasks" 
@@ -38,29 +34,29 @@
               class="flex items-center justify-center w-8 h-8 rounded-full"
               :class="task.status === 'in_progress' ? 'bg-blue-100 text-blue-600' : 'bg-green-100 text-green-600'"
             >
-              <svg 
-                v-if="task.status === 'in_progress'" 
-                class="w-5 h-5 animate-spin" 
-                xmlns="http://www.w3.org/2000/svg" 
-                fill="none" 
-                viewBox="0 0 24 24"
+              <div class="size-10 min-w-10 min-h-10 rounded-full grid place-items-center"
+                :class="{
+                  'bg-blue-100': task.status === 'in_progress',
+                  'bg-green-100': task.status === 'finished',
+                  'bg-red-100': task.status === 'failed'
+                }"
               >
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-              <svg 
-                v-else 
-                xmlns="http://www.w3.org/2000/svg" 
-                class="w-5 h-5" 
-                viewBox="0 0 24 24" 
-                fill="none" 
-                stroke="currentColor" 
-                stroke-width="2" 
-                stroke-linecap="round" 
-                stroke-linejoin="round"
-              >
-                <polyline points="20 6 9 17 4 12"></polyline>
-              </svg>
+                <font-awesome-icon 
+                  v-if="task.status === 'in_progress'" 
+                  icon="spinner" 
+                  class="animate-spin text-blue-600"
+                />
+                <font-awesome-icon
+                  v-else-if="task.status === 'finished'" 
+                  icon="check"
+                  class="text-green-600"
+                />
+                <font-awesome-icon
+                  v-else 
+                  icon="exclamation"
+                  class="text-red-600"
+                />  
+              </div>
             </div>
             <div class="flex flex-col">
               <span class="text-xs font-bold uppercase tracking-wider text-slate-400">
@@ -77,21 +73,13 @@
             class="text-slate-400 hover:text-blue-600 hover:bg-blue-50 p-2 rounded-full transition-colors"
             :title="task.isOpen ? 'Hide History' : 'Show History'"
           >
-            <svg 
-              xmlns="http://www.w3.org/2000/svg" 
-              class="w-5 h-5 transition-transform duration-200"
-              :class="{ 'rotate-180': task.isOpen }"
-              viewBox="0 0 24 24" 
-              fill="none" 
-              stroke="currentColor" 
-              stroke-width="2" 
-              stroke-linecap="round" 
-              stroke-linejoin="round"
-            >
-              <polyline points="6 9 12 15 18 9"></polyline>
-            </svg>
+            <font-awesome-icon 
+              :icon="task.isOpen ? 'fa-chevron-up' : 'fa-chevron-down'" 
+              class="w-4 h-4 transition-transform duration-200"
+            />
           </button>
         </div>
+  
   
         <div 
           v-if="task.isOpen" 
@@ -149,7 +137,7 @@ class Task {
             this.messages_history.push(this.latest_message);
         }
         
-        this.latest_message = message.message;
+        this.latest_message = message.data;
         
         if(message.status === "finished"){
            this.status = "finished"; 
