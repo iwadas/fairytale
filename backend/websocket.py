@@ -75,7 +75,21 @@ class WebSocketTaskManager:
         }
         await socket_manager.broadcast_json(message=payload, connection_type=self.connection_type)
 
-    async def send_response(self, status: str = "pending", data: Optional[Any] = None, source = None):
+
+    async def prepare_for_response(self):
+        """
+        Optional helper to send an initial 'pending' status before starting a long task.
+        """
+        await self.send_response(status="pending", data=None)
+
+    async def send_response_failed(self):
+        """
+        Helper to send a standardized failure response.
+        """
+        await self.send_response(status="failed", data=None)
+
+
+    async def send_response(self, status: str = "completed", data: Optional[Any] = None, source = None):
         """
         Helper method to send a response payload. Can include an optional 'source' field.
         """

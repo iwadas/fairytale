@@ -71,6 +71,10 @@
     { label: 'Interstellar', value: 'static/default/sounds/interstellar.mp3'},
     { label: 'Untitled 13', value: 'static/default/sounds/untitled13.mp3'},
     { label: 'Want To Love', value: 'static/default/sounds/want_to_love.mp3'},
+    { label: "Everything in it's right place", value: 'static/default/sounds/everything_in_its_right_place.mp3'},
+    { label: "transgender", value: 'static/default/sounds/transgender.mp3'},
+    { label: "Me And Devil", value: 'static/default/sounds/me_and_devil.mp3'},
+    { label: "Washing Machine Heart", value: 'static/default/sounds/washing_machine_heart.mp3'},
   ]
 
   watch(()=>music.value.src, (newSrc) => {

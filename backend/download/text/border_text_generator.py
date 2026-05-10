@@ -36,18 +36,18 @@ def make_neon_red(frame):
 
 def generate_border_text(
     video_size: Tuple[int, int],
-    fonts: Any,
-    background: VideoClip,
-    words_with_timing: List[Dict],
+    fonts: set,
+    visuals: VideoClip,
+    voiceover_data: List[Dict],
 ) -> VideoClip:
     
-    layers = [background]
-    print(f"Generating Neon Edges + Borders for {len(words_with_timing)} segments...")
+    layers = [visuals]
+    print(f"Generating Neon Edges + Borders for {len(voiceover_data)} segments...")
 
-    for item in words_with_timing:
+    for item in voiceover_data:
         txt = item["word"]
-        t_start = item["start_time"]
-        t_end = item["end_time"]
+        t_start = item["start"]
+        t_end = item["end"]
         duration = t_end - t_start
 
         # --- Font Sizing ---
@@ -55,7 +55,7 @@ def generate_border_text(
         elif len(txt) >= 7: FONT_SIZE = 80
         elif len(txt) >= 5: FONT_SIZE = 100
         else: FONT_SIZE = 120
-        FONT = random.choice(fonts)
+        FONT = random.choice(list(fonts))
 
         # ==============================================================================
         # 1. Shared Text Parameters
@@ -76,10 +76,7 @@ def generate_border_text(
         # ==============================================================================
         
         # A. Create a temporary clip just to generate the mask shape
-        mask_provider_clip = TextClip(
-            **text_params, 
-            color='white' # Solid white for the mask
-        )
+        mask_provider_clip = TextClip(**text_params, color="white")
 
         # B. Manually extract and center the mask onto a full-frame canvas
         # (This ensures absolute positioning stability)
@@ -96,8 +93,7 @@ def generate_border_text(
         
         full_mask_clip = ImageClip(full_mask_arr, is_mask=True).with_duration(duration)
 
-        # C. Generate the Neon Video Content
-        video_segment = background.subclipped(t_start, t_end)
+        video_segment = visuals.subclipped(t_start, t_end)
         neon_segment = video_segment.image_transform(make_neon_red)
         
         # D. Composite the Fill

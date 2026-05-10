@@ -8,6 +8,7 @@ import asyncio
 import mimetypes
 import wave
 
+
 from typing import Callable, Optional
 
 from database.crud import get_settings_db
@@ -201,12 +202,23 @@ class TTS:
         else:
             return None
         
+        text_with_pauses = self.timestamps.copy()
+
+        # insert pauses when the element ends with punctuation
+        for i in range(len(text_with_pauses)-1):
+            word = text_with_pauses[i]["word"]
+            if word and word[-1] in [".", ",", "!", "?"]:
+                # Insert a pause of 0.5 seconds after this word
+                text_with_pauses.insert(i+1, {
+                    "word": "[PAUSE]",
+                })
+
         return {
             "src": self.src,
             "duration": self.duration,
             "text": self.text,
             "timestamps": self.timestamps, # Return list directly, let caller jsonify if needed
-            "text_with_pauses": self.text,
+            "text_with_pauses": text_with_pauses,
         }
 
 
@@ -214,7 +226,7 @@ class TTS:
         model = "gemini-2.5-flash-preview-tts"
         voice_name = self.provider_settings.get("voice_name", "alloy")
 
-        voice_style = self.provider_settings.get("voice_style", "Read alound in a friendly tone.")
+        voice_style = self.provider_settings.get("voice_style", "Read aloud in a friendly tone.")
 
         output_file = f"{uuid.uuid4()}.wav"
         output_dir = os.getenv("VOICEOVER_DIR", "voiceovers")

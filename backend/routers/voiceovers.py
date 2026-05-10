@@ -89,7 +89,7 @@ async def generate_voiceover(
 
     task = WebSocketTaskManager(connection_type="global", message_type="voiceover_generation")
 
-    await task.send_json(
+    await task.send_notification(
         message=f"🎙️ Initializing voiceover generation...",
         status="init"
     )
@@ -97,13 +97,13 @@ async def generate_voiceover(
     print("Generating voiceover with text:", text)
 
     tts_result = await tts_client.generate(
-        progress_callback=task.send_json,
+        progress_callback=task.send_notification,
         text=text,
     )
 
     print("TTS result:", tts_result)
 
-    await task.send_json(
+    await task.send_notification(
         message=f"📁 Saving generated voiceover...",
         status="in_progress"
     )
@@ -113,7 +113,7 @@ async def generate_voiceover(
         **tts_result
     )
 
-    await task.send_json(
+    await task.send_notification(
         message=f"✅ Voiceover generation and saving completed.",
         status="finished"
     )

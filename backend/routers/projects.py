@@ -9,7 +9,7 @@ from copy import deepcopy
 
 import os
 from typing import List, Optional
-from generate import generate_mp4
+from download.builder import VideoBuilder
 from generate_photo_dump import generate_photo_dump_mp4
 from database.crud import create_scene_db, create_voiceover_db, get_projects_db, get_project_db, remove_project_db, update_music_db, update_voiceover_db, update_scene_db, update_pd_project_db, create_project_db, copy_project_db
 
@@ -67,19 +67,17 @@ async def script_generation(request: ScriptIn):
 
         task = WebSocketTaskManager(connection_type="global", message_type="script_generation")
 
-        await task.send_json(
+        await task.send_notification(
             message=f"🎬 Initializing script generation for {STORY_SAMPLES_COUNT} story samples...",
             status="init",
         )
 
         for i in range(STORY_SAMPLES_COUNT):
 
-            await task.send_json(
+            await task.send_notification(
                 message=f"🖊️ Generating story sample {i+1} of {STORY_SAMPLES_COUNT}...",
                 status="in_progress",
             )
-
-
             script_generator = ScriptGenerator(
                 llm_client=llm_client,
                 topic=request.topic,
@@ -95,7 +93,7 @@ async def script_generation(request: ScriptIn):
             scripts.append(script)
 
         
-        await task.send_json(
+        await task.send_notification(
             message=f"🎉 Finished generating story sample {STORY_SAMPLES_COUNT} of {STORY_SAMPLES_COUNT}.",
             status="finished"
         )
@@ -121,13 +119,13 @@ async def create_project(
 
     task = WebSocketTaskManager(connection_type="global", message_type="create_project")
 
-    await task.send_json(
+    await task.send_notification(
         message=f"🎬 Initializing project creation for topic: {topic}...",
         status="init"
     )
     
 
-    await task.send_json(
+    await task.send_notification(
         message=f"✂️ Splitting script...",
         status="in_progress"
     )
@@ -135,7 +133,7 @@ async def create_project(
 
     splitted_script = split_script(script)
 
-    await task.send_json(
+    await task.send_notification(
         message=f"🖼️ Adding scenes..",
         status="in_progress"
     )
@@ -150,7 +148,7 @@ async def create_project(
 
     # prepare data for project creation
 
-    await task.send_json(
+    await task.send_notification(
         message=f"💾 Creating project in database...",
         status="in_progress"
     )
@@ -158,7 +156,7 @@ async def create_project(
     project_id = str(uuid.uuid4())
     await create_project_db(id=project_id, name=topic, type="BASIC")
     
-    await task.send_json(
+    await task.send_notification(
         message=f"🔊 Saving voiceovers and scenes...",
         status="in_progress"
     )
@@ -204,7 +202,7 @@ async def create_project(
             
 
 
-    await task.send_json(
+    await task.send_notification(
         message=f"🎉 Project created successfully!",
         status="finished"
     )
@@ -229,6 +227,7 @@ async def update_project(
     # === Load current scenes (only scalar fields for diff) ===
 
     for element in timeline_elements:
+        
         kwargs = {
             "id": element["id"],
             "start_time": element.get("start_time", 0.0),
@@ -238,14 +237,22 @@ async def update_project(
             "cut_end": element.get("cut_end"),
         }
 
+        type_dependant_kwargs = {
+            "video_prompt": element.get("video_prompt", None),
+            "text": element.get("text", None),
+            "text_with_pauses": element.get("text_with_pauses", None),
+        }
+
+        for key, value in type_dependant_kwargs.items():
+            if value is not None:
+                kwargs[key] = value
+
         if element["type"] == "scene":
             await update_scene_db(
-                video_prompt=element["video_prompt"],
                 **kwargs
             )
         elif element["type"] == "voiceover":
             await update_voiceover_db(
-                text=element["text"],
                 **kwargs
             )
         elif element["type"] == "music":
@@ -265,7 +272,21 @@ async def download_project(project_id: str):
     output_filename = f"{get_save_name(project['name'])}.mp4"
     output_path = os.path.join(output_dir, output_filename)
     print("starting generation")
-    generate_mp4(project, output_path)
+
+    video_builder = VideoBuilder(project=project, output_filename=output_path) \
+        .set_resolution(640, 640) \
+        .set_subtitle_style("karaoke") \
+        .add_font("static/default/fonts/Unna-Regular.ttf") \
+        .add_subtitle_shadow() \
+        .set_subtitle_color("white") \
+        .set_subtitle_special_color("rgb(230, 163, 49)") \
+        # .add_font("static/default/fonts/bold.woff2") \
+        # .set_subtitle_border(width=2, color="yellow") \
+        
+
+    video_builder.build()
+
+    # generate_mp4(project, output_path)
 
     return {"message": "success"}
 

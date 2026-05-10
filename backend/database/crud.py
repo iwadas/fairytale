@@ -127,68 +127,100 @@ async def copy_project_db(
     session.add(new_project)
 
     # 3. Maps to keep track of old → new object relationships
-    character_old_to_new = {}
-    place_old_to_new = {}
+    # character_old_to_new = {}
+    # place_old_to_new = {}
 
     # 4. Copy Characters (if any)
-    for orig_char in source_project["characters"]:
-        new_char = Character(
-            id=str(uuid.uuid4()),
-            name=orig_char["name"],
-            prompt=orig_char["prompt"],
-            src=orig_char["image_url"],
-        )
-        session.add(new_char)
-        new_project.characters.append(new_char)
-        character_old_to_new[orig_char.id] = new_char
+    # for orig_char in source_project["characters"]:
+    #     new_char = Character(
+    #         id=str(uuid.uuid4()),
+    #         name=orig_char["name"],
+    #         prompt=orig_char["prompt"],
+    #         src=orig_char["image_url"],
+    #     )
+    #     session.add(new_char)
+    #     new_project.characters.append(new_char)
+    #     character_old_to_new[orig_char.id] = new_char
 
     # 5. Copy Places (if any)
-    for orig_place in source_project["places"]:
-        new_place = Place(
-            id=str(uuid.uuid4()),
-            name=orig_place["name"],
-            prompt=orig_place["prompt"],
-            src=orig_place["image_url"],
-        )
-        session.add(new_place)
-        new_project.places.append(new_place)
-        place_old_to_new[orig_place.id] = new_place
+    # for orig_place in source_project["places"]:
+    #     new_place = Place(
+    #         id=str(uuid.uuid4()),
+    #         name=orig_place["name"],
+    #         prompt=orig_place["prompt"],
+    #         src=orig_place["image_url"],
+    #     )
+    #     session.add(new_place)
+    #     new_project.places.append(new_place)
+    #     place_old_to_new[orig_place.id] = new_place
 
     # 6. Copy Scenes + their relationships
     for orig_scene in source_project["scenes"]:
-        new_scene = Scene(
-            id=str(uuid.uuid4()),
-            duration=orig_scene["duration"],
-            start_time=orig_scene["start_time"],
-            video_prompt=orig_scene["video_prompt"],
-            video_src=orig_scene["video_src"]
+        await create_scene_db(
+            **{
+                **orig_scene,
+                "id": str(uuid.uuid4()),
+                "project_id": new_project.id,
+            },
+            session=session
         )
-        session.add(new_scene)
-        new_project.scenes.append(new_scene)
+
+        # new_scene = Scene(
+        #     id=str(uuid.uuid4()),
+        #     duration=orig_scene["duration"],
+        #     start_time=orig_scene["start_time"],
+        #     video_prompt=orig_scene["video_prompt"],
+        #     video_src=orig_scene["video_src"],
+        #     style=orig_scene.get("style", ""),
+        #     cut_start=orig_scene.get("cut_start", 0.0),
+        #     cut_end=orig_scene.get("cut_end", 0.0),
+        #     layer=orig_scene.get("layer", 2),
+
+        # )
+        # session.add(new_scene)
+        # new_project.scenes.append(new_scene)
 
         # Re-link characters
-        for orig_char in orig_scene["characters"]:
-            if orig_char.id in character_old_to_new:
-                new_scene.characters.append(character_old_to_new[orig_char["id"]])
+        # for orig_char in orig_scene["characters"]:
+        #     if orig_char.id in character_old_to_new:
+        #         new_scene.characters.append(character_old_to_new[orig_char["id"]])
 
-        # Re-link places (if scene has places)
-        for orig_place in orig_scene["places"]:
-            if orig_place.id in place_old_to_new:
-                new_scene.places.append(place_old_to_new[orig_place["id"]])
+        # # Re-link places (if scene has places)
+        # for orig_place in orig_scene["places"]:
+        #     if orig_place.id in place_old_to_new:
+        #         new_scene.places.append(place_old_to_new[orig_place["id"]])
 
     # 7. Copy Voiceovers
     for orig_vo in source_project["voiceovers"]:
-        new_vo = Voiceover(
-            id=str(uuid.uuid4()),
-            text=orig_vo["text"],
-            text_with_pauses=orig_vo["text_with_pauses"],
-            start_time=orig_vo["start_time"],
-            duration=orig_vo["duration"],
-            timestamps=json.dumps(orig_vo["timestamps"]), 
-            src=orig_vo["src"]
+        await create_voiceover_db(
+            **{
+                **orig_vo,
+                "id": str(uuid.uuid4()),
+                "project_id": new_project.id,
+            },
+            session=session
         )
-        session.add(new_vo)
-        new_project.voiceovers.append(new_vo)
+        # new_vo = Voiceover(
+        #     id=str(uuid.uuid4()),
+        #     text=orig_vo["text"],
+        #     text_with_pauses=orig_vo["text_with_pauses"],
+        #     start_time=orig_vo["start_time"],
+        #     duration=orig_vo["duration"],
+        #     timestamps=json.dumps(orig_vo["timestamps"]), 
+        #     src=orig_vo["src"]
+        # )
+        # session.add(new_vo)
+        # new_project.voiceovers.append(new_vo)
+
+    for orig_music in source_project["background_music"]:
+        await create_music_db(
+            **{
+                **orig_music,
+                "id": str(uuid.uuid4()),
+                "project_id": new_project.id,
+            },
+            session=session
+        )
 
     return serialize_project(new_project)
 
@@ -226,7 +258,10 @@ async def update_voiceover_db(id: str, session=None, **kwargs):
     voiceover = result.scalars().first()
     if voiceover:
         for key, value in kwargs.items():
-            if(key == "timestamps" and isinstance(value, list)):
+            if key == "timestamps" and isinstance(value, list):
+                value = json.dumps(value)
+
+            if key == "text_with_pauses" and isinstance(value, list):
                 value = json.dumps(value)
 
             setattr(voiceover, key, value)
@@ -264,7 +299,7 @@ async def create_voiceover_db(
         project_id: str = "", 
         text: str = "", 
         timestamps: Optional[Any] = None, 
-        text_with_pauses: Optional[str] = None,
+        text_with_pauses: Optional[Any] = None,
         src: Optional[str] = None,
 
         start_time: float = 0.0, 
@@ -286,6 +321,9 @@ async def create_voiceover_db(
     # check if timestamps is json / string and convert to string if needed
     if timestamps is not None and not isinstance(timestamps, str):
         timestamps = json.dumps(timestamps)
+
+    if text_with_pauses is None and not isinstance(text_with_pauses, str):
+        text_with_pauses = json.dumps(text_with_pauses)
 
     new_vo = Voiceover(id=id, project_id=project_id, text=text, start_time=start_time, timestamps=timestamps, text_with_pauses=text_with_pauses, duration=duration, cut_start=cut_start, cut_end=cut_end, layer=layer, src=src)
     session.add(new_vo)
@@ -320,7 +358,7 @@ async def get_scene_db(id: str, session=None):
 @with_session
 async def create_scene_db(
     project_id: str,
-    scene_id: Optional[str] = None,
+    id: Optional[str] = None,
     video_src: Optional[str] = None,
     duration: Optional[float] = 0.0,
     video_prompt: Optional[str] = None,
@@ -328,15 +366,16 @@ async def create_scene_db(
     cut_start: Optional[float] = 0.0,
     cut_end: Optional[float] = 0.0,
     layer: Optional[int] = 2,
-    idea: Optional[str] = None,
+    places: Optional[List[Dict[str, Any]]] = None,
+    characters: Optional[List[Dict[str, Any]]] = None,
     session=None, 
     images: Optional[List[Dict[str, Any]]] = None,
 ):
-    if scene_id is None:
-        scene_id = str(uuid.uuid4())
+    if id is None:
+        id = str(uuid.uuid4())
 
     new_scene = Scene(
-        id=scene_id,
+        id=id,
         project_id=project_id,
         video_src=video_src, 
         duration=duration, 
@@ -351,7 +390,7 @@ async def create_scene_db(
     if images:
         for img in images:
             new_image = SceneImage(
-                scene_id=scene_id,
+                scene_id=id,
                 src=img.get("src", ""),
                 prompt=img.get("prompt", ""),
                 time=img.get("time", "start"),

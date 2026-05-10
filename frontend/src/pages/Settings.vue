@@ -239,6 +239,10 @@
                         value: "leda"
                     },
                     {
+                        label: "Gacrux",
+                        value: "Gacrux"
+                    },
+                    {
                         label: "Orus",
                         value: "orus"
                     },

@@ -68,14 +68,20 @@ def serialize_scene(scene: Scene):
     }
 
 def serialize_voiceover(voiceover: Voiceover):
+
+    try:
+        text_with_pauses = json.loads(voiceover.text_with_pauses) if voiceover.text_with_pauses else []
+    except json.JSONDecodeError:
+        text_with_pauses = []
+
+
     return {
         "id": voiceover.id,
         "project_id": voiceover.project_id,
-        "text": voiceover.text,
-        "text_with_pauses": voiceover.text_with_pauses,
         "src": voiceover.src,
+        "text": voiceover.text,
+        "text_with_pauses": text_with_pauses,
         "timestamps": json.loads(voiceover.timestamps) if voiceover.timestamps else [],
-        
         "start_time": voiceover.start_time,
         "duration": voiceover.duration,
         "cut_start": voiceover.cut_start or 0.0,

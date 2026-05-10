@@ -179,7 +179,12 @@
               @input="handleSceneVideoUpload"
             >
             <div class="w-full p-3 bg-transparent border border-[var(--light-gray)] rounded-b-[10px] group-hover:bg-white/5 transition-all flex items-center justify-between text-gray-400">
-              <span>Choose a file...</span>
+              <span v-if="!isTaskRunning[`scene_video_upload_${scene.id}`]">
+                Choose a file...
+              </span>
+              <span v-else class="text-[var(--light)]">
+                Uploading...
+              </span>
               <span class="bg-[var(--medium)] px-3 py-1 -my-4 rounded-md text-xs text-gray-200 border border-[var(--light-gray)]">Browse</span>
             </div>
           </div>
@@ -449,13 +454,17 @@ const handleSceneImageUpload = async (event) => {
 const handleSceneVideoUpload = async (event) => {
   const video = event.target.files[0];
   const formData = new FormData();
+
+  const currentScene = scene.value;
+
   formData.append('video', video);
   try{
     const response = await axios.put(route(`scenes/upload-video/${scene.value.id}`), formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
-    scene.value.video_src = response.data.video_src;
-    scene.value.duration = response.data.duration;
+
+    currentScene.video_src = response.data.video_src;
+    currentScene.duration = response.data.duration;
   } catch (error) {
     console.error('Error uploading scene video:', error);
   }
@@ -524,12 +533,10 @@ const generateImage = async () => {
 };
 
 
-const generateVideo = async () => {
-  if(sceneTasks.value.generating_video[scene.value.id]) return; // Prevent multiple clicks
-
+const generateVideo = () => {
+  if(isTaskRunning(`scene_video_generation_${scene.value.id}`)) return;
   try {
-    // conntect to the websocket
-    await axios.post(route(`scenes/generate-video/${scene.value.id}`), {
+    axios.post(route(`scenes/generate-video/${scene.value.id}`), {
       prompt: scene.value.video_prompt,
       duration: scene.value.duration,
     });

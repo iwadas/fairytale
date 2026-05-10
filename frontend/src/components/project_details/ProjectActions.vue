@@ -7,7 +7,7 @@
         label="Save Changes" 
       />
       <form-button
-        @click="console.log('Downloading video...')"
+        @click="downloadProject"
         button_style="secondary"
         label="Download" 
       />
@@ -39,5 +39,22 @@ const saveChanges = async () => {
     console.error('Error saving project changes:', error);
   }
 }
+
+const downloadProject = async () => {
+  await saveChanges();
+  try{
+    const response = await axios.post(`http://localhost:8000/projects/download/${props.projectId}`);
+    // Create a URL for the blob and trigger a download
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `project_${props.projectId}.mp4`);
+    document.body.appendChild(link);
+    link.click();
+  } catch (error) {
+    console.error('Error downloading project:', error);
+  }
+}
+
 
 </script>

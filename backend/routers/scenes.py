@@ -94,7 +94,6 @@ async def fix_image_prompt(
         "Append this exactly to the end of the prompt: , hyper-realistic 3D render, fractured dark-aesthetic sculpture, flawless ultra-reflective surfaces, stark chiaroscuro studio lighting, piercing crimson and cold cyan rim lights, engulfing pitch-black shadows, macro photography depth of field, Octane render, raytracing, heavy caustics, psychological thriller mood, 8k"
     )
 
-
     system_message = {
         "role": "system",
         "content": (
@@ -207,6 +206,7 @@ def get_video_duration_sync(file_path: str) -> float:
         print(f"Error getting duration: {e}")
         return 0.0
 
+
 @router.put("/upload-video/{scene_id}")
 async def upload_scene_video(
     scene_id: str,
@@ -217,11 +217,11 @@ async def upload_scene_video(
         raise HTTPException(status_code=404, detail="Scene not found")
     
     video_src = await save_file(video, type="scene_video")
-    
-    duration = await asyncio.to_thread(get_video_duration_sync, video_src)
 
+    duration = await asyncio.to_thread(get_video_duration_sync, video_src)
+    
     await update_scene_db(scene_id, video_src=video_src, duration=duration)
-    return {"message": "Scene video uploaded successfully", "scene_id": scene_id, "video_src": video_src, "duration": duration}
+    return {"message": "Scene video uploaded successfully", "video_src": video_src, "duration": duration}
 
 
 @router.delete("/remove-image/{scene_image_id}")
@@ -264,25 +264,24 @@ async def process_video_task(scene_id: str, prompt: str, duration: float, frames
     socket_response_manager = WebSocketTaskManager(task_id=f"scene_video_generation_{scene_id}", message_type="scene_video_generation", connection_type="responses")
     try:
         await socket_notification_manager.send_notification(status="init", message="🌐 Connecting to video generation provider...")
-        await socket_response_manager.send_response()
-        # diffusion_client = await Diffusion.create()
+        await socket_response_manager.prepare_for_response()
+        diffusion_client = await Diffusion.create()
 
         await socket_notification_manager.send_notification(status="in_progress", message="🎞️ Generating video...")
 
-        # video_src = await diffusion_client.generate(
-        #     prompt=prompt,
-        #     frames=frames,
-        #     duration=int(duration),
-        #     filename=f"scene_{scene_id}"
-        # )
-        await asyncio.sleep(5)  # Simulate long-running process
+        video_src = await diffusion_client.generate(
+            prompt=prompt,
+            frames=frames,
+            duration=int(duration),
+            filename=f"scene_{scene_id}"
+        )
+        # await asyncio.sleep(5)  # Simulate long-running process
 
-        video_src = "static/videos/scenes\scene_f2a35ec5-009b-493d-818a-72f8808dd2df.mp4"
+        # video_src = "static/videos/scenes\scene_f2a35ec5-009b-493d-818a-72f8808dd2df.mp4"
 
 
         await socket_notification_manager.send_notification(status="in_progress", message="📁 Saving video...")
         await update_scene_db(scene_id, video_src=video_src, duration=duration)
-
         await socket_notification_manager.send_notification(status="finished", message="✅ Video saved successfully!")
         
         
@@ -290,8 +289,8 @@ async def process_video_task(scene_id: str, prompt: str, duration: float, frames
         await socket_response_manager.send_response(status="completed", data={"video_src": video_src}, source={"scene_id": scene_id})
 
     except Exception as e:
-        await socket_notification_manager.send_notification(status="error", message=f"❌ Video generation failed. Error: {e}")
-        await socket_response_manager.send_response()
+        await socket_notification_manager.send_notification(status="failed", message=f"❌ Video generation failed. Error: {e}")
+        await socket_response_manager.send_response_failed()
         print(f"Background task FAILED for scene {scene_id}: {e}")
 
 @router.post("/generate-video/{scene_id}")

@@ -7,8 +7,8 @@ from moviepy import vfx
 def generate_invert_mask_text(
     video_size: Tuple[int, int],
     fonts: List[str],
-    background: VideoClip,
-    words_with_timing: List[Dict[str, Any]],
+    visuals: VideoClip,
+    voiceover_data: List[Dict[str, Any]],
     add_border: bool = True  # <--- Added Argument
 ) -> VideoClip:
     """
@@ -19,16 +19,14 @@ def generate_invert_mask_text(
     Returns a new clip with the karaoke subtitles composited on top.
     """
 
-    video = background
-    # We will accumulate all clips here (inverted pieces + optional borders)
     all_knocked_clips = []
     
     print("Available fonts:", fonts)
 
-    for item in words_with_timing:
+    for item in voiceover_data:
         txt = item["word"]
-        t_start = item["start_time"]
-        t_end = item["end_time"]
+        t_start = item["start"]
+        t_end = item["end"]
         duration = t_end - t_start
 
         # --- Dynamic Font Sizing ---
@@ -40,7 +38,7 @@ def generate_invert_mask_text(
         elif len(txt) >= 5:
             FONT_SIZE = 100
         
-        FONT = random.choice(fonts)
+        FONT = random.choice(list(fonts))
         print(f"Processing '{txt}' with Font: {FONT}")
 
         # 1. Create the Clip used for the MASK (The hole cutter)
@@ -54,7 +52,7 @@ def generate_invert_mask_text(
             stroke_width=2,
             method='label',
             margin=(0, 90),
-            size=(video.w, None)
+            size=(visuals.w, None)
         )
 
         # ─── CREATE FULL-SIZE MASK ────────────────────────────────────
@@ -68,7 +66,7 @@ def generate_invert_mask_text(
         h, w = mask_img.shape
         # print("Mask size:", w, "x", h)
 
-        full_mask_array = np.zeros((video.h, video.w), dtype=float)
+        full_mask_array = np.zeros((visuals.h, visuals.w), dtype=float)
 
         # Calculate position (centering)
         pos_x = (video_size[0] - w) // 2
@@ -82,7 +80,7 @@ def generate_invert_mask_text(
 
         # 2. Create the Inverted Video Piece
         inverted_piece = (
-            video.with_effects([vfx.InvertColors()])
+            visuals.with_effects([vfx.InvertColors()])
             .subclipped(t_start, t_end)
             .with_mask(full_mask_clip)
             .with_start(t_start)
@@ -102,10 +100,10 @@ def generate_invert_mask_text(
                 stroke_width=1,         # Slightly thicker than mask to be visible
                 method='label',
                 margin=(0, 90),
-                size=(video.w, None)    # Match dimensions of mask clip exactly
+                size=(visuals.w, None)    # Match dimensions of mask clip exactly
             ).with_position(('center', 'center')).with_start(t_start).with_duration(duration)
 
             all_knocked_clips.append(border_clip)
 
     # Return original background with the new inverted chunks (and borders) layered on top
-    return CompositeVideoClip([background] + all_knocked_clips)
+    return CompositeVideoClip([visuals] + all_knocked_clips)

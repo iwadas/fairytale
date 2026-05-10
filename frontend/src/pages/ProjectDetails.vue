@@ -104,12 +104,11 @@ const selectedTimelineElement = computed(()=>{
 
 watch( completedTasksQueue, (newQueue) => {
     const lastCompletedTask = newQueue[newQueue.length - 1];
-    let { type, task_id, source, data } = lastCompletedTask;
+    let { type, source, data } = lastCompletedTask;
     console.log("Received completed task update in ProjectDetails.vue:", lastCompletedTask);
 
     switch(type) {
       case 'scene_video_generation':
-        console.log("Received completed task for scene video generation:", lastCompletedTask);
         // find the scene that this task corresponds to, and update the video src
         let scene = timelineElements.value.find(el => el.type === 'scene' && el.id == source.scene_id);
         if(!scene){
@@ -117,14 +116,8 @@ watch( completedTasksQueue, (newQueue) => {
           return;
         }
         scene.video_src = data.video_src;
-        console.log("Updated scene with new video src:", scene);
-
         break;
-
     }
-
-
-
 }, { deep: true });
 
 
@@ -186,6 +179,12 @@ const parseProjectData = (scenes, voiceovers, backgroundMusic) => {
     vo.cut_end = vo.cut_end || 0;
     vo.layer = vo.layer || 3;
     vo.type = "voiceover";
+    try {
+      vo.text_with_pauses = JSON.parse(vo.text_with_pauses) || [];
+    } catch (error) {
+      console.error(`Error parsing text_with_pauses for voiceover ID ${vo.id}:`, error);
+      vo.text_with_pauses = [];
+    }
     parsedElements.push(vo)
   })
 
