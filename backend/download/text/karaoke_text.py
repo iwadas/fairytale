@@ -275,3 +275,55 @@ def generate_karaoke_text(segments: List[Dict[str, Any]], visuals: VideoClip, op
     # ------------------------------------------------------------------
     final = CompositeVideoClip([visuals] + clips)
     return final
+
+
+
+def generate_karaoke_remotion(visuals, subtitles, **kwargs):
+    import os
+    import subprocess
+    from moviepy.editor import VideoFileClip
+
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+    PROJECT_ROOT = os.path.abspath(
+    os.path.join(BASE_DIR, "..", "..")
+)
+
+    remotion_path = os.path.join(
+        PROJECT_ROOT,
+        "services",
+        "render-engine",
+        "remotion-app"
+    )
+
+    print("✅✅✅✅✅:")
+    print("Remotion path:")
+    print("✅✅✅✅✅:")
+    print(remotion_path)
+
+    output_path = os.path.join(remotion_path, "out", "video7.mov")
+
+    # 🔥 (1) Odpal Remotion
+    # Na razie hardcoded composition (tak jak chciałeś)
+    # subprocess.run(
+    #     [
+    #         "npx",
+    #         "remotion",
+    #         "render",
+    #         "Karaoke",
+    #         output_path,
+    #         "--codec=prores",
+    #         "--prores-profile=4444"
+    #     ],
+    #     cwd=remotion_path,
+    #     check=True
+    # )
+
+    # 🔥 (2) Załaduj jako overlay z alpha
+    overlay = VideoFileClip(output_path, has_mask=True)
+
+    # 🔥 (3) Dopasuj do visuals (opcjonalnie)
+    if visuals:
+        overlay = overlay.set_duration(visuals.duration)
+
+    return overlay

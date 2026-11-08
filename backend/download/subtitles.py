@@ -1,3 +1,4 @@
+import os
 from typing import List, Tuple, Dict, Any
 from moviepy import VideoClip
 
@@ -26,6 +27,8 @@ class SubtitleGenerator:
             return BorderSubtitleGenerator(self._builder, self._visuals).generate()
         elif subtitle_type == "karaoke":
             return KaraokeSubtitleGenerator(self._builder, self._visuals).generate()
+        elif subtitle_type == "karaoke_remotion":
+            return RemotionKaraokeSubtitleGenerator(self._builder, self._visuals).generate()
         else:
             if(subtitle_type != "none"):
                 print(f"Unknown subtitle type: {subtitle_type}. Defaulting to 'None'")
@@ -105,7 +108,11 @@ class WordFormattingGenerator:
             # For karaoke, we will prepare segments with words and timing based on timestamps and text with pauses ('|').
             # This is more complex and will be handled in the KaraokeSubtitleGenerator.
             return segments
+        
+            
     
+
+
 
 class InvertTextMaskSubtitleGenerator:
     def __init__(self, builder: Any, visuals: VideoClip = None):
@@ -135,6 +142,51 @@ class BorderSubtitleGenerator:
             fonts=self._builder._fonts,
             visuals=self._visuals,
         )
+
+class RemotionKaraokeSubtitleGenerator:
+    def __init__(self, builder: Any, visuals: VideoClip = None):
+        self._builder = builder
+        self._visuals = visuals
+
+    def generate(self) -> VideoClip:
+
+        import os
+        import subprocess
+        from moviepy import VideoFileClip, CompositeVideoClip
+
+        
+        BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+        remotion_path = os.path.abspath(
+            os.path.join(
+                BASE_DIR,
+                "..",
+                "..",
+                "services",
+                "render-engine",
+                "remotion-app"
+            )
+        )
+        subtitles_overlay_path = os.path.join(remotion_path, "out", "video.mov")
+        overlay = VideoFileClip(subtitles_overlay_path)
+        overlay = overlay.with_mask(overlay.to_mask())
+
+        overlay = overlay.with_duration(self._visuals.duration)
+
+        final = CompositeVideoClip([
+            self._visuals,
+            overlay
+        ])
+
+        return final
+
+
+
+
+        
+
+
+
+
 
 class KaraokeSubtitleGenerator:
     def __init__(self, builder: Any, visuals: VideoClip = None):

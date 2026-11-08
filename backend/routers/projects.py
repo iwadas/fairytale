@@ -275,7 +275,7 @@ async def download_project(project_id: str):
 
     video_builder = VideoBuilder(project=project, output_filename=output_path) \
         .set_resolution(640, 640) \
-        .set_subtitle_style("karaoke") \
+        .set_subtitle_style("karaoke_remotion") \
         .add_font("static/default/fonts/Unna-Regular.ttf") \
         .add_subtitle_shadow() \
         .set_subtitle_color("white") \

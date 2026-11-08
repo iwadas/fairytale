@@ -67,7 +67,7 @@ class VideoBuilder:
         return self
 
     def set_subtitle_style(self, style: str) -> "VideoBuilder":
-        if( style not in ["none", "invert_mask", "border", "karaoke"]):
+        if( style not in ["none", "invert_mask", "border", "karaoke", "karaoke_remotion"]):
             raise ValueError(f"Unsupported subtitle style: {style}, must be one of none, invert_mask, border, karaoke")
         self._subtitle_type = style
         return self
