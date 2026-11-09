@@ -1,6 +1,5 @@
 from fastapi import APIRouter, HTTPException, Body
 from pydantic import BaseModel
-from AI.tts import TTS
 from AI.llm import LLM
 from script.generate_scenes import generate_scenes, split_script
 
@@ -8,10 +7,9 @@ import uuid
 from copy import deepcopy
 
 import os
-from typing import List, Optional
+from typing import Optional
 from download.builder import VideoBuilder
-from generate_photo_dump import generate_photo_dump_mp4
-from database.crud import create_scene_db, create_voiceover_db, get_projects_db, get_project_db, remove_project_db, update_music_db, update_voiceover_db, update_scene_db, update_pd_project_db, create_project_db, copy_project_db
+from database.crud import create_scene_db, create_voiceover_db, get_projects_db, get_project_db, remove_project_db, update_music_db, update_voiceover_db, update_scene_db, create_project_db, copy_project_db
 
 from script.generate_script import ScriptGenerator
 
@@ -287,58 +285,6 @@ async def download_project(project_id: str):
     video_builder.build()
 
     # generate_mp4(project, output_path)
-
-    return {"message": "success"}
-
-
-@router.post("/download-pd/{project_id}")
-async def download_photo_dump_project(
-    project_id: str,
-):
-    project = await get_project_db(id=project_id, serialize=True)
-    images = []
-    for images_package in project["images_packages"]:
-        images.extend([img for img in images_package["images"] if img["src"] is not None])
-
-    voiceover = project["voiceovers"][0] if project["voiceovers"] else None
-    generate_photo_dump_mp4(
-        images=images,
-        title=get_save_name(project["name"]),
-        voiceover=voiceover
-    )
-    return {"message": "success"}
-    
-
-@router.put("/photo-dump/{project_id}")
-async def update_photo_dump_project(
-    project_id: str,
-    name: str = Body(...),
-    images_packages_ids: List[str] = Body(...),
-):
-    await update_pd_project_db(id=project_id, name=name, images_packages_ids=images_packages_ids)
-    return {"message": "Photo Dump Project updated successfully"}
-
-@router.post("/download-photo-dump")
-async def download_photo_dump_project(
-    title: str = Body(..., embed=True),
-    story: str = Body(..., embed=True),
-    images_package_ids: List[str] = Body(..., embed=True),
-):
-    # get all images from packages
-    # GENERATE VOICEOVER
-    project = await create_project_db(
-        name = f"{title} (Photo Dump)",
-    )
-    project_id = project["id"]
-
-    voiceover = TTS(
-        provider="camb",
-        text=story,
-        project_id=project_id
-    )
-    await create_voiceover_db(**voiceover)
-    
-    await update_pd_project_db(id=project_id, name=f"{title} (Photo Dump)", images_packages_ids=images_package_ids)
 
     return {"message": "success"}
 

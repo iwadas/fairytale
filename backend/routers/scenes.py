@@ -76,10 +76,6 @@ async def generate_scene_image_prompt(
 
 
 
-class NewPhotoDumpImages(BaseModel):
-    options: List[str]
-
-
 @router.post("/fix-image-prompt")
 async def fix_image_prompt(
     scene_prompt: str = Body(..., embed=True),

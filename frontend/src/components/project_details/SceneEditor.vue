@@ -333,55 +333,6 @@
           class="w-full"
         />
   
-        <!-- TODO -->
-        <!-- <div>
-          <div class="flex justify-between">
-            <label for="_" class="text-sm font-medium text-light mb-1">
-              Reference Images
-              <span class="text-[var(--light-gray)]" v-if="addedReferenceImages.length > 0">
-                ({{ addedReferenceImages.length }} added)
-              </span> 
-            </label>
-            <button @click="showReferenceImages = !showReferenceImages">
-              <font-awesome-icon v-if="showReferenceImages == false" icon="chevron-down" class="text-light-hover"/>
-              <font-awesome-icon v-else icon="chevron-up" class="text-light-hover"/>
-            </button>
-          </div>
-  
-          <div class="flex gap-6 mt-4 mb-4 text-xs" v-if="showReferenceImages">
-            <div class="flex-1">
-              <p>
-                Added:
-              </p>
-              <div class="overflow-y-auto max-w-[200px] flex gap-1">
-                <reference-image
-                  v-for="referenceImg in addedReferenceImages"
-                  :key="referenceImg.src"
-                  :name="referenceImg.name"
-                  :src="referenceImg.src"
-                  @remove="removeReferenceImage"
-                  :added="true"
-                />
-              </div>
-            </div>
-            <div class="flex-1">
-              <p>
-                Available:
-              </p>
-              <div class="overflow-y-auto max-w-[200px] flex gap-1" v-if="availableReferenceImages.length > 0">
-                <reference-image
-                  v-for="refImg in availableReferenceImages"
-                  :key="refImg.name"
-                  :name="refImg.name"
-                  :src="refImg.src"
-                  @add="addReferenceImage"
-                  :added="false"
-                />
-              </div>
-            </div>
-          </div>
-        </div> -->
-  
         <!-- IMAGE FINAL ACTION -->
         <!-- :loading="generatingImage[selectedSceneIndex]"  -->
         <div class="flex justify-center gap-4">
@@ -697,7 +648,6 @@ const applyNewImagePrompt = (option) => {
 // REFERENCE IMAGES
 // TODO
 const addedReferenceImages = ref([]);
-const showReferenceImages = ref(false);
 
 
 const prepareImages = () => {

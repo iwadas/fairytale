@@ -64,51 +64,6 @@ class NewSceneDescriptions(BaseModel):
     options: List[SceneDescriptoinOption]
 
 
-class NewPhotoDumpImages(BaseModel):
-    options: List[str]
-
-# TODO
-@router.post('/generate-photo-dump-images')
-async def generate_scene_image_prompt(
-    story: str = Body(..., embed=True),
-):
-    
-    return
-    messages = [
-        {
-            "role": "system",
-            "content": (
-                "You are a specialized Director of Photography AI. "
-                "Your goal is to generate detailed, vivid scene descriptions optimized for AI image generation based on a voiceover script or story. "
-                "Focus on visual elements like subject, environment, atmosphere, composition, lighting, colors, camera angles, and artistic style. "
-                "Ensure the scenes are sequential, impactful, and designed for rapid viewing (e.g., 4 images per second in a photo dump slideshow), "
-                "capturing key moments that visually narrate the story without needing text. Make descriptions concise yet descriptive enough to produce high-quality, engaging images."
-            )
-        },
-        {
-            "role": "user",
-            "content": (
-                f"Give me scene ideas (visual representations for the words) for the story: \"{story}\".\n\n"
-                "The scenes should form a cohesive visual narrative, with each one building on the previous for quick-paced viewing.\n"
-                "Output must be exactly 6 scene descriptions in the following format:\n"
-                "['option 1', 'option 2', 'option 3', 'option 4', 'option 5', 'option 6']\n\n"
-            )
-        }
-    ]
-
-    print("prompt:")
-    print(messages)
-    print("---------")
-
-    response = open_ai_client.chat.completions.create(
-        model=ai_model,
-        response_model=NewPhotoDumpImages,
-        messages=messages
-    )
-    print("Generated scene image prompt:", response)
-    return {"images_prompts": response}
-
-
 class FixImagePrompt(BaseModel):
     prompt: str
     style: Optional[str]

@@ -18,8 +18,7 @@ class VisualGenerator:
         output_path: where to write the final mp4
         """
         project_duration = self._builder.get_project_duration()
-        # PHOTODUMP LOGIC
-   
+
         scenes = self._builder._project.get("scenes", [])
         
         layers = {}

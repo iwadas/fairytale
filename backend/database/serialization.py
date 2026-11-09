@@ -5,8 +5,6 @@ from database.models import (
     Scene,
     Settings, 
     Voiceover, 
-    ImagesPackage, 
-    PhotoDumpImage, 
     SceneImage, 
     Music
 )
@@ -29,7 +27,6 @@ def serialize_project(project: Project):
         "places": [serialize_place(p) for p in project.places] if is_loaded(project, "places") else [],
         "scenes": [serialize_scene(s) for s in project.scenes] if is_loaded(project, "scenes") else [],
         "voiceovers": [serialize_voiceover(v) for v in project.voiceovers] if is_loaded(project, "voiceovers") else [],
-        "images_packages": [serialize_images_package(ip) for ip in project.images_packages] if is_loaded(project, "images_packages") else [],
         "background_music": [serialize_music(m) for m in project.background_music] if is_loaded(project, "background_music") else []
     }
 
@@ -101,21 +98,6 @@ def serialize_music(music: Music):
         "cut_start": music.cut_start or 0.0,
         "cut_end": music.cut_end or 0.0,
         "layer": music.layer or 4
-    }
-
-def serialize_images_package(package: ImagesPackage):
-    return {
-        "id": package.id,
-        "name": package.name,
-        "created_at": package.created_at.isoformat() if package.created_at else None,
-        "images": [serialize_photo_dump_image(img) for img in package.images] if is_loaded(package, "images") else []
-    }
-
-def serialize_photo_dump_image(image: PhotoDumpImage):
-    return {
-        "id": image.id,
-        "prompt": image.prompt,
-        "src": image.src
     }
 
 def serialize_scene_image(image: SceneImage):

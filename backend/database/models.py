@@ -11,13 +11,6 @@ project_character_association = Table(
     Column("character_id", String(36), ForeignKey("characters.id"))
 )
 
-project_images_package_association = Table(
-    "project_images_package_association",
-    Base.metadata,
-    Column("project_id", String(36), ForeignKey("projects.id")),
-    Column("images_package_id", String(36), ForeignKey("images_packages.id"))
-)
-
 scene_character_association = Table(
     "scene_character_association",
     Base.metadata,
@@ -65,11 +58,6 @@ class Project(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     type = Column(String, nullable=True, default="BASIC")  # Add this line; adjust type/default as needed (e.g., String, Integer)
     scenes = relationship("Scene", back_populates="project")
-    images_packages = relationship(
-        "ImagesPackage",
-        secondary=project_images_package_association,
-        back_populates="projects"
-    )
     characters = relationship(
         "Character",
         secondary=project_character_association,
@@ -98,26 +86,6 @@ class Music(Base):
     cut_end = Column(Float, nullable=True, default=0.0)
     layer = Column(Integer, default=4, nullable=True)
 
-
-class ImagesPackage(Base):
-    __tablename__ = "images_packages"
-    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    name = Column(String, nullable=False)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    images = relationship("PhotoDumpImage", back_populates="package")
-    projects = relationship(
-        "Project",
-        secondary=project_images_package_association,
-        back_populates="images_packages"
-    )
-
-class PhotoDumpImage(Base):
-    __tablename__ = "photo_dump_images"
-    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    package_id = Column(String(36), ForeignKey("images_packages.id"), nullable=False, index=True)
-    prompt = Column(Text, nullable=True)
-    src = Column(String, nullable=True)
-    package = relationship("ImagesPackage", back_populates="images")
 
 class Voiceover(Base):
     __tablename__ = "voiceovers"

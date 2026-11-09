@@ -27,30 +27,17 @@ class VideoBuilder:
         self._subtitle_border = {"width": 0, "color": "white"}
         
         self._vignette = False
-        self._pd_padding = (0.5, 1)
-        self._pd_duration_per_image = 0.15
 
-    def get_project_type(self) -> str:
-        if self._project["type"] == "PHOTO_DUMP" or self._project["name"].lower().find("photo dump") != -1:
-            return "PHOTO_DUMP"
-        else:
-            return "BASIC"
-        
     def get_project_duration(self) -> float:
-        if self.get_project_type() == "PHOTO_DUMP":
-            # Sum durations of all visual 
-            voiceover_duration = self._project["voiceovers"][0]["duration"] if self._project.get("voiceovers") else 0.0
-            return self._pd_padding[0] + voiceover_duration + self._pd_padding[1]
-        else:
-            max_end = 0.0
-            for v in self._project.get("scenes", []):
-                max_end = max(max_end, self.get_element_end_time(v))
-            for v in self._project.get("voiceovers", []):
-                max_end = max(max_end, self.get_element_end_time(v))
-            for m in self._project.get("background_music", []):
-                max_end = max(max_end, self.get_element_end_time(m))
+        max_end = 0.0
+        for v in self._project.get("scenes", []):
+            max_end = max(max_end, self.get_element_end_time(v))
+        for v in self._project.get("voiceovers", []):
+            max_end = max(max_end, self.get_element_end_time(v))
+        for m in self._project.get("background_music", []):
+            max_end = max(max_end, self.get_element_end_time(m))
 
-            return max_end
+        return max_end
 
     # --- Fluent Interface Setters ---
     def set_resolution(self, width: int, height: int) -> "VideoBuilder":
@@ -83,10 +70,6 @@ class VideoBuilder:
         self._subtitle_shadow = True
         return self
 
-    def pd_set_duration_per_image(self, duration: float) -> "VideoBuilder":
-        self._pd_duration_per_image = duration
-        return self
-    
     def add_font(self, font_path: str) -> "VideoBuilder":
         self._fonts.add(font_path)
         return self

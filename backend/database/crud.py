@@ -1,8 +1,8 @@
 from typing import Any, Dict, List, Optional
 import uuid
 from requests import session
-from sqlalchemy import select, delete, func
-from .models import PhotoDumpImage, Project, SceneImage, Voiceover, Place, Scene, Character, ImagesPackage, Music, Settings, project_images_package_association
+from sqlalchemy import select, delete
+from .models import Project, SceneImage, Voiceover, Place, Scene, Character, Music, Settings
 from .decorators import with_session # Import your new tool
 from sqlalchemy.orm import selectinload
 from .serialization import serialize_settings, serialize_music, serialize_project, serialize_scene_image, serialize_voiceover, serialize_scene
@@ -28,28 +28,11 @@ async def get_projects_db(with_thumbnails=False, session=None):
             .scalar_subquery()
         )
 
-        photo_dump_subq = (
-            select(PhotoDumpImage.src)
-            .join(
-                project_images_package_association,
-                project_images_package_association.c.images_package_id == PhotoDumpImage.package_id
-            )
-            # Link the subquery to the outer Project query
-            .where(project_images_package_association.c.project_id == Project.id)
-            .where(PhotoDumpImage.src.is_not(None))
-            .where(PhotoDumpImage.src != "")
-            # Order randomly to pick a random image from the package
-            .order_by(func.random()) 
-            .limit(1)
-            .correlate(Project)
-            .scalar_subquery()
-        )
-
         # 2. Select the Project AND our new subquery as a labeled column
         stmt = (
             select(
                 Project, 
-                func.coalesce(scene_image_subq, photo_dump_subq).label('thumbnail')
+                scene_image_subq.label('thumbnail')
             )
             .order_by(Project.created_at.desc())
         )
@@ -86,9 +69,7 @@ async def get_project_db(id: str, serialize: bool=False, session=None):
             selectinload(Project.places),
             selectinload(Project.characters),
             selectinload(Project.voiceovers),
-            selectinload(Project.background_music),
-            selectinload(Project.images_packages)
-                .selectinload(ImagesPackage.images)
+            selectinload(Project.background_music)
         )
     )
     
@@ -223,32 +204,6 @@ async def copy_project_db(
         )
 
     return serialize_project(new_project)
-
-# PHOTO DUMP PROJECTS
-@with_session
-async def update_pd_project_db(
-    id: str, 
-    name: str, 
-    images_packages_ids: List[str], 
-    session=None
-):
-    stmt = select(Project).where(Project.id == id)
-    result = await session.execute(stmt)
-    project = result.scalars().first()
-    if project:
-        project.name = name
-        project.images_packages = []  # Clear existing associations
-        # add new associations
-        for package_id in images_packages_ids:
-            images_package = await session.get(ImagesPackage, package_id)
-            if images_package:
-                project.images_packages.append(images_package)
-
-        session.add(project)
-        return serialize_project(project)
-    else:
-        return None
-
 
 # VOICEOVERS
 @with_session

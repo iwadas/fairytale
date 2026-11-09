@@ -44,11 +44,6 @@ const tabs = [
         path: '/create-project',
         icon: 'fa-video',
       },
-      { 
-        name: 'Photo Dump', 
-        path: '/create-photo-dump',
-        icon: 'fa-images'
-      },
     ] 
   },
   { name: 'Projects', path: '/select-project', icon: 'fa-photo-film' },

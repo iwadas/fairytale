@@ -102,10 +102,6 @@ const toggleMenu = (projectId) => {
 };
 
 const selectProject = (project) => {
-  if(project.type === 'PHOTO_DUMP' || project.name.toLowerCase().includes('photo dump')){
-    router.push(`/photo-dump-projects/${project.id}`);
-    return;
-  }
   router.push(`/projects/${project.id}`);
 };
 
