@@ -16,3 +16,4 @@ Skąd startujemy: modele i router Characters/Places istnieją, ale są wyłączo
 
 | Id | Efekt | Zależy od |
 |---|---|---|
+| Z01 | Paczka stylu opisuje wygląd, treść i sposób tłumaczenia | — |

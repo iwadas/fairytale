@@ -64,3 +64,6 @@ Widok pracy ekipy w aplikacji. Krytyk i porównanie jakości z obecnym pipeline.
 
 | Id | Efekt | Zależy od |
 |---|---|---|
+| A01 | Ten sam film można zrobić w pełni automatycznie albo krok po kroku | — |
+| A02 | Recenzent wskazuje słabe momenty filmu, a koszt recenzji jest akceptowalny | — |
+| A03 | Agent postprodukcji wykańcza film przejściami i animacjami | R01 |

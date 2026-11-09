@@ -19,6 +19,7 @@ Epiki główne:
 | Z | Postacie, świat i zasoby | `swiat-i-zasoby/` |
 | D | Dźwięk | `dzwiek/` |
 | W | Publikacja i wyniki | `publikacja-i-wyniki/` |
+| B | Badania i ewaluacja | `badania-i-ewaluacja/` |
 | X | Produkt dla innych (OPTIONAL) | `produkt-dla-innych-optional/` |
 
 Litera to prefiks id podepików, więc `A02` należy do Systemu agentowego.
@@ -26,7 +27,10 @@ Litera to prefiks id podepików, więc `A02` należy do Systemu agentowego.
 Jak się łączą: **A** decyduje, *co* jest w filmie (ekipa agentów), **R** decyduje, *jak* film jest złożony i renderowany,
 a **G** sprawia, że twórca wygodnie to widzi i kontroluje. **Z** i **D** dostarczają spójne postacie, style i dźwięk,
 z których korzysta ekipa. **W** wysyła film w świat i przynosi wyniki z powrotem. **P** jest fundamentem pod wszystkie,
-w tym pod wspólną kolejkę zadań w tle dla A i R.
+w tym pod wspólną kolejkę zadań w tle dla A i R. **B** dostarcza wiedzę (co przyciąga i uczy) oraz porównanie do pracy inżynierskiej.
+
+**Soczewka dla wszystkich epików: edukacja.** Filmy mają czegoś uczyć. To także temat pracy inżynierskiej właściciela projektu,
+zob. `docs/superpowers/specs/2026-11-10-wizja-edukacyjna-design.md`.
 
 ```text
 tasks/

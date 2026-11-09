@@ -61,3 +61,4 @@ Podgląd w edytorze. Usunięcie moviepy.
 
 | Id | Efekt | Zależy od |
 |---|---|---|
+| R01 | Komponenty wielokrotnego użytku i skill budujący bibliotekę dla paczki | — |
