@@ -11,6 +11,9 @@ Praca ma trzy poziomy:
 Epiki główne to `system-agentowy/` (A), `oprawa-graficzna/` (G) i `remotion-i-kompozycja/` (R).
 Litera to prefiks id podepików, więc `A02` należy do Systemu agentowego.
 
+Jak się łączą: **A** decyduje, *co* jest w filmie (ekipa agentów), **R** decyduje, *jak* film jest złożony i renderowany,
+a **G** sprawia, że twórca wygodnie to widzi i kontroluje. Wspólna potrzeba A i R to praca w tle (kolejka zadań).
+
 ```text
 tasks/
   system-agentowy/
