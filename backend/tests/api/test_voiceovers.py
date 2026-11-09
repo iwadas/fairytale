@@ -161,3 +161,12 @@ def test_generate_voiceover_with_empty_stored_text_raises(client, sync_db, fake_
 def test_generate_missing_voiceover_raises(client, fake_tts):
     with pytest.raises(ValueError, match="Voiceover not found"):
         client.post("/voiceovers/generate/missing", json={"text": "x"})
+
+
+def test_create_voiceover_null_start_time_falls_back_to_default(client, sync_db, rows):
+    """An explicit JSON ``null`` behaves like an omitted field (former ``Body(0.0)``)."""
+    project = f.make_project(sync_db)
+    response = client.post(f"/voiceovers/{project.id}", json={"start_time": None})
+    assert response.status_code == 200
+    (row,) = rows(Voiceover)
+    assert row.start_time == 0.0

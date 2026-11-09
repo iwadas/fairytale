@@ -7,7 +7,7 @@ from pydantic import BaseModel, field_serializer
 
 from app.db.models import Project
 from app.schemas.character import CharacterOut, PlaceOut
-from app.schemas.common import ORMModel, loaded_list
+from app.schemas.common import ORMModel, loaded_list, RequestModel
 from app.schemas.music import MusicOut, MusicRecord
 from app.schemas.scene import SceneOut, SceneRecord
 from app.schemas.voiceover import VoiceoverOut, VoiceoverRecord
@@ -124,7 +124,7 @@ class ProjectIn(BaseModel):
     script: str
 
 
-class TimelineUpdateIn(BaseModel):
+class TimelineUpdateIn(RequestModel):
     """``PUT /projects/{id}``: timeline elements as sent by the editor.
 
     Each element is a dict with ``id`` and ``type`` (``scene`` | ``voiceover`` |

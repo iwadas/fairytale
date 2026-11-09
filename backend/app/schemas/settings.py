@@ -10,6 +10,7 @@ from typing import Any, Optional
 from pydantic import BaseModel
 
 from app.db.models import Settings
+from app.schemas.common import RequestModel
 
 
 def _decode(value: str | None) -> Any:
@@ -42,7 +43,7 @@ class SettingsOut(BaseModel):
         )
 
 
-class UpdateSettingsIn(BaseModel):
+class UpdateSettingsIn(RequestModel):
     """Every field is optional; see ``settings_service.update_settings`` for merge rules."""
 
     selected_tts_provider: Optional[str] = None

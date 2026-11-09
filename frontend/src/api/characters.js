@@ -1,6 +1,6 @@
 import http from './http';
 
-// FIXME(api): the backend characters router is not mounted (backend/main.py has
+// FIXME(api): the backend characters router is not mounted (backend/app/main.py has
 // `# app.include_router(characters_router)`), so every call below currently 404s.
 
 const multipart = { headers: { 'Content-Type': 'multipart/form-data' } };

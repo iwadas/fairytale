@@ -16,7 +16,7 @@ unchanged (``Scene.duration`` is an Integer column holding floats too).
 
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, model_validator
 from sqlalchemy import inspect
 
 Number = int | float
@@ -24,6 +24,22 @@ Number = int | float
 
 class ORMModel(BaseModel):
     model_config = ConfigDict(from_attributes=True)
+
+
+class RequestModel(BaseModel):
+    """Request body whose explicit ``null`` fields behave as if omitted.
+
+    Mirrors the former ``Body(default, embed=True)`` parameters: a ``null``
+    value falls back to the field default (or is rejected as missing when the
+    field is required).
+    """
+
+    @model_validator(mode="before")
+    @classmethod
+    def _null_means_default(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            return {key: value for key, value in data.items() if value is not None}
+        return data
 
 
 def is_loaded(obj: Any, attr: str) -> bool:

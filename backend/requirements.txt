@@ -25,7 +25,6 @@ camb-sdk==1.5.8
 # --- HTTP / IO ---
 aiohttp==3.14.5
 aiofiles==23.2.1
-requests==2.34.2
 
 # --- Media processing ---
 moviepy==2.2.1

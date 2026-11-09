@@ -5,7 +5,7 @@ from typing import Optional
 from pydantic import BaseModel
 
 from app.db.models import Music
-from app.schemas.common import Number, ORMModel
+from app.schemas.common import Number, ORMModel, RequestModel
 
 
 class MusicOut(BaseModel):
@@ -51,11 +51,11 @@ class MusicRecord(ORMModel):
 # --- requests -------------------------------------------------------------------
 
 
-class CreateMusicIn(BaseModel):
+class CreateMusicIn(RequestModel):
     start_time: float
 
 
-class DuplicateMusicIn(BaseModel):
+class DuplicateMusicIn(RequestModel):
     """Falsy values (0, None) fall back to the source track; ``layer`` defaults to 2."""
 
     start_time: Optional[float] = 0.0
@@ -65,7 +65,7 @@ class DuplicateMusicIn(BaseModel):
     layer: Optional[int] = 2
 
 
-class UpdateMusicIn(BaseModel):
+class UpdateMusicIn(RequestModel):
     src: str
 
 

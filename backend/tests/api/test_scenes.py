@@ -357,3 +357,17 @@ def test_generate_scene_video_missing_scene(client, fake_diffusion):
     assert response.status_code == 404
     assert response.json() == {"detail": "Scene not found"}
     assert fake_diffusion.calls == []
+
+
+def test_create_scene_null_start_time_falls_back_to_default(client, rows):
+    """An explicit JSON ``null`` behaves like an omitted field (former ``Body(0.0)``)."""
+    response = client.post("/scenes/any-project", json={"start_time": None})
+    assert response.status_code == 200
+    assert response.json()["start_time"] == 0.0
+    (row,) = rows(Scene)
+    assert row.start_time == 0.0
+
+
+def test_generate_video_requires_prompt_even_when_null(client):
+    response = client.post("/scenes/generate-video/any-scene", json={"prompt": None})
+    assert response.status_code == 422

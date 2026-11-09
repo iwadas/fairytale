@@ -6,7 +6,7 @@ from pydantic import BaseModel
 
 from app.db.models import Scene, SceneImage
 from app.schemas.character import CharacterOut, PlaceOut
-from app.schemas.common import Number, ORMModel, loaded_list
+from app.schemas.common import Number, ORMModel, loaded_list, RequestModel
 
 # --- responses: serialized format ----------------------------------------------
 
@@ -88,11 +88,11 @@ class SceneRecord(ORMModel):
 # --- requests -------------------------------------------------------------------
 
 
-class CreateSceneIn(BaseModel):
+class CreateSceneIn(RequestModel):
     start_time: Optional[float] = 0.0
 
 
-class DuplicateSceneIn(BaseModel):
+class DuplicateSceneIn(RequestModel):
     """Falsy values (0, None) fall back to the source scene; ``layer`` defaults to 2."""
 
     start_time: Optional[float] = 0.0
@@ -102,28 +102,28 @@ class DuplicateSceneIn(BaseModel):
     layer: Optional[int] = 2
 
 
-class GenerateImagePromptsIn(BaseModel):
+class GenerateImagePromptsIn(RequestModel):
     project_id: str
     selected_voiceover_text_part: str
     additional_info: Optional[str] = None
 
 
-class FixImagePromptIn(BaseModel):
+class FixImagePromptIn(RequestModel):
     scene_prompt: str
     style: Optional[str] = None
     style_power: Optional[float] = 0.5
 
 
-class GenerateSceneVideoIn(BaseModel):
+class GenerateSceneVideoIn(RequestModel):
     prompt: str
     duration: int = 3
 
 
-class FixVideoPromptIn(BaseModel):
+class FixVideoPromptIn(RequestModel):
     new_camera_movement: str
     additional_info: Optional[str] = None
 
 
-class AddCharacterToSceneIn(BaseModel):
+class AddCharacterToSceneIn(RequestModel):
     scene_id: str
     character_id: str

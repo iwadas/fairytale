@@ -6,7 +6,7 @@ from typing import Any, Optional
 from pydantic import BaseModel
 
 from app.db.models import Voiceover
-from app.schemas.common import Number, ORMModel
+from app.schemas.common import Number, ORMModel, RequestModel
 
 
 class VoiceoverOut(BaseModel):
@@ -64,11 +64,11 @@ class VoiceoverRecord(ORMModel):
 # --- requests -------------------------------------------------------------------
 
 
-class CreateVoiceoverIn(BaseModel):
+class CreateVoiceoverIn(RequestModel):
     start_time: float = 0.0
 
 
-class DuplicateVoiceoverIn(BaseModel):
+class DuplicateVoiceoverIn(RequestModel):
     """Falsy values (0, None) fall back to the source voiceover; ``layer`` defaults to 2."""
 
     start_time: Optional[float] = 0.0
@@ -78,7 +78,7 @@ class DuplicateVoiceoverIn(BaseModel):
     layer: Optional[int] = 2
 
 
-class GenerateVoiceoverIn(BaseModel):
+class GenerateVoiceoverIn(RequestModel):
     text: str
 
 
