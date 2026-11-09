@@ -91,3 +91,92 @@ def client(_schema):
 
     with TestClient(app) as test_client:
         yield test_client
+
+
+# --- Helpers for API tests -------------------------------------------------
+
+
+@pytest.fixture
+def reload(sync_db):
+    """``reload(Model, id)``: re-read a row from the DB, bypassing the session cache."""
+
+    def _reload(model, row_id):
+        sync_db.expire_all()
+        return sync_db.get(model, row_id)
+
+    return _reload
+
+
+@pytest.fixture
+def rows(sync_db):
+    """``rows(Model, **filters)``: all matching rows, freshly read from the DB."""
+
+    def _rows(model, **filters):
+        sync_db.expire_all()
+        return sync_db.query(model).filter_by(**filters).all()
+
+    return _rows
+
+
+@pytest.fixture
+def media_dirs(tmp_path, monkeypatch):
+    """Redirect every media output directory to a temp dir (never write to static/)."""
+    settings = get_settings()
+    dirs = {}
+    for name in ("scene_video_dir", "scene_image_dir", "music_dir", "voiceover_dir", "render_output_dir"):
+        target = (tmp_path / name).as_posix()
+        monkeypatch.setattr(settings, name, target)
+        dirs[name] = target
+    return dirs
+
+
+@pytest.fixture
+def fake_llm(monkeypatch):
+    from app.ai.llm import LLM
+    from tests.fakes import FakeLLM
+
+    fake = FakeLLM()
+
+    async def create(cls):
+        return fake
+
+    monkeypatch.setattr(LLM, "create", classmethod(create))
+    return fake
+
+
+@pytest.fixture
+def fake_tts(monkeypatch):
+    from app.ai.tts import TTS
+    from tests.fakes import FakeTTS
+
+    fake = FakeTTS()
+
+    async def create(cls):
+        return fake
+
+    monkeypatch.setattr(TTS, "create", classmethod(create))
+    return fake
+
+
+@pytest.fixture
+def fake_diffusion(monkeypatch):
+    from app.ai.video_generation import Diffusion
+    from tests.fakes import FakeDiffusion
+
+    fake = FakeDiffusion()
+
+    async def create(cls):
+        return fake
+
+    monkeypatch.setattr(Diffusion, "create", classmethod(create))
+    return fake
+
+
+@pytest.fixture
+def render_recorder(monkeypatch):
+    from app.pipeline.render.builder import VideoBuilder
+    from tests.fakes import RenderRecorder
+
+    recorder = RenderRecorder()
+    monkeypatch.setattr(VideoBuilder, "build", lambda self: recorder.record(self))
+    return recorder

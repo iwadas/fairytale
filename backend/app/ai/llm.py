@@ -4,7 +4,7 @@ from openai import AsyncOpenAI
 import instructor 
 
 from app.core.config import get_settings
-from app.db.crud import get_settings_db
+from app.services.settings_service import get_settings_dict as get_settings_db
 
 logger = logging.getLogger(__name__)
 

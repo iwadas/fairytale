@@ -11,7 +11,7 @@ import wave
 from typing import Callable, Optional
 
 from app.core.config import get_settings
-from app.db.crud import get_settings_db
+from app.services.settings_service import get_settings_dict as get_settings_db
 
 from groq import AsyncGroq
 from camb.client import AsyncCambAI, save_async_stream_to_file

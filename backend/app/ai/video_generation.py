@@ -13,7 +13,7 @@ import aiofiles
 from fastapi import HTTPException
 
 from app.core.config import get_settings
-from app.db.crud import get_settings_db
+from app.services.settings_service import get_settings_dict as get_settings_db
 from runware import Runware, IVideoInference, IFrameImage, IVideoInputs, IBytedanceProviderSettings
 
 logger = logging.getLogger(__name__)

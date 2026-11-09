@@ -2,7 +2,7 @@ from typing import Optional
 from app.ai.llm import LLM
 from pydantic import BaseModel
 import asyncio
-from app.db.crud import get_settings_db
+from app.services.settings_service import get_settings_dict as get_settings_db
 
 
 class ScriptGenerator:

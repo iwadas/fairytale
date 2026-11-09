@@ -1,131 +1,57 @@
-import logging
-from fastapi import APIRouter, Body, HTTPException
-
-from app.db.crud import create_voiceover_db, get_project_voiceovers_db, remove_voiceover_db, get_voiceover_db, update_voiceover_db
-
-from app.ai.tts import TTS
-
-from app.realtime.connection_manager import WebSocketTaskManager 
-
 from typing import Optional
 
-import uuid
+from fastapi import APIRouter, HTTPException
 
-logger = logging.getLogger(__name__)
+from app.api.deps import SessionDep
+from app.schemas.voiceover import (
+    CreateVoiceoverIn,
+    DuplicateVoiceoverIn,
+    GenerateVoiceoverIn,
+    GenerateVoiceoverOut,
+    VoiceoverOut,
+)
+from app.services import voiceover_service
+from app.services.errors import NotFoundError
 
 router = APIRouter(prefix="/voiceovers", tags=["voiceovers"])
 
-@router.post("/{project_id}")
-async def create_voiceover(
-    project_id: str,
-    start_time: float = Body(0.0, embed=True),    
-):   
-    return await create_voiceover_db(project_id=project_id, text="", start_time=start_time)
+
+@router.post("/{project_id}", response_model=VoiceoverOut)
+async def create_voiceover(project_id: str, session: SessionDep, body: Optional[CreateVoiceoverIn] = None):
+    body = body or CreateVoiceoverIn()
+    voiceover = await voiceover_service.create_voiceover(session, project_id, body.start_time)
+    return VoiceoverOut.from_model(voiceover)
 
 
-@router.post("/{voiceover_id}/duplicate")
-async def duplicate_voiceover(
-    voiceover_id: str,
-    
-    start_time: Optional[float] = Body(0.0, embed=True),
-    cut_start: Optional[float] = Body(0.0, embed=True),
-    cut_end: Optional[float] = Body(0.0, embed=True),
-    duration: Optional[float] = Body(0.0, embed=True),
-    layer: Optional[int] = Body(2, embed=True),
-    
-):
-    voiceover = await get_voiceover_db(voiceover_id)
-    if not voiceover:
-        raise HTTPException(status_code=404, detail="Voiceover not found")
-
-    new_voiceover = await create_voiceover_db(
-        project_id=voiceover["project_id"],
-        src=voiceover["src"],
-        text=voiceover["text"],
-        text_with_pauses=voiceover["text_with_pauses"],
-        timestamps=voiceover["timestamps"],
-
-        duration=duration or voiceover["duration"],
-        start_time=start_time or voiceover["start_time"] + voiceover["duration"],
-        cut_start=cut_start or voiceover["cut_start"],
-        cut_end=cut_end or voiceover["cut_end"],
-        layer=layer or voiceover["layer"],
-    )
-    return new_voiceover
+@router.post("/{voiceover_id}/duplicate", response_model=VoiceoverOut)
+async def duplicate_voiceover(voiceover_id: str, session: SessionDep, body: Optional[DuplicateVoiceoverIn] = None):
+    try:
+        voiceover = await voiceover_service.duplicate_voiceover(session, voiceover_id, body or DuplicateVoiceoverIn())
+    except NotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    return VoiceoverOut.from_model(voiceover)
 
 
-@router.post("/combine/{project_id}")
-async def combine_voiceovers(project_id: str):
-    """
-    Combine all voiceovers for a given project into a single voiceover.
-    """
-    voiceovers = await get_project_voiceovers_db(project_id=project_id)
-    combined_text = " ".join([" ".join(vo.text.split(" ")) for vo in voiceovers])
-
-    # delete old voiceovers
-    for vo in voiceovers:
-        await remove_voiceover_db(id=vo["id"])
-
-    return await create_voiceover_db(project_id=project_id, text=combined_text)
+@router.post("/combine/{project_id}", response_model=VoiceoverOut)
+async def combine_voiceovers(project_id: str, session: SessionDep):
+    """Combine all voiceovers for a given project into a single voiceover."""
+    voiceover = await voiceover_service.combine_voiceovers(session, project_id)
+    return VoiceoverOut.from_model(voiceover)
 
 
 @router.delete("/{voiceover_id}")
-async def delete_voiceover(
-    voiceover_id: str,
-):
-    await remove_voiceover_db(id=voiceover_id)
+async def delete_voiceover(voiceover_id: str, session: SessionDep):
+    await voiceover_service.delete_voiceover(session, voiceover_id)
     return {"message": "Voiceover deleted successfully"}
 
 
-@router.post("/generate/{voiceover_id}")
-async def generate_voiceover(
-    voiceover_id: str, 
-    text: str = Body(..., embed=True),
-):
-    voiceover = await get_voiceover_db(id=voiceover_id)
-    if not voiceover:
-        raise ValueError("Voiceover not found")
-    if not voiceover["text"]:
-        raise ValueError("Voiceover text is empty")
-    
-    tts_client = await TTS.create()
-
-    task = WebSocketTaskManager(connection_type="global", message_type="voiceover_generation")
-
-    await task.send_notification(
-        message=f"🎙️ Initializing voiceover generation...",
-        status="init"
+@router.post("/generate/{voiceover_id}", response_model=GenerateVoiceoverOut)
+async def generate_voiceover(voiceover_id: str, body: GenerateVoiceoverIn, session: SessionDep):
+    tts_result = await voiceover_service.generate_voiceover(session, voiceover_id, body.text)
+    return GenerateVoiceoverOut(
+        message="voiceover generated successfully",
+        voiceover_id=voiceover_id,
+        src=tts_result["src"],
+        duration=tts_result["duration"],
+        timestamps=tts_result["timestamps"],
     )
-
-    logger.debug("Generating voiceover with text: %s", text)
-
-    tts_result = await tts_client.generate(
-        progress_callback=task.send_notification,
-        text=text,
-    )
-
-    logger.debug("TTS result: %s", tts_result)
-
-    await task.send_notification(
-        message=f"📁 Saving generated voiceover...",
-        status="in_progress"
-    )
-
-    await update_voiceover_db(
-        id=voiceover_id,
-        **tts_result
-    )
-
-    await task.send_notification(
-        message=f"✅ Voiceover generation and saving completed.",
-        status="finished"
-    )
-
-    return {
-        "message": "voiceover generated successfully",
-        "voiceover_id": voiceover_id,
-        "src": tts_result["src"],
-        "duration": tts_result["duration"],
-        "timestamps": tts_result["timestamps"]
-    }
-   
