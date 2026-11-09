@@ -3,11 +3,6 @@ import random
 from typing import List, Any
 from moviepy import VideoFileClip, ImageClip, CompositeVideoClip, AudioFileClip, concatenate_videoclips
 
-# Import your legacy effects (keeping them as is for now)
-from utils.invert_text_mask import generate_invert_mask_text
-from utils.invert_text_mask_color import generate_neon_text_with_border
-from utils.add_br_vignette import vignette_bottom
-
 import tempfile
 import uuid
 

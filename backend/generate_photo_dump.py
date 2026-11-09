@@ -17,7 +17,6 @@ from utils.add_sound_to_video import assemble_audio_replace
 
 import numpy as np
 
-from utils.invert_text_mask_color import generate_neon_text_with_border
 from utils.invert_text_mask import generate_invert_mask_text
 # from services import generate_speech, filename_from_name
 

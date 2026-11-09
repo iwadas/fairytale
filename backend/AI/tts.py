@@ -47,7 +47,6 @@ class TTS:
     async def provide_settings(self):
         settings = await get_settings_db()
 
-        print("TTS Settings:", settings)
         if not settings:
             raise ValueError("Settings not found in database.")
         if not settings.get("selected_tts_provider"):
