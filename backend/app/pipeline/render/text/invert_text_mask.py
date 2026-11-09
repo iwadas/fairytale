@@ -1,111 +1,69 @@
+"""Invert-mask subtitle style: each word is a centred knockout showing the colour-inverted video."""
+
 import logging
-import random
-import numpy as np
-from typing import List, Tuple, Dict, Any
-from moviepy import VideoClip, TextClip, CompositeVideoClip, ImageClip
-from moviepy import vfx
+from collections.abc import Iterable, Mapping
+from typing import Any
+
+from moviepy import CompositeVideoClip, ImageClip, TextClip, VideoClip, vfx
+
+from app.pipeline.render.text.single_word import (
+    WORD_MARGIN,
+    centered_full_frame_mask,
+    font_size_for_word,
+    pick_font,
+)
 
 logger = logging.getLogger(__name__)
 
+MASK_STROKE_WIDTH = 2  # widens the knockout slightly
+BORDER_STROKE_WIDTH = 1
+BORDER_COLOR = "white"
+TRANSPARENT = "rgba(0,0,0,0)"
+
+
 def generate_invert_mask_text(
-    video_size: Tuple[int, int],
-    fonts: List[str],
+    video_size: tuple[int, int],
+    fonts: Iterable[str],
     visuals: VideoClip,
-    voiceover_data: List[Dict[str, Any]],
-    add_border: bool = True  # <--- Added Argument
+    voiceover_data: list[Mapping[str, Any]],
+    add_border: bool = True,
 ) -> VideoClip:
-    """
-    background : your original MoviePy clip (or CompositeVideoClip)
-    words_with_timing : list of dicts with keys 'word', 'start_time', 'end_time'
-    add_border : If True, adds a white stroke on top of the inverted text.
+    """Composite one inverted word per entry of ``voiceover_data`` (``word``, ``start``, ``end``).
 
-    Returns a new clip with the karaoke subtitles composited on top.
+    With ``add_border`` a thin white outline is drawn on top of each word.
     """
-
-    all_knocked_clips = []
-    
+    layers: list[VideoClip] = [visuals]
     logger.debug("Available fonts: %s", fonts)
+    inverted_visuals = visuals.with_effects([vfx.InvertColors()])
 
     for item in voiceover_data:
-        txt = item["word"]
-        t_start = item["start"]
-        t_end = item["end"]
-        duration = t_end - t_start
+        word, start, end = item["word"], item["start"], item["end"]
+        duration = end - start
+        text_params = {
+            "text": word,
+            "font": pick_font(fonts),
+            "font_size": font_size_for_word(word),
+            "method": "label",
+            "margin": WORD_MARGIN,
+            "size": (video_size[0], None),
+        }
+        logger.debug("Processing '%s' with font: %s", word, text_params["font"])
 
-        # --- Dynamic Font Sizing ---
-        FONT_SIZE = 120
-        if len(txt) >= 10:
-            FONT_SIZE = 60
-        elif len(txt) >= 7:
-            FONT_SIZE = 80
-        elif len(txt) >= 5:
-            FONT_SIZE = 100
-        
-        FONT = random.choice(list(fonts))
-        logger.debug("Processing '%s' with font: %s", txt, FONT)
-
-        # 1. Create the Clip used for the MASK (The hole cutter)
-        # Note: Stroke here just dilates the mask slightly; we keep it black or remove it.
-        mask_text_clip = TextClip(
-            text=txt,
-            font=FONT,
-            font_size=FONT_SIZE,
-            color='white',       # The "inside" of the mask needs to be opaque (white for mask)
-            stroke_color='white',# Make stroke white to widen the cut-out area slightly
-            stroke_width=2,
-            method='label',
-            margin=(0, 90),
-            size=(visuals.w, None)
+        cutter = TextClip(**text_params, color="white", stroke_color="white", stroke_width=MASK_STROKE_WIDTH)
+        mask, _ = centered_full_frame_mask(cutter, video_size)
+        layers.append(
+            inverted_visuals.subclipped(start, end)
+            .with_mask(ImageClip(mask, is_mask=True).with_duration(duration))
+            .with_start(start)
         )
 
-        # ─── CREATE FULL-SIZE MASK ────────────────────────────────────
-        # Get the alpha channel or luminance of the text clip to use as mask
-        # We ensure we get the mask properly from the TextClip
-        if mask_text_clip.mask is None:
-             # Fallback if mask isn't auto-generated (rare in v2)
-             mask_text_clip = mask_text_clip.with_mask()
-             
-        mask_img = mask_text_clip.mask.get_frame(0)
-        h, w = mask_img.shape
-
-        full_mask_array = np.zeros((visuals.h, visuals.w), dtype=float)
-
-        # Calculate position (centering)
-        pos_x = (video_size[0] - w) // 2
-        pos_y = (video_size[1] - h) // 2
-
-        # Place the text mask in the center of the full black frame
-        full_mask_array[pos_y:pos_y + h, pos_x:pos_x + w] = mask_img
-        # ───────────────────────────────────────────────────────────────
-
-        full_mask_clip = ImageClip(full_mask_array, is_mask=True).with_duration(duration)
-
-        # 2. Create the Inverted Video Piece
-        inverted_piece = (
-            visuals.with_effects([vfx.InvertColors()])
-            .subclipped(t_start, t_end)
-            .with_mask(full_mask_clip)
-            .with_start(t_start)
-        )
-        
-        all_knocked_clips.append(inverted_piece)
-
-        # 3. (Optional) Create the White Border Overlay
         if add_border:
-            # We create a visual clip that is JUST the stroke
-            border_clip = TextClip(
-                text=txt,
-                font=FONT,
-                color='rgba(0,0,0,0)',
-                font_size=FONT_SIZE,
-                stroke_color='white',   # The actual border color
-                stroke_width=1,         # Slightly thicker than mask to be visible
-                method='label',
-                margin=(0, 90),
-                size=(visuals.w, None)    # Match dimensions of mask clip exactly
-            ).with_position(('center', 'center')).with_start(t_start).with_duration(duration)
+            border = TextClip(
+                **text_params,
+                color=TRANSPARENT,
+                stroke_color=BORDER_COLOR,
+                stroke_width=BORDER_STROKE_WIDTH,
+            )
+            layers.append(border.with_position(("center", "center")).with_start(start).with_duration(duration))
 
-            all_knocked_clips.append(border_clip)
-
-    # Return original background with the new inverted chunks (and borders) layered on top
-    return CompositeVideoClip([visuals] + all_knocked_clips)
+    return CompositeVideoClip(layers)

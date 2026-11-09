@@ -1,85 +1,60 @@
+"""Scene videos composited into the project timeline."""
+
 import logging
-import os
-import random
-from typing import Any, List
-from moviepy import VideoFileClip, TextClip, CompositeVideoClip, AudioFileClip, ColorClip, VideoClip, ImageClip, concatenate_videoclips
-from pydub import AudioSegment
+from collections.abc import Mapping
+from typing import TYPE_CHECKING, Any
+
+from moviepy import CompositeVideoClip, VideoClip, VideoFileClip
+
+if TYPE_CHECKING:
+    from app.pipeline.render.builder import VideoBuilder
 
 logger = logging.getLogger(__name__)
 
-BG_MUSIC_PATH = 'static/default/sounds/'
+Scene = Mapping[str, Any]
+
+
+def fit_within(size: tuple[int, int], bounds: tuple[int, int]) -> tuple[int, int]:
+    """Largest size with the same aspect ratio as ``size`` that fits inside ``bounds``."""
+    scale = min(bounds[0] / size[0], bounds[1] / size[1])
+    return int(size[0] * scale), int(size[1] * scale)
+
+
+def z_ordered(scenes: list[Scene]) -> list[Scene]:
+    """Composite order: highest ``layer`` first (i.e. at the bottom), then by start time."""
+    by_start = sorted(scenes, key=lambda scene: float(scene["start_time"]))
+    return sorted(by_start, key=lambda scene: scene.get("layer", 0), reverse=True)  # stable
+
 
 class VisualGenerator:
-    def __init__(self, builder: Any):
+    def __init__(self, builder: "VideoBuilder"):
         self._builder = builder
 
     def generate(self) -> VideoClip:
-        """
-        project: dict containing "scenes" and "voiceovers" lists
-        Each scene: {"start_time": float, "video_src": "path_or_url", "duration": float}
-        Each voiceover: {"start_time": float, "src": "path_or_url", "duration": float, "timestamps": [...], "text_with_pauses": "..."}
-        output_path: where to write the final mp4
-        """
-        project_duration = self._builder.get_project_duration()
-
+        """Each scene: ``video_src``, ``start_time``, ``duration``, optional ``cut_start``/``cut_end``/``layer``."""
         scenes = self._builder._project.get("scenes", [])
-        
-        layers = {}
-        for s in scenes:
-            layer = s.get("layer", 0)
-            if layer not in layers:
-                layers[layer] = []
-            layers[layer].append(s)
+        clips = [clip for scene in z_ordered(scenes) if (clip := self._scene_clip(scene)) is not None]
+        return CompositeVideoClip(clips, size=self._builder._resolution).with_duration(
+            self._builder.get_project_duration()
+        )
 
+    def _scene_clip(self, scene: Scene) -> VideoClip | None:
+        src = scene.get("video_src")
+        start_time = float(scene["start_time"])
+        if not src or not str(src).strip():
+            logger.warning("Skipping scene at %ss - no video_src: %s", start_time, scene)
+            return None
 
-        def add_scene(scene, video_clips: List[VideoClip]) -> List[VideoClip]:
-            src = scene.get("video_src")
-            start_time = float(scene["start_time"])
-            cut_start = float(scene.get("cut_start", 0))
-            cut_end = float(scene.get("cut_end", 0))
-            
-            if not src or not str(src).strip():
-                logger.warning("Skipping scene at %ss - no video_src: %s", start_time, scene)
-                return None
-            
-            try:
-                clip = VideoFileClip(src)
-            except Exception as e:
-                raise RuntimeError(f"Cannot load scene video {src}: {e}")
-            
-            clip = clip.subclipped(cut_start, self._builder.get_element_duration(scene) + cut_start)
-            clip = clip.with_start(start_time)
+        try:
+            clip = VideoFileClip(src)
+        except Exception as e:
+            raise RuntimeError(f"Cannot load scene video {src}: {e}") from e
 
-            target_w, target_h = self._builder._resolution
+        cut_start = float(scene.get("cut_start", 0))
+        clip = clip.subclipped(cut_start, self._builder.get_element_duration(scene) + cut_start).with_start(start_time)
 
-            if (clip.w, clip.h) != (target_w, target_h):
-                width_ratio = target_w / clip.w
-                height_ratio = target_h / clip.h
-                
-                # 2. Pick the smaller ratio so the clip doesn't overflow the screen
-                scale_factor = min(width_ratio, height_ratio)
-                
-                # 3. Apply the scale factor to the original dimensions
-                new_w = int(clip.w * scale_factor)
-                new_h = int(clip.h * scale_factor)
-                
-                # 4. Resize the clip using the new proportional dimensions
-                clip = clip.resized(new_size=(new_w, new_h))
-                
-                # 5. Center it! (Crucial if you are compositing)
-                clip = clip.with_position("center")
-
-            video_clips.append(clip)
-
-        video_clips = []
-
-        for layer, scenes in sorted(layers.items(), reverse=True):
-            scenes_sorted = sorted(scenes, key=lambda x: float(x["start_time"]))
-            
-            for i, s in enumerate(scenes_sorted):
-                add_scene(s, video_clips)
-                
-
-        return CompositeVideoClip(video_clips, size=self._builder._resolution).with_duration(project_duration)
-
-
+        resolution = self._builder._resolution
+        if (clip.w, clip.h) != tuple(resolution):
+            # Letterbox: keep the aspect ratio and centre the clip.
+            clip = clip.resized(new_size=fit_within((clip.w, clip.h), resolution)).with_position("center")
+        return clip

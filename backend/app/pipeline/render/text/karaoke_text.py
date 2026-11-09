@@ -1,312 +1,262 @@
+"""Karaoke subtitles rendered with moviepy: words of a segment drop in one by one,
+optionally with a soft dark glow, and stay until the segment ends.
+
+Legacy renderer; the live export path uses a Remotion overlay instead.
+"""
+
 import logging
+from collections.abc import Callable, Sequence
+from dataclasses import dataclass
 
-
-
-import tempfile
-from PIL import Image, ImageFilter, ImageEnhance
-from typing import List, Dict, Any, Optional, Tuple
-from moviepy import VideoFileClip, TextClip, CompositeVideoClip, AudioFileClip, ColorClip, VideoClip, ImageClip
-from moviepy.video.VideoClip import ImageClip
-from moviepy.video.fx import CrossFadeIn
 import numpy as np
+from moviepy import ColorClip, CompositeVideoClip, ImageClip, TextClip, VideoClip
+from moviepy.video.fx import CrossFadeIn
+from PIL import Image, ImageFilter
 
-from app.core.config import get_settings
+from app.pipeline.render.word_timing import KaraokeSegment
 
 logger = logging.getLogger(__name__)
 
+DEFAULT_VIDEO_SIZE = (720, 1280)
+DEFAULT_TEXT_COLOR = "white"
+
+# Layout values are tuned for a 720x1280 portrait frame and scaled to the actual one
+# (see KaraokeLayout.for_video): font size and line spacing by height/720, word gap and
+# line width by width/720, vertical position and drop distance by height/1280.
+BASE_FONT_SIZE = 30
+BASE_LINE_SPACING = 14
+BASE_WORD_GAP = 7
+BASE_MAX_LINE_WIDTH = 500
+BASE_TOP_Y = 800
+BASE_DROP_OFFSET = 10
+REFERENCE_SHORT_SIDE = 720
+REFERENCE_LONG_SIDE = 1280
+
+TEXT_MARGIN = (0, 30)
+TRANSPARENT_RGBA = (0, 0, 0, 0)
+PLACEHOLDER_EXTRA_HEIGHT = 10
+
+# Glow (shadow): two blurred black silhouettes behind each word, widest first.
+GLOW_BLUR_RADII = (12, 5)
+GLOW_OFFSET_RATIO = 0.6
+GLOW_PADDING_FACTOR = 3
+SILHOUETTE_THRESHOLD = 50
+
+Position = tuple[float, float]
 
 
-def generate_karaoke_text(segments: List[Dict[str, Any]], visuals: VideoClip, options: Dict[str, Any] = None) -> VideoClip:
-    """
-    Generates karaoke-style subtitles based on the provided segments and composits them on top of the visuals.
-    Each segments contains:
-    ```python
-    {
-        "words": List[str],  # List of words in the segment
-        "start": float,     # Start time of the segment in seconds
-        "end": float        # End time of the segment in seconds
-    }
-    ```    
-    Options can include:
-    - font: Path to the font file to use for the text
-    - color: Color of the text (default: 'white')
-    - shadow: Boolean indicating whether to add a shadow effect (default: False)
-    - video_size: Tuple (width, height) of the video for proper text positioning (default: (720, 1280))
-    - border: Dictionary containing border properties (default: {"width": 0, "color": "white"})
-    """
+@dataclass(frozen=True)
+class KaraokeLayout:
+    video_width: int
+    video_height: int
+    font_size: int
+    line_spacing: float
+    word_gap: int
+    max_line_width: int
+    top_y: float
+    drop_offset: float
 
-    # PARAMS
-    VIDEO_SIZE = options.get("video_size", (720, 1280))
-    VIDEO_W, VIDEO_H = VIDEO_SIZE
-    FONT = options.get("font", 'DEFAULT_FONT')
-
-    FONTSIZE = int(30 * (VIDEO_H / 720))
-    LINE_SPACING = 14 * (VIDEO_H / 720)
-    WORD_GAP_PX = int(7 * (VIDEO_W / 720))
-    MAX_LINE_WIDTH_PX = int(500 * (VIDEO_W / 720))
-    POS_Y = 800 * (VIDEO_H / 1280)  # Adjust Y position based on resolution
-    
-    COLOR = options.get("color", 'white')
-    SPECIAL_COLOR = options.get("special_color", 'yellow')
-    ADD_SHADOW = options.get("shadow", False)
-    BORDER = options.get("border", {"width": 0, "color": "white"})
-
-    DEFAULT_ANIMATION_DURATION = 0.4
-    DROP_OFFSET = 10 * (VIDEO_H / 1280)
-
-
-    # HELPER FUNCTIONS
-
-    # getting size of the pixel for future use in positioning and styling
-    def word_pixel_size(word: str) -> Tuple[int, int]:
-        """Return (width, height) of a single word rendered with the global settings."""
-        tmp = TextClip(
-            text=word,
-            font=FONT,
-            font_size=FONTSIZE,
-            color=COLOR,
-            method='label',
-        )
-        w, h = tmp.size
-        tmp.close()
-        return w, h
-    
-    # Creating word with appropriate styling and effects
-    def make_word_clip(txt: str,
-                    color: str,
-                    start: float,
-                    end: float,
-                    width: int,
-                    pos: Tuple[int, int],
-                    animation_duration: Optional[float] = None
-                ) -> VideoClip:
-        """Return a single-word clip that is guaranteed to have w > 0, h > 0."""
-
-        clip = TextClip(
-            text=txt,
-            font_size=FONTSIZE,
-            color=color,
-            font=FONT,
-            bg_color=(0,0,0,0),
-            margin=(0, 30),
-            method='label',               # <-- exact bbox
-            size=(width, None),  # give some breathing room
+    @classmethod
+    def for_video(cls, video_size: tuple[int, int]) -> "KaraokeLayout":
+        width, height = video_size
+        return cls(
+            video_width=width,
+            video_height=height,
+            font_size=int(BASE_FONT_SIZE * (height / REFERENCE_SHORT_SIDE)),
+            line_spacing=BASE_LINE_SPACING * (height / REFERENCE_SHORT_SIDE),
+            word_gap=int(BASE_WORD_GAP * (width / REFERENCE_SHORT_SIDE)),
+            max_line_width=int(BASE_MAX_LINE_WIDTH * (width / REFERENCE_SHORT_SIDE)),
+            top_y=BASE_TOP_Y * (height / REFERENCE_LONG_SIDE),
+            drop_offset=BASE_DROP_OFFSET * (height / REFERENCE_LONG_SIDE),
         )
 
-        w, h = clip.size
 
-        logger.debug("Clip size: %s", (w, h))
-        if w == 0 or h == 0:               # <-- safety net
-            # fallback: draw a tiny coloured rectangle so the mask is not empty
-            logger.warning("TextClip has zero size; falling back to a placeholder ColorClip")
-            clip = ColorClip(size=(width, FONTSIZE+10), color=color).with_duration(end-start)
-            w, h = clip.size
-
-        # keep the clip inside the video frame
-        x = max(0, min(pos[0], VIDEO_W - w))
-        y = max(0, min(pos[1], VIDEO_H - h))
+# --- Layout math (pure) ---------------------------------------------------------------------
 
 
+def wrap_into_lines(widths: Sequence[int], gap: int, max_width: int) -> list[list[int]]:
+    """Greedy word wrap on pixel widths; returns the word indices of each line.
 
-        def make_drop_position(pos_x, pos_y, animation_duration=DEFAULT_ANIMATION_DURATION):
-            def position(t):
-                if t < animation_duration:
-                    progress = t / animation_duration
-                    # Ease-out quadratic for smooth landing
-                    eased = 1 - (1 - progress) ** 2
-                    y_offset = DROP_OFFSET * (1 - eased)
-                else:
-                    y_offset = 0
-                return (pos_x, pos_y + y_offset)
-            return position
-
-
-        def shadow_text_clip(text_clip: TextClip, blur_radius: int, pos: Tuple[int, int], start: float, animation_duration: float, duration: float) -> VideoClip:
-            # Convert TextClip to PIL
-            temp_file = tempfile.NamedTemporaryFile(suffix=".png").name
-            clip.save_frame(temp_file)
-            image = Image.open(temp_file)
-            pil_img = image
-
-            # === THIS IS THE KEY CHANGE ===
-            # Force the text to be bright white (ignoring original color)
-            # Convert to grayscale then threshold to pure white text on transparent bg
-            pil_img = pil_img.convert("L")                     # grayscale
-            pil_img = pil_img.point(lambda p: 255 if p > 50 else 0)  # make text pure white
-            pil_img = pil_img.convert("RGBA")
-            data = pil_img.getdata()
-            new_data = []
-            for item in data:
-                # Keep white pixels white, make dark pixels transparent
-                if item[0] == 255:  # white
-                    new_data.append((0, 0, 0, 255))   # bright white
-                    # new_data.append((255, 255, 255, 255))   # bright white
-                else:
-                    new_data.append((0, 0, 0, 0))           # transparent
-            pil_img.putdata(new_data)
-            # ===============================
-
-            # Offset for centered blur
-            offset = int(blur_radius * 0.6)
-
-            # Pad for blur
-            pil_img_padded = Image.new("RGBA", (pil_img.width + blur_radius * 3, pil_img.height + blur_radius * 3), (0,0,0,0))
-            pil_img_padded.paste(pil_img, (blur_radius + offset, blur_radius + offset), pil_img)
-
-            # Apply strong Gaussian blur → creates bright glow
-            pil_img_padded = pil_img_padded.filter(ImageFilter.GaussianBlur(radius=blur_radius))
-
-            # Optional: make it even brighter (boost intensity)
-            # enhancer = ImageEnhance.Brightness(pil_img_padded)
-            # pil_img_padded = enhancer.enhance(4)  # increase if you want stronger glow
-
-            # Convert back to MoviePy clip
-            text_clip = ImageClip(np.array(pil_img_padded))
-            final_pos = (pos[0] - 2*offset, pos[1] - 2*offset)
-            text_clip = text_clip.with_duration(duration).with_start(start).with_position(make_drop_position(*final_pos, animation_duration=animation_duration)).with_effects([CrossFadeIn(animation_duration / 2)])
-
-            return text_clip
-
-        fade_in_duration = animation_duration / 2 if animation_duration is not None else None
+    A word wider than ``max_width`` still gets a line of its own.
+    """
+    lines: list[list[int]] = []
+    current: list[int] = []
+    current_width = 0
+    for index, width in enumerate(widths):
+        added = width + gap if current_width > 0 else width
+        if current_width + added > max_width and current:
+            lines.append(current)
+            current, current_width = [index], width
+        else:
+            current.append(index)
+            current_width += added
+    if current:
+        lines.append(current)
+    return lines
 
 
-        clip = clip.with_position(make_drop_position(x, y, animation_duration=animation_duration)).with_start(start).with_duration(end - start).with_effects([CrossFadeIn(fade_in_duration)])
-        
-        if ADD_SHADOW:
-            shadow_clip_1 = shadow_text_clip(text_clip = clip.copy(), blur_radius=5, pos=(x, y), start=start, duration = end-start, animation_duration=fade_in_duration)
-            shadow_clip_2 = shadow_text_clip(text_clip = clip.copy(), blur_radius=12, pos=(x, y), start=start, duration = end-start, animation_duration=fade_in_duration)
+def layout_words(widths: Sequence[int], layout: KaraokeLayout) -> list[Position]:
+    """Resting (x, y) of every word: lines stacked from ``top_y``, each centred horizontally."""
+    gap, max_width = layout.word_gap, layout.max_line_width
+    positions: list[Position] = [(0, 0)] * len(widths)
+    y = layout.top_y
+    for line in wrap_into_lines(widths, gap, max_width):
+        line_width = sum(widths[i] + gap for i in line) - gap
+        x = (layout.video_width - max_width) // 2 + (max_width - line_width) // 2
+        for i in line:
+            positions[i] = (x, y)
+            x += widths[i] + gap
+        y += layout.font_size + layout.line_spacing
+    return positions
 
-        return (clip, shadow_clip_1, shadow_clip_2)
 
-    clips = []
-    for seg in segments:
-        seg_start = seg["start"]
-        seg_end   = seg["end"]
-        words     = seg["words"]
-        # --------------------------------------------------------------
-        # 1. Build the *full* segment text and split it into lines
-        # --------------------------------------------------------------
-        # textwrap uses characters, not pixels → we have to iterate
-        lines = []
-        current_line = []
-        current_width = 0
+def clamp_to_frame(position: Position, size: tuple[int, int], frame_size: tuple[int, int]) -> Position:
+    """Shift a clip so it stays inside the frame (top-left wins if it is larger)."""
+    x = max(0, min(position[0], frame_size[0] - size[0]))
+    y = max(0, min(position[1], frame_size[1] - size[1]))
+    return x, y
 
-        for w in words:
-            ww, wh = word_pixel_size(w["word"])
-            logger.debug("Word %s size: %sx%s", w, ww, wh)
 
-            new_word_width = WORD_GAP_PX + ww if current_width > 0 else ww 
+def drop_in(x: float, y: float, duration: float, drop_offset: float) -> Callable[[float], Position]:
+    """Position over time: start ``drop_offset`` px low and ease out (quadratic) onto (x, y)."""
 
-            if current_width + new_word_width > MAX_LINE_WIDTH_PX and current_line:
-                lines.append(current_line)
-                current_line = [w]
-                current_width = ww
-            else:
-                current_line.append(w)
-                current_width += new_word_width
+    def position(t: float) -> Position:
+        if t < duration:
+            eased = 1 - (1 - t / duration) ** 2
+            return x, y + drop_offset * (1 - eased)
+        return x, y
 
-        if current_line:
-            lines.append(current_line)
+    return position
 
-        logger.debug("Lines: %s", lines)
 
-        # --------------------------------------------------------------
-        # 2. Compute the exact (x, y) position of *every* word in the
-        #     final layout (so that each word appears exactly where it
-        #     will end up when the whole segment is visible)
-        # --------------------------------------------------------------
-        word_positions = []          # list of (word_obj, x, y)
+# --- Clip building -----------------------------------------------------------------------------
 
-        y = POS_Y
-        for line_words in lines:
-            # total width of the line (including spaces)
-            line_w = sum(word_pixel_size(w["word"])[0] + WORD_GAP_PX for w in line_words) - WORD_GAP_PX
 
-            line_x_start = (VIDEO_W - MAX_LINE_WIDTH_PX) // 2 + \
-                        (MAX_LINE_WIDTH_PX - line_w) // 2
+def generate_karaoke_text(
+    segments: Sequence[KaraokeSegment],
+    visuals: VideoClip,
+    *,
+    font: str,
+    color: str = DEFAULT_TEXT_COLOR,
+    shadow: bool = False,
+    video_size: tuple[int, int] = DEFAULT_VIDEO_SIZE,
+) -> VideoClip:
+    """Composite karaoke subtitles for ``segments`` (see ``word_timing.karaoke_segments``) over ``visuals``.
 
-            x = line_x_start
-            for i, w in enumerate(line_words):
-                ww, _ = word_pixel_size(w["word"])
-                word_positions.append((w, x, y, ww))
-                x += ww + WORD_GAP_PX
+    Each word appears at its own ``start``, drops in over its own duration and stays
+    until the segment ``end``.
+    """
+    layout = KaraokeLayout.for_video(video_size)
+    clips: list[VideoClip] = []
 
-            y += FONTSIZE + LINE_SPACING
+    for segment in segments:
+        words = segment["words"]
+        widths = [_text_width(word["word"], font, layout.font_size) for word in words]
 
-        logger.debug("Word positions: %s", word_positions)
-
-        # --------------------------------------------------------------
-        # 3. Create a TextClip for *every* word
-        # --------------------------------------------------------------
-        for i, (word_obj, final_x, final_y, word_width) in enumerate(word_positions):
-            txt = word_obj["word"]
-            appear_at = word_obj["start"]
-            animation_duration = word_obj.get("end") - appear_at
-
+        for word, width, position in zip(words, widths, layout_words(widths, layout)):
             try:
-
-                is_special = word_obj.get("is_special", False)
-
-                word_clip, blurred_clip, shadow_clip = make_word_clip(
-                    # if the text is special we make it uppercase
-                    txt=txt,
-                    width=word_width,
-                    start=appear_at,
-                    # color=SPECIAL_COLOR if is_special else COLOR,
-                    color=COLOR,
-                    end=seg_end,
-                    animation_duration=animation_duration,
-                    pos=(final_x, final_y)
+                clips += _word_clips(
+                    text=word["word"],
+                    start=word["start"],
+                    end=segment["end"],
+                    animation_duration=word["end"] - word["start"],
+                    width=width,
+                    position=position,
+                    font=font,
+                    color=color,
+                    shadow=shadow,
+                    layout=layout,
                 )
-        
-                clips.append(shadow_clip)
-                clips.append(blurred_clip)
-                clips.append(word_clip)
+            except Exception:
+                logger.exception("Failed to create TextClip for word: '%s'", word["word"])
+
+    return CompositeVideoClip([visuals, *clips])
 
 
-            except Exception as e:
-                logger.exception("Failed to create TextClip for word: '%s': %s", txt, e)
-                continue
-
-    # ------------------------------------------------------------------
-    # 4. Composite everything on top of the original video
-    # ------------------------------------------------------------------
-    final = CompositeVideoClip([visuals] + clips)
-    return final
+def _text_width(text: str, font: str, font_size: int) -> int:
+    probe = TextClip(text=text, font=font, font_size=font_size, method="label")
+    width = probe.size[0]
+    probe.close()
+    return width
 
 
+def _word_clips(
+    *,
+    text: str,
+    start: float,
+    end: float,
+    animation_duration: float,
+    width: int,
+    position: Position,
+    font: str,
+    color: str,
+    shadow: bool,
+    layout: KaraokeLayout,
+) -> list[VideoClip]:
+    """The word clip, preceded by its glow clips when ``shadow`` is on (bottom to top)."""
+    clip = TextClip(
+        text=text,
+        font_size=layout.font_size,
+        color=color,
+        font=font,
+        bg_color=TRANSPARENT_RGBA,
+        margin=TEXT_MARGIN,
+        method="label",
+        size=(width, None),
+    )
+    if clip.w == 0 or clip.h == 0:
+        logger.warning("TextClip has zero size; falling back to a placeholder ColorClip")
+        clip = ColorClip(size=(width, layout.font_size + PLACEHOLDER_EXTRA_HEIGHT), color=color).with_duration(end - start)
 
-def generate_karaoke_remotion(visuals, subtitles, **kwargs):
-    import os
-    import subprocess
-    from moviepy.editor import VideoFileClip
+    x, y = clamp_to_frame(position, clip.size, (layout.video_width, layout.video_height))
+    fade_in = animation_duration / 2
+    clip = (
+        clip.with_position(drop_in(x, y, animation_duration, layout.drop_offset))
+        .with_start(start)
+        .with_duration(end - start)
+        .with_effects([CrossFadeIn(fade_in)])
+    )
+    if not shadow:
+        return [clip]
 
-    remotion_path = str(get_settings().remotion_app_dir)
-    logger.info("Remotion path: %s", remotion_path)
+    glows = [
+        _glow_clip(clip, radius, (x, y), start, end - start, fade_in, layout.drop_offset)
+        for radius in GLOW_BLUR_RADII
+    ]
+    return [*glows, clip]
 
-    output_path = os.path.join(remotion_path, "out", "video7.mov")
 
-    # 🔥 (1) Odpal Remotion
-    # Na razie hardcoded composition (tak jak chciałeś)
-    # subprocess.run(
-    #     [
-    #         "npx",
-    #         "remotion",
-    #         "render",
-    #         "Karaoke",
-    #         output_path,
-    #         "--codec=prores",
-    #         "--prores-profile=4444"
-    #     ],
-    #     cwd=remotion_path,
-    #     check=True
-    # )
+def _black_silhouette(frame: np.ndarray) -> Image.Image:
+    """Opaque black where the frame is bright (the text), transparent elsewhere."""
+    gray = np.asarray(Image.fromarray(frame.astype("uint8")).convert("L"))
+    rgba = np.zeros((*gray.shape, 4), dtype=np.uint8)
+    rgba[..., 3] = np.where(gray > SILHOUETTE_THRESHOLD, 255, 0)
+    return Image.fromarray(rgba)  # 4 x uint8 -> RGBA
 
-    # 🔥 (2) Załaduj jako overlay z alpha
-    overlay = VideoFileClip(output_path, has_mask=True)
 
-    # 🔥 (3) Dopasuj do visuals (opcjonalnie)
-    if visuals:
-        overlay = overlay.set_duration(visuals.duration)
+def _glow_clip(
+    text_clip: VideoClip,
+    blur_radius: int,
+    position: Position,
+    start: float,
+    duration: float,
+    animation_duration: float,
+    drop_offset: float,
+) -> VideoClip:
+    """A blurred black silhouette of ``text_clip`` placed slightly up-left of ``position``."""
+    silhouette = _black_silhouette(text_clip.get_frame(0))
+    offset = int(blur_radius * GLOW_OFFSET_RATIO)
+    padding = blur_radius * GLOW_PADDING_FACTOR
 
-    return overlay
+    canvas = Image.new("RGBA", (silhouette.width + padding, silhouette.height + padding), TRANSPARENT_RGBA)
+    canvas.paste(silhouette, (blur_radius + offset, blur_radius + offset), silhouette)
+    glow = canvas.filter(ImageFilter.GaussianBlur(radius=blur_radius))
+
+    x, y = position[0] - 2 * offset, position[1] - 2 * offset
+    return (
+        ImageClip(np.array(glow))
+        .with_duration(duration)
+        .with_start(start)
+        .with_position(drop_in(x, y, animation_duration, drop_offset))
+        .with_effects([CrossFadeIn(animation_duration / 2)])
+    )

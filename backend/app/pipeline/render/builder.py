@@ -1,62 +1,65 @@
+"""``VideoBuilder``: fluent configuration + render of a project to an mp4 with moviepy.
+
+Legacy renderer, to be superseded by the Remotion service.
+"""
+
 import logging
 import os
-import random
-from typing import List, Any
-from moviepy import VideoFileClip, ImageClip, CompositeVideoClip, AudioFileClip, concatenate_videoclips
-
+import shutil
 import tempfile
 import uuid
+from collections.abc import Mapping
+from typing import Any
+
+from moviepy import AudioFileClip
 
 from app.pipeline.render.audio import AudioGenerator
+from app.pipeline.render.subtitles import (
+    DEFAULT_SUBTITLE_COLOR,
+    DEFAULT_SUBTITLE_SPECIAL_COLOR,
+    SUBTITLE_STYLES,
+    SubtitleGenerator,
+)
 from app.pipeline.render.visual import VisualGenerator
-from app.pipeline.render.subtitles import SubtitleGenerator
 
 logger = logging.getLogger(__name__)
 
+DEFAULT_RESOLUTION = (720, 1280)
+DEFAULT_FPS = 24
+DEFAULT_SUBTITLE_STYLE = "border"
+VIDEO_CODEC = "libx264"
+AUDIO_CODEC = "aac"
+RENDER_THREADS = 4
+
+# Serialized project: "scenes", "voiceovers" and "background_music" lists of timeline elements.
+Project = Mapping[str, Any]
+
 
 class VideoBuilder:
-    def __init__(self, project: Any, output_filename: str):
+    def __init__(self, project: Project, output_filename: str):
         self._project = project
         self._output_filename = output_filename
-        # BASE
-        self._resolution = (720, 1280) 
-        self._fps = 24
-        # SUBTITLES
-        self._subtitle_type = "border" 
-        self._subtitle_color = "white"
-        self._subtitle_special_color = "rgb(230, 163, 49)"
-        self._fonts = set()
+        self._resolution = DEFAULT_RESOLUTION
+        self._fps = DEFAULT_FPS
+        self._subtitle_type = DEFAULT_SUBTITLE_STYLE
+        self._subtitle_color = DEFAULT_SUBTITLE_COLOR
+        self._subtitle_special_color = DEFAULT_SUBTITLE_SPECIAL_COLOR
+        self._fonts: set[str] = set()
         self._subtitle_shadow = False
         self._subtitle_border = {"width": 0, "color": "white"}
-        
-        self._vignette = False
 
-    def get_project_duration(self) -> float:
-        max_end = 0.0
-        for v in self._project.get("scenes", []):
-            max_end = max(max_end, self.get_element_end_time(v))
-        for v in self._project.get("voiceovers", []):
-            max_end = max(max_end, self.get_element_end_time(v))
-        for m in self._project.get("background_music", []):
-            max_end = max(max_end, self.get_element_end_time(m))
+    # --- Fluent configuration ---
 
-        return max_end
-
-    # --- Fluent Interface Setters ---
     def set_resolution(self, width: int, height: int) -> "VideoBuilder":
         self._resolution = (width, height)
         return self
 
-    def add_vignette(self) -> "VideoBuilder":
-        self._vignette = True
-        return self
-
     def set_subtitle_style(self, style: str) -> "VideoBuilder":
-        if( style not in ["none", "invert_mask", "border", "karaoke", "karaoke_remotion"]):
-            raise ValueError(f"Unsupported subtitle style: {style}, must be one of none, invert_mask, border, karaoke")
+        if style not in SUBTITLE_STYLES:
+            raise ValueError(f"Unsupported subtitle style: {style}, must be one of {', '.join(SUBTITLE_STYLES)}")
         self._subtitle_type = style
         return self
-    
+
     def set_subtitle_border(self, width: int, color: str) -> "VideoBuilder":
         self._subtitle_border = {"width": width, "color": color}
         return self
@@ -66,6 +69,7 @@ class VideoBuilder:
         return self
 
     def set_subtitle_special_color(self, color: str) -> "VideoBuilder":
+        # Currently has no visual effect: special karaoke words are only upper-cased.
         self._subtitle_special_color = color
         return self
 
@@ -77,55 +81,56 @@ class VideoBuilder:
         self._fonts.add(font_path)
         return self
 
-    def get_element_duration(self, element: dict) -> float:
-        return float(element.get("duration", 0.0)) - float(element.get("cut_end", 0.0)) - float(element.get("cut_start", 0.0))
-    
-    def get_element_end_time(self, element: dict) -> float:
+    # --- Timeline math ---
+
+    def get_element_duration(self, element: Mapping[str, Any]) -> float:
+        """Visible duration: ``duration`` minus ``cut_start`` and ``cut_end``."""
+        return (
+            float(element.get("duration", 0.0))
+            - float(element.get("cut_end", 0.0))
+            - float(element.get("cut_start", 0.0))
+        )
+
+    def get_element_end_time(self, element: Mapping[str, Any]) -> float:
         return float(element.get("start_time", 0.0)) + self.get_element_duration(element)
 
+    def get_project_duration(self) -> float:
+        """End of the latest scene, voiceover or music element."""
+        elements = [
+            *self._project.get("scenes", []),
+            *self._project.get("voiceovers", []),
+            *self._project.get("background_music", []),
+        ]
+        return max([0.0, *(self.get_element_end_time(element) for element in elements)])
 
+    # --- Render ---
 
-    def validate(self):
-        pass
-
-    def build(self):
-
-        self.validate()
-
+    def build(self) -> str:
+        """Render the project to ``output_filename`` and return that path."""
         logger.info("Building %s...", self._output_filename)
 
         temp_dir = tempfile.mkdtemp(prefix="proj_render_")
-        audio_tmp = os.path.join(temp_dir, f"audio_{uuid.uuid4().hex}.wav")
+        try:
+            audio_path = AudioGenerator(
+                self, output_path=os.path.join(temp_dir, f"audio_{uuid.uuid4().hex}.wav")
+            ).generate()
 
-        if not AudioGenerator(self, temp_dir=audio_tmp).generate():
-            raise RuntimeError("Failed to generate audio")
+            visuals = VisualGenerator(self).generate()
+            with_subtitles = SubtitleGenerator(builder=self, visuals=visuals).generate()
 
-        visuals = VisualGenerator(self).generate()
-        visuals_and_subtitles = SubtitleGenerator(builder=self, visuals=visuals).generate()
-
-        # COMBINE VISUALS + SUBTITLES + AUDIO
-        final = visuals_and_subtitles\
-            .with_audio(AudioFileClip(audio_tmp))\
-            .with_duration(self.get_project_duration())\
-            .with_fps(self._fps)\
-
-        final.size = self._resolution
-        
-        final = final
-
-        final.write_videofile(
-            self._output_filename, 
-            fps=self._fps, 
-            codec="libx264", 
-            audio_codec="aac",
-            threads=4
-        ) 
-
-
-        
-        if os.path.exists(audio_tmp):
-            os.remove(audio_tmp)
-
+            final = (
+                with_subtitles.with_audio(AudioFileClip(audio_path))
+                .with_duration(self.get_project_duration())
+                .with_fps(self._fps)
+            )
+            final.write_videofile(
+                self._output_filename,
+                fps=self._fps,
+                codec=VIDEO_CODEC,
+                audio_codec=AUDIO_CODEC,
+                threads=RENDER_THREADS,
+            )
+        finally:
+            shutil.rmtree(temp_dir, ignore_errors=True)
 
         return self._output_filename
-        
