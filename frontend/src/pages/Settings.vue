@@ -136,7 +136,7 @@
     import FormInput from '@/components/FormInput.vue'
     import FormButton from '@/components/FormButton.vue'
     import { onMounted, ref, reactive } from 'vue';
-    import axios from 'axios'
+    import { getSettings, updateSettings } from '@/api/settings'
     import ScriptGenerationPrompt from '@/components/settings/ScriptGenerationPrompt.vue';
 
     const showTTS = ref(false);
@@ -563,7 +563,7 @@
             }
 
             console.log(`Saving ${category} settings:`, payload);
-            await axios.put(`http://localhost:8000/settings`, payload);
+            await updateSettings(payload);
             alert(`${category.toUpperCase()} settings saved successfully!`);
 
         } catch (error) {
@@ -573,9 +573,8 @@
     }
 
     const fetchSettings = () => {
-        axios.get('http://localhost:8000/settings')
-            .then(res => {
-                const data = res.data;
+        getSettings()
+            .then(data => {
                 console.log('Fetched settings:', data);
 
                 if (!data) return;

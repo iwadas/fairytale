@@ -37,6 +37,7 @@
 <script setup>
 import { ref, onMounted, computed, onBeforeUnmount, watch } from 'vue';
 import { getMetadata, getThumbnails } from 'video-metadata-thumbnails';
+import { backendUrl, fetchMedia } from '@/api/media';
 
 
 const NUMBER_OF_FRAMES = 8;
@@ -56,7 +57,7 @@ const fistSceneImg = computed(()=>{
   }
   if(props.scene.images.length > 0){
     if(props.scene.images[0].src){
-      return `http://localhost:8000/${props.scene.images[0].src}`;
+      return backendUrl(props.scene.images[0].src);
     }
   }
   return null;
@@ -92,7 +93,7 @@ const loadThumbnails = async () => {
   }
   try {
     
-    const response = await fetch(`http://localhost:8000/${props.scene.video_src}`);
+    const response = await fetchMedia(backendUrl(props.scene.video_src));
     const blob = await response.blob();
     
     const metadata = await getMetadata(blob);

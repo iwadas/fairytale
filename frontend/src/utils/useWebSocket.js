@@ -1,5 +1,6 @@
 // src/composables/useWebSockets.js
 import { reactive, ref, computed } from 'vue';
+import { WS_BASE_URL } from '@/config';
 
 // --- GLOBAL STATE ---
 let globalSocket = null;
@@ -15,7 +16,7 @@ export function useWebSockets() {
   const connectResponsesWS = () => {
     if (responsesSocket && responsesSocket.readyState !== WebSocket.CLOSED) return; 
 
-    responsesSocket = new WebSocket('ws://localhost:8000/ws/responses');
+    responsesSocket = new WebSocket(`${WS_BASE_URL}/ws/responses`);
 
     responsesSocket.onopen = () => console.log("✅ Responses WebSocket Connected");
 
@@ -49,7 +50,7 @@ export function useWebSockets() {
   const connectGlobalWS = () => {
     if (globalSocket && globalSocket.readyState !== WebSocket.CLOSED) return; 
 
-    globalSocket = new WebSocket('ws://localhost:8000/ws');
+    globalSocket = new WebSocket(`${WS_BASE_URL}/ws`);
 
     globalSocket.onopen = () => console.log("✅ Global WebSocket Connected");
 

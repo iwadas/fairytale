@@ -62,7 +62,7 @@
         <div class="w-full h-40 relative overflow-hidden">
           <img 
             v-if="project.thumbnail"
-            :src="getSrc(project.thumbnail)" 
+            :src="mediaUrl(project.thumbnail)" 
             alt="Project Thumbnail"
             class="w-full h-full object-cover bg-black/20 shadow-inner group-hover:scale-105 transition-transform duration-300"
           />
@@ -89,8 +89,8 @@
 <script setup>
 import { onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import axios from 'axios';
-import getSrc from '../utils/getSrc.js'
+import * as projectsApi from '@/api/projects';
+import { mediaUrl } from '@/api/media';
 
 const router = useRouter();
 const projects = ref([]);
@@ -106,17 +106,17 @@ const selectProject = (project) => {
 };
 
 const copyProject = (projectId) => {
-  axios.post(`http://localhost:8000/projects/copy/${projectId}`)
+  projectsApi.copyProject(projectId)
     .then(res => console.log(res))
 }
 
 const addTranslations = (projectId) => {
-  axios.post(`http://localhost:8000/projects/add-translations/${projectId}`)
+  projectsApi.addTranslations(projectId)
     .then(res => console.log(res))
 }
 
 const deleteProject = (projectId) => {
-  axios.delete(`http://localhost:8000/projects/${projectId}`)
+  projectsApi.deleteProject(projectId)
     .then(res => {
         console.log(res);
         // Clean up UI instantly without refresh
@@ -125,14 +125,14 @@ const deleteProject = (projectId) => {
 }
 
 const downloadProject = (projectId) => {
-  axios.post(`http://localhost:8000/projects/download/${projectId}`)
+  projectsApi.downloadProject(projectId)
     .then(res => console.log(res))
 }
 
 onMounted(() => {
-  axios.get('http://localhost:8000/projects').then(response => {
-    console.log(response.data)
-    projects.value = response.data
+  projectsApi.listProjects().then(data => {
+    console.log(data)
+    projects.value = data
   })
 })
 </script>

@@ -70,7 +70,9 @@
 
 <script setup>
 import { ref, onMounted, computed, watch } from 'vue';
-import axios from 'axios'
+import * as projectsApi from '@/api/projects'
+import * as scenesApi from '@/api/scenes'
+import * as voiceoversApi from '@/api/voiceovers'
 import VoiceoverEditor from '@/components/project_details/VoiceoverEditor.vue'
 import MusicEditor from '@/components/project_details/MusicEditor.vue'
 import Timeline from '@/components/project_details/Timeline.vue'
@@ -81,7 +83,6 @@ import ProjectActions from '@/components/project_details/ProjectActions.vue'
 import Modal from '@/components/ModalContainer.vue'
 import { completedTasksQueue } from '@/utils/useWebSocket.js';
 
-const route = 'http://localhost:8000/'
 let projectId = null;
 
 const currentTime = ref(0)
@@ -131,8 +132,7 @@ const sceneTasks = ref({
 
 // ADD SCENE
 const addScene = async () => {
-  const response = await axios.post(`${route}scenes/${projectId}`);
-  let newScene = response.data;
+  let newScene = await scenesApi.createScene(projectId);
   newScene["start_time"] = currentTime.value;
   newScene["images"] = [{src: '', prompt: ''}, {src: '', prompt: ''}]; // start and end images
   newScene["characters"] = []; // characters array
@@ -141,14 +141,14 @@ const addScene = async () => {
 
 // COMBINE VOICEOVERS
 const combineVoiceovers = async () => {
-  await axios.post(`${route}voiceovers/combine/${projectId}`);
+  await voiceoversApi.combineVoiceovers(projectId);
 }
 
 // SAVE
 const saveProjectChanges = async () => {
   // images are saved automatically
   try{
-    axios.put(`${route}projects/${projectId}`, {
+    projectsApi.updateProject(projectId, {
       timeline_elements: timelineElements.value
     })
     console.log("Project changes saved successfully.");
@@ -207,8 +207,7 @@ const voiceovers = computed(()=>{
 
 onMounted(async () => {
   projectId = window.location.pathname.split('/').pop();
-  const response = await fetch(`http://localhost:8000/projects/${projectId}`);
-  const project = await response.json();
+  const project = await projectsApi.getProject(projectId);
 
   timelineElements.value = parseProjectData(project.scenes, project.voiceovers, project.background_music)
 

@@ -31,8 +31,9 @@
 
 <script setup>
 
-import axios from 'axios';
-import route from '@/utils/route.js';
+import { createMusic } from '@/api/music';
+import { createVoiceover } from '@/api/voiceovers';
+import { createScene } from '@/api/scenes';
 
 const emits = defineEmits(['add-timeline-element']);
 
@@ -43,10 +44,10 @@ const props = defineProps({
 
 const addMusic = async () => {
     try{
-        const response = await axios.post(route(`music/${props.projectId}`), {
+        const data = await createMusic(props.projectId, {
             start_time: props.currentTime,
         });
-        let newMusic = response.data;
+        let newMusic = data;
         newMusic["type"] = "music";
         console.log('New music added:', newMusic);
         emits('add-timeline-element', newMusic);
@@ -57,10 +58,10 @@ const addMusic = async () => {
 
 const addVoiceover = async () => {
     try{
-        const response = await axios.post(route(`voiceovers/${props.projectId}`), {
+        const data = await createVoiceover(props.projectId, {
             start_time: props.currentTime,
         });
-        let newVoiceover = response.data;
+        let newVoiceover = data;
         newVoiceover["type"] = "voiceover";
         console.log('New voiceover added:', newVoiceover);
 
@@ -73,10 +74,10 @@ const addVoiceover = async () => {
 
 const addScene = async () => {
     try{
-        const response = await axios.post(route(`scenes/${props.projectId}`), {
+        const data = await createScene(props.projectId, {
             start_time: props.currentTime,
         });
-        let newScene = response.data;
+        let newScene = data;
         newScene["type"] = "scene";
         console.log('New scene added:', newScene);
         emits('add-timeline-element', newScene);

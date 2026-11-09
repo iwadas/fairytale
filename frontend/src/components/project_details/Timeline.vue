@@ -122,8 +122,9 @@
 import { ref, computed, onUnmounted } from 'vue'
 import AudioElement from '@/components/project_details/AudioElement.vue'
 import VideoElement from '@/components/project_details/VideoElement.vue'
-import axios from 'axios'
-import route from '@/utils/route.js';
+import * as scenesApi from '@/api/scenes'
+import * as voiceoversApi from '@/api/voiceovers'
+import * as musicApi from '@/api/music'
 
 const timelineElements = defineModel('timeline_elements', { required: true, type: Object });
 const currentTime = defineModel('current_time', { required: true, type: Number });
@@ -145,11 +146,11 @@ const removeTimelineElement = async (index) => {
   let element = timelineElements.value[index]
   try {
     if(element.type === 'scene') {
-      await axios.delete(route(`scenes/${element.id}`))
+      await scenesApi.deleteScene(element.id)
     } else if (element.type === 'voiceover') {
-      await axios.delete(route(`voiceovers/${element.id}`))
+      await voiceoversApi.deleteVoiceover(element.id)
     } else if (element.type === 'music') {
-      await axios.delete(route(`music/${element.id}`))
+      await musicApi.deleteMusic(element.id)
     }
   } catch (error) {
     console.error("Error deleting timeline element:", error)
@@ -162,7 +163,7 @@ const removeTimelineElement = async (index) => {
 const duplicateTimelineElement = async (index) => {
   let element = timelineElements.value[index]
   try {
-    let response = null;
+    let data = null;
 
     const payload = {
       start_time: element.start_time + element.duration - element.cut_end,
@@ -173,13 +174,13 @@ const duplicateTimelineElement = async (index) => {
     }
 
     if(element.type === 'scene') {
-      response = await axios.post(route(`scenes/${element.id}/duplicate`), payload)
+      data = await scenesApi.duplicateScene(element.id, payload)
     } else if (element.type === 'voiceover') {
-      response = await axios.post(route(`voiceovers/${element.id}/duplicate`), payload)
+      data = await voiceoversApi.duplicateVoiceover(element.id, payload)
     } else if (element.type === 'music') {
-      response = await axios.post(route(`music/${element.id}/duplicate`), payload)
+      data = await musicApi.duplicateMusic(element.id, payload)
     }
-    let newElement = response.data;
+    let newElement = data;
     newElement["type"] = element.type;
     timelineElements.value.push(newElement);
   } catch (error) {

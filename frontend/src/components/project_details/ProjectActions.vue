@@ -17,7 +17,7 @@
 
 <script setup>
 
-import axios from 'axios';
+import * as projectsApi from '@/api/projects';
 import FormButton from '@/components/FormButton.vue'
 
 const props = defineProps({
@@ -31,7 +31,7 @@ const props = defineProps({
 
 const saveChanges = async () => {
   try{
-    axios.put(`http://localhost:8000/projects/${props.projectId}`, {
+    projectsApi.updateProject(props.projectId, {
       timeline_elements: props.timelineElements
     })
     console.log("Project changes saved successfully.");
@@ -43,9 +43,10 @@ const saveChanges = async () => {
 const downloadProject = async () => {
   await saveChanges();
   try{
-    const response = await axios.post(`http://localhost:8000/projects/download/${props.projectId}`);
+    // FIXME(api): the backend returns JSON, not the video file (see api/projects.js).
+    const data = await projectsApi.downloadProject(props.projectId);
     // Create a URL for the blob and trigger a download
-    const url = window.URL.createObjectURL(new Blob([response.data]));
+    const url = window.URL.createObjectURL(new Blob([data]));
     const link = document.createElement('a');
     link.href = url;
     link.setAttribute('download', `project_${props.projectId}.mp4`);

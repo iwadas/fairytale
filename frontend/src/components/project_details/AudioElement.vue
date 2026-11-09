@@ -6,6 +6,7 @@
 
 <script setup>
 import WaveSurfer from 'wavesurfer.js'
+import { backendUrl } from '@/api/media';
 import { onMounted, onBeforeUnmount, watch, ref } from 'vue';
 
 const props = defineProps({
@@ -20,7 +21,7 @@ let wavesurfer = null;
 // Helper to get the current formatted URL
 const getAudioUrl = () => {
     const src = props.voiceover?.src || props.music?.src;
-    return src ? `http://localhost:8000/${src}` : null;
+    return src ? backendUrl(src) : null;
 }
 
 const initWaveSurfer = () => {

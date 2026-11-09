@@ -6,7 +6,7 @@
       <template v-for="clip in sortedActiveElements" :key="clip.id">
         <video
           v-if="clip.type === 'scene' && clip.video_src"
-          :src="getSrc(clip.video_src)"
+          :src="mediaUrl(clip.video_src)"
           :ref="el => setMediaRef(el, clip.id)"
           class="absolute top-0 left-0 size-[400px] object-contain pointer-events-none"
           playsinline
@@ -14,7 +14,7 @@
         
         <audio
           v-else-if="AUDIO_TYPES.includes(clip.type) && clip.src"
-          :src="getSrc(clip.src)"
+          :src="mediaUrl(clip.src)"
           :ref="el => setMediaRef(el, clip.id)"
         ></audio>
       </template>
@@ -70,7 +70,7 @@
 
 <script setup>
 import { ref, computed, watch, onUnmounted } from 'vue'
-import getSrc from '@/utils/getSrc' // Utility to construct full media URLs
+import { mediaUrl } from '@/api/media' // Utility to construct full media URLs
 
 const props = defineProps({
   currentTime: { type: Number, required: true },

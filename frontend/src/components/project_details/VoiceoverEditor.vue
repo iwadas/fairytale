@@ -78,7 +78,7 @@
 
     
     <div v-if="voiceover.src" class="w-full">
-      <audio :src="getSrc(voiceover.src)" controls class="w-full mt-2"></audio>
+      <audio :src="mediaUrl(voiceover.src)" controls class="w-full mt-2"></audio>
     </div>
 
     <form-button 
@@ -95,8 +95,8 @@
 
   import FormInput from '@/components/FormInput.vue';
   import FormButton from '@/components/FormButton.vue';
-  import getSrc from '@/utils/getSrc';
-  import axios from 'axios';
+  import { mediaUrl } from '@/api/media';
+  import * as voiceoversApi from '@/api/voiceovers';
 
   const voiceover = defineModel('voiceover', { required: true, type: Object });
   const voiceoverTasks = defineModel('voiceover_tasks', { required: true, type: Object });
@@ -122,13 +122,14 @@
   const generateVoiceover = async () => {
     voiceoverTasks.value.generating_voiceover[voiceover.value.id] = true;
     try {
-      const voiceoverResponse = await axios.post(`http://localhost:8000/voiceovers/generate/${voiceover.value.id}`, {
+      // FIXME(api): the response has no text_with_pauses (see api/voiceovers.js).
+      const voiceoverData = await voiceoversApi.generateVoiceover(voiceover.value.id, {
         text: voiceover.value.text
       });
-      voiceover.value.src = voiceoverResponse.data.src+"?v="+Date.now();
-      voiceover.value.duration = voiceoverResponse.data.duration
-      voiceover.value.timestamps = JSON.parse(voiceoverResponse.data.timestamps)
-      voiceover.value.text_with_pauses = JSON.parse(voiceoverResponse.data.text_with_pauses)
+      voiceover.value.src = voiceoverData.src+"?v="+Date.now();
+      voiceover.value.duration = voiceoverData.duration
+      voiceover.value.timestamps = JSON.parse(voiceoverData.timestamps)
+      voiceover.value.text_with_pauses = JSON.parse(voiceoverData.text_with_pauses)
     } catch (error) {
       console.error("Error generating voiceover:", error);
     } finally {

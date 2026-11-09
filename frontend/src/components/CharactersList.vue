@@ -75,7 +75,7 @@
           >
             <img
               v-if="character.src"
-              :src="`http://localhost:8000/${character.src}`"
+              :src="backendUrl(character.src)"
               alt="Character"
               class="size-32 object-contain rounded"
             />
@@ -109,7 +109,9 @@
 
 <script setup>
 import { ref, onMounted, computed } from 'vue';
-import axios from 'axios';
+import * as charactersApi from '@/api/characters';
+import { fixCharacterPrompt } from '@/api/generators';
+import { backendUrl } from '@/api/media';
 
 const characterPrompt = ref('');
 const characterName = ref('');
@@ -144,10 +146,10 @@ const fixCharacterDescription = async () => {
   try {
     console.log(characterPrompt.value);
     console.log('Sending request with body:', { prompt: characterPrompt.value });
-    const response = await axios.post('http://localhost:8000/generators/fix-character-prompt', { 
+    const data = await fixCharacterPrompt({ 
       prompt: characterPrompt.value,
     });
-    characterPrompt.value = response.data.fixed_prompt;
+    characterPrompt.value = data.fixed_prompt;
     console.log('Character prompt fixed:', characterPrompt.value);
   } catch (error) {
     console.error('Error fixing character prompt:', error);
@@ -156,10 +158,10 @@ const fixCharacterDescription = async () => {
 
 
 const fetchCharacters = () => {
-  axios.get('http://localhost:8000/characters')
-    .then(response => {
-      console.log('Fetched characters:', response.data);
-      characters.value = response.data;
+  charactersApi.listCharacters()
+    .then(data => {
+      console.log('Fetched characters:', data);
+      characters.value = data;
     })
     .catch(error => {
       console.error('Error fetching characters:', error);
@@ -180,19 +182,15 @@ const generateImage = async () => {
   }
   try {
 
-    let response;
+    let data;
     if(characterId.value) {
       formData.append('id', characterId.value);
-      response = await axios.put(`http://localhost:8000/characters/${characterId.value}`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
+      data = await charactersApi.updateCharacter(characterId.value, formData);
     } else {
-      response = await axios.post('http://localhost:8000/characters', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
+      data = await charactersApi.createCharacter(formData);
     }
 
-    console.log('Character created:', response.data);
+    console.log('Character created:', data);
     // Clear form
     characterPrompt.value = '';
     image1.value = null;
@@ -215,12 +213,8 @@ const useCharacterAsReference = async (character) => {
   console.log('Selected character:', character.name);
   try {
     // Fetch the image from the src URL and convert to File
-    const response = await axios.get(
-      `http://localhost:8000/images/characters/${character.id}`,
-      {
-        responseType: "blob", // important for images
-      }
-    );  
+    // FIXME(api): wrong path, see api/characters.js getCharacterImage.
+    const response = await charactersApi.getCharacterImage(character.id);
     console.log(response);
     const blob = response.data;
     image2.value = new File(
@@ -236,7 +230,7 @@ const useCharacterAsReference = async (character) => {
 
 const deleteCharacter = async (characterId) => {
   try {
-    await axios.delete(`http://localhost:8000/characters/${characterId}`);
+    await charactersApi.deleteCharacter(characterId);
     console.log('Character deleted:', characterId);
     // Refetch characters
     fetchCharacters();

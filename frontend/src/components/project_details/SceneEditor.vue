@@ -164,7 +164,7 @@
         <div class="h-[250px] w-[250px] rounded-t-lg mx-auto relative bg-dark">
           <video 
             v-if="scene.video_src" 
-            :src="route(`${scene.video_src}`)"
+            :src="backendUrl(scene.video_src)"
             alt="Scene Video"
             class="w-full h-full object-cover rounded-md" 
             controls 
@@ -238,7 +238,7 @@
               </button>
               <img
                 v-if="scene.images[idx]?.src"
-                :src="getSrc(scene.images[idx].src)"
+                :src="mediaUrl(scene.images[idx].src)"
                 alt="Scene Image"
                 class="w-full h-full object-cover"
               />
@@ -358,12 +358,11 @@
 
 <script setup>
 import { ref, onMounted, watch } from 'vue';
-import axios from 'axios';
-import getSrc from '@/utils/getSrc';
+import * as scenesApi from '@/api/scenes';
+import { mediaUrl, backendUrl, fetchMedia } from '@/api/media';
 import FormInput from '@/components/FormInput.vue';
 import FormButton from '@/components/FormButton.vue';
 import Modal from '@/components/ModalContainer.vue';
-import route from '@/utils/route.js';
 
 import { isTaskRunning, activeTasks } from '@/utils/useWebSocket';
 
@@ -392,11 +391,9 @@ const handleSceneImageUpload = async (event) => {
   formData.append('scene_image_prompt', scene.value.images[selectedSceneImageIndex.value].prompt ?? '');
   console.log(formData);
   try {
-    const response = await axios.put(route(`scenes/upload-image/${scene.value.id}`), formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
-    });
-    console.log(response.data);
-    scene.value.images[selectedSceneImageIndex.value] = response.data.scene_image
+    const data = await scenesApi.uploadSceneImage(scene.value.id, formData);
+    console.log(data);
+    scene.value.images[selectedSceneImageIndex.value] = data.scene_image
   } catch (error) {
     console.error('Error uploading scene image:', error);
   }
@@ -410,12 +407,10 @@ const handleSceneVideoUpload = async (event) => {
 
   formData.append('video', video);
   try{
-    const response = await axios.put(route(`scenes/upload-video/${scene.value.id}`), formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
-    });
+    const data = await scenesApi.uploadSceneVideo(scene.value.id, formData);
 
-    currentScene.video_src = response.data.video_src;
-    currentScene.duration = response.data.duration;
+    currentScene.video_src = data.video_src;
+    currentScene.duration = data.duration;
   } catch (error) {
     console.error('Error uploading scene video:', error);
   }
@@ -430,15 +425,15 @@ const generateImage = async () => {
   const urlToFile = async (url, filename) => {
     try {
       // Handle blob: URLs
-      url = getSrc(url)
+      url = mediaUrl(url)
       if (url.startsWith('blob:')) {
-        const response = await fetch(url);
+        const response = await fetchMedia(url);
         const blob = await response.blob();
         return new File([blob], filename, { type: blob.type });
       }
 
       // Handle http(s) URLs (including localhost)
-      const response = await fetch(url);
+      const response = await fetchMedia(url);
       if (!response.ok) throw new Error(`Failed to fetch ${url}`);
       const blob = await response.blob();
       return new File([blob], filename, { type: blob.type || 'image/jpeg' });
@@ -469,25 +464,20 @@ const generateImage = async () => {
     }
   }
 
-  const response = await axios.post(
-    route(`scenes/generate-image/${scene.value.id}`),
-    formData,
-    {
-      headers: { "Content-Type": "multipart/form-data" },
-    }
-  );
+  // FIXME(api): the backend endpoint is a stub (see api/scenes.js).
+  const data = await scenesApi.generateSceneImage(scene.value.id, formData);
 
   sceneTasks.value.generating_image[scene.value.id + selectedSceneImageIndex.value] = false;
 
-  console.log(response.data);
-  scene.value.images[selectedSceneImageIndex.value].image_src = response.data.image_url;
+  console.log(data);
+  scene.value.images[selectedSceneImageIndex.value].image_src = data.image_url;
 };
 
 
 const generateVideo = () => {
   if(isTaskRunning(`scene_video_generation_${scene.value.id}`)) return;
   try {
-    axios.post(route(`scenes/generate-video/${scene.value.id}`), {
+    scenesApi.generateSceneVideo(scene.value.id, {
       prompt: scene.value.video_prompt,
       duration: scene.value.duration,
     });
@@ -501,8 +491,8 @@ const imageGenerationStylePower = ref(5);
 const fixImagePrompt = async () => {
   try {
     sceneTasks.value.fixing_image_prompt[scene.value.id + selectedSceneImageIndex.value] = true;
-    const response = await axios
-      .post(route(`scenes/fix-image-prompt`), { 
+    const data = await scenesApi
+      .fixImagePrompt({ 
         scene_prompt: scene.value.images[selectedSceneImageIndex.value].prompt,
         style: imageGenerationStyle.value,
         style_power: imageGenerationStylePower.value
@@ -512,8 +502,8 @@ const fixImagePrompt = async () => {
         throw error; // Re-throw the error after logging it
       })
     ;
-    console.log(response.data);
-    scene.value.images[selectedSceneImageIndex.value].prompt = response.data.fixed_prompt;
+    console.log(data);
+    scene.value.images[selectedSceneImageIndex.value].prompt = data.fixed_prompt;
   } catch (error) {
     console.error('Error fixing scene image prompt:', error);
   } finally {
@@ -538,8 +528,8 @@ const openNewVideoPromptForm = async () => {
 const generateNewVideoPrompt = async () => {
   try {
     sceneTasks.value.generating_prompt[scene.value.id] = true;
-    const response = await axios
-      .post(route(`scenes/fix-video-prompt/${scene.value.id}`), { 
+    const data = await scenesApi
+      .fixVideoPrompt(scene.value.id, { 
         new_camera_movement: newVideoPromptForm.value.camera_movement,
         additional_info: newVideoPromptForm.value.additional_info
       })
@@ -547,8 +537,8 @@ const generateNewVideoPrompt = async () => {
         console.error('Error response from server:', error.response ? error.response.data : error.message);
         throw error; // Re-throw the error after logging it
       })
-    console.log(response.data.new_video_prompts);
-    scene.value.video_prompt = response.data.video_prompt;
+    console.log(data.new_video_prompts);
+    scene.value.video_prompt = data.video_prompt;
   } catch (error) {
     console.error('Error regenerating scene video prompt:', error);
   } finally {
@@ -593,8 +583,8 @@ const generateNewImagePrompts = async () => {
       newImagePromptForm.value.end_word_idx + 1
     ).join(' ');
 
-    const response = await axios
-      .post(route(`scenes/generate-image-prompts`), { 
+    const data = await scenesApi
+      .generateImagePrompts({ 
         project_id: props.projectId,
         full_voiceover_text: newImagePromptForm.value.full_voiceover_text,
         selected_voiceover_text_part: selectedVoiceoverTextPart,
@@ -604,8 +594,8 @@ const generateNewImagePrompts = async () => {
         console.error('Error response from server:', error.response ? error.response.data : error.message);
         throw error; // Re-throw the error after logging it
       })
-    console.log(response.data.new_scene_descriptions);
-    newImagePromptForm.value.options = response.data.new_scene_descriptions;
+    console.log(data.new_scene_descriptions);
+    newImagePromptForm.value.options = data.new_scene_descriptions;
   } catch (error) {
     console.error('Error regenerating scene image prompt:', error);
   } finally {

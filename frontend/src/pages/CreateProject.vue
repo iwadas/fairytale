@@ -126,7 +126,7 @@
 // Your existing script remains unchanged, keeping it here for completeness
 import { reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import axios from 'axios';
+import * as projectsApi from '@/api/projects';
 import FormButton from '@/components/FormButton.vue';
 import FormInput from '@/components/FormInput.vue';
 
@@ -148,10 +148,10 @@ const projectPrompt = reactive({
 
 const createProject = async () => {
   console.log('Creating project with:', projectPrompt);
-  await axios.post('http://localhost:8000/projects/create-project', projectPrompt)
-    .then(response => {
-      console.log('Project created:', response.data);
-      router.push(`/projects/${response.data.project_id}`);
+  await projectsApi.createProject(projectPrompt)
+    .then(data => {
+      console.log('Project created:', data);
+      router.push(`/projects/${data.project_id}`);
     })
     .catch(error => {
       console.error('Error creating project:', error);
@@ -172,10 +172,10 @@ const createScripts = async () => {
   if(generatingScript.value) return;
   console.log('Creating project with:', scriptPrompt);
   generatingScripts.value = true;
-  await axios.post('http://localhost:8000/projects/generate-script', scriptPrompt)
-    .then(response => {
-      console.log(response.data)
-      response.data.scripts.forEach(sample => {
+  await projectsApi.generateScript(scriptPrompt)
+    .then(data => {
+      console.log(data)
+      data.scripts.forEach(sample => {
         scriptSamples.value.push(sample);
       });
     })

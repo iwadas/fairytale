@@ -50,7 +50,7 @@
 
 
     <div v-if="music.src" class="w-full">
-      <audio :src="getSrc(music.src)" controls class="w-full mt-2"></audio>
+      <audio :src="mediaUrl(music.src)" controls class="w-full mt-2"></audio>
     </div>
   </div>
 </template>
@@ -58,12 +58,11 @@
 <script setup>
 
   import FormInput from '@/components/FormInput.vue';
-  import getSrc from '@/utils/getSrc';
-  import axios from 'axios';
+  import { mediaUrl } from '@/api/media';
+  import * as musicApi from '@/api/music';
   import { watch } from 'vue';
 
   const music = defineModel('music', { required: true, type: Object });
-  const route = 'http://localhost:8000/'
 
   const DEFAULT_MUSIC_OPTIONS = [
     { label: '13 Angels', value: 'static/default/sounds/13_angels.mp3' },
@@ -83,12 +82,12 @@
       // SEND REQUEST TO BACKEND TO UPDATE MUSIC SRC
 
       try{
-        axios.put(`${route}music/${music.value.id}`, { src: newSrc })
-          .then(response => {
+        musicApi.updateMusic(music.value.id, { src: newSrc })
+          .then(data => {
             console.log('Music src updated successfully');
-            music.value.src = response.data.src;
-            music.value.duration = response.data.duration;
-            music.value.name = response.data.name;
+            music.value.src = data.src;
+            music.value.duration = data.duration;
+            music.value.name = data.name;
           })
           .catch(error => {
             console.error('Error updating music src:', error);
@@ -108,15 +107,13 @@
       formData.append('music_file', music_file);
       formData.append('music_id', music.value.id ?? '');
       
-      const response = await axios.put(`${route}music/upload-music/${music.value.id}`, formData, {
-          headers: { 'Content-Type': 'multipart/form-data' }
-      });
+      const data = await musicApi.uploadMusic(music.value.id, formData);
       
       console.log('-----------response--------------');
-      console.log(response.data);
-      music.value.src = response.data.src;
-      music.value.name = response.data.name;
-      music.value.duration = response.data.duration;
+      console.log(data);
+      music.value.src = data.src;
+      music.value.name = data.name;
+      music.value.duration = data.duration;
     
     } catch (error) {
       console.error('Error uploading music:', error);

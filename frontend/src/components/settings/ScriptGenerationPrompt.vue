@@ -116,7 +116,7 @@
 
   import FormInput from '@/components/FormInput.vue';
   import FormButton from '@/components/FormButton.vue';
-  import axios from 'axios';
+  import { updateSettings } from '@/api/settings';
   import { reactive, ref } from 'vue';
 
   const props = defineProps({
@@ -164,7 +164,7 @@
       }
 
       console.log(`Adding new script generation template ${newScriptTemplate.name}:`, payload);
-      await axios.put(`http://localhost:8000/settings`, payload);
+      await updateSettings(payload);
       selectedTemplate.value = newScriptTemplate.name;
       if(!templates.value){
         templates.value = {};
@@ -198,7 +198,7 @@
           [template_name]: null
         }
       }
-      await axios.put(`http://localhost:8000/settings`, payload);
+      await updateSettings(payload);
       delete templates.value[template_name];
     } catch (error) {
       console.error(`Error deleting script generation template "${template_name}":`, error);
@@ -215,7 +215,7 @@
       }
       selectedTemplate.value = template_name;
       console.log(`Saving script generation template ${template_name}:`, payload);
-      await axios.put(`http://localhost:8000/settings`, payload);
+      await updateSettings(payload);
       alert(`Script generation template "${template_name}" saved successfully!`);
     } catch (error) {
       console.error(`Error saving script generation template "${template_name}":`, error);
