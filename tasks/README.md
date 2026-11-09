@@ -8,11 +8,25 @@ Praca ma trzy poziomy:
 | **Podepik** | konkretny efekt, który kończymy; zwykle kilka PR-ów | folder `<Id>-opis/` w folderze statusu epiku |
 | **Subtask** | spory kawałek podepiku, zwykle jeden PR | checkbox w `podepik.md` |
 
-Epiki główne to `system-agentowy/` (A), `oprawa-graficzna/` (G) i `remotion-i-kompozycja/` (R).
+Epiki główne:
+
+| Prefiks | Epik | Folder |
+|---|---|---|
+| A | System agentowy | `system-agentowy/` |
+| G | Oprawa graficzna | `oprawa-graficzna/` |
+| R | Remotion i kompozycja | `remotion-i-kompozycja/` |
+| P | Platforma | `platforma/` |
+| Z | Postacie, świat i zasoby | `swiat-i-zasoby/` |
+| D | Dźwięk | `dzwiek/` |
+| W | Publikacja i wyniki | `publikacja-i-wyniki/` |
+| X | Produkt dla innych (OPTIONAL) | `produkt-dla-innych-optional/` |
+
 Litera to prefiks id podepików, więc `A02` należy do Systemu agentowego.
 
 Jak się łączą: **A** decyduje, *co* jest w filmie (ekipa agentów), **R** decyduje, *jak* film jest złożony i renderowany,
-a **G** sprawia, że twórca wygodnie to widzi i kontroluje. Wspólna potrzeba A i R to praca w tle (kolejka zadań).
+a **G** sprawia, że twórca wygodnie to widzi i kontroluje. **Z** i **D** dostarczają spójne postacie, style i dźwięk,
+z których korzysta ekipa. **W** wysyła film w świat i przynosi wyniki z powrotem. **P** jest fundamentem pod wszystkie,
+w tym pod wspólną kolejkę zadań w tle dla A i R.
 
 ```text
 tasks/
