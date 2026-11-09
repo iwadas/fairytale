@@ -1,0 +1,163 @@
+import uuid
+from sqlalchemy import Column, Integer, String, Text, ForeignKey, DateTime, Table, Float
+from sqlalchemy.sql import func
+from sqlalchemy.orm import relationship
+from app.db.base import Base
+
+project_character_association = Table(
+    "project_character_association",
+    Base.metadata,
+    Column("project_id", String(36), ForeignKey("projects.id")),
+    Column("character_id", String(36), ForeignKey("characters.id"))
+)
+
+scene_character_association = Table(
+    "scene_character_association",
+    Base.metadata,
+    Column("scene_id", String(36), ForeignKey("scenes.id")),
+    Column("character_id", String(36), ForeignKey("characters.id"))
+)
+
+place_project_association = Table(
+    "project_places",
+    Base.metadata,
+    Column("project_id", String(36), ForeignKey("projects.id"), primary_key=True),
+    Column("place_id", String(36), ForeignKey("places.id"), primary_key=True),
+)
+
+place_scene_association = Table(
+    "scene_places",
+    Base.metadata,
+    Column("scene_id", String(36), ForeignKey("scenes.id"), primary_key=True),
+    Column("place_id", String(36), ForeignKey("places.id"), primary_key=True),
+)
+
+
+class Settings(Base):
+    __tablename__ = "settings"
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
+    selected_tts_provider = Column(String, nullable=True)
+    selected_diffusion_provider = Column(String, nullable=True)
+    selected_llm_provider = Column(String, nullable=True)
+    tts_provider_settings = Column(Text, nullable=True)
+    diffusion_provider_settings = Column(Text, nullable=True)
+    llm_provider_settings = Column(Text, nullable=True)
+    
+    selected_style = Column(String, nullable = True)
+    styles = Column(Text, nullable=True)
+
+    selected_script_generation_template = Column(String, nullable=True)
+    script_generation_templates = Column(Text, nullable=True)
+
+
+# ORM models
+class Project(Base):
+    __tablename__ = "projects"
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
+    name = Column(String, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    type = Column(String, nullable=True, default="BASIC")  # Add this line; adjust type/default as needed (e.g., String, Integer)
+    scenes = relationship("Scene", back_populates="project")
+    characters = relationship(
+        "Character",
+        secondary=project_character_association,
+        back_populates="projects"
+    )
+    voiceovers = relationship("Voiceover", back_populates="project")
+    places = relationship(
+        "Place", 
+        secondary=place_project_association, 
+        back_populates="projects"
+    )
+    background_music = relationship("Music", back_populates="project")
+
+
+class Music(Base):
+    __tablename__ = "music"
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
+    project_id = Column(String(36), ForeignKey("projects.id"))
+    project = relationship("Project", back_populates="background_music")
+    name = Column(String, nullable=False)
+    src = Column(String, nullable=True)
+    start_time = Column(Float, nullable=False)
+    duration = Column(Float, nullable=False)
+    
+    cut_start = Column(Float, nullable=True, default=0.0)
+    cut_end = Column(Float, nullable=True, default=0.0)
+    layer = Column(Integer, default=4, nullable=True)
+
+
+class Voiceover(Base):
+    __tablename__ = "voiceovers"
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
+    project_id = Column(String(36), ForeignKey("projects.id"))
+    project = relationship("Project", back_populates="voiceovers")
+    text = Column(Text, nullable=True)
+    text_with_pauses = Column(Text, nullable=True)
+    src = Column(String, nullable=True)
+    start_time = Column(Float, nullable=False)
+    timestamps = Column(Text, nullable=True)
+    duration = Column(Float, nullable=True)
+
+    cut_start = Column(Float, nullable=True, default=0.0)
+    cut_end = Column(Float, nullable=True, default=0.0)
+    layer = Column(Integer, default=3, nullable=True)
+
+class Scene(Base):
+    __tablename__ = "scenes"
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
+    start_time = Column(Float, nullable=True)
+    duration = Column(Integer, nullable=True)
+    video_prompt = Column(Text, nullable=True)
+    video_src = Column(String, nullable=True)
+    project_id = Column(String(36), ForeignKey("projects.id"))
+    project = relationship("Project", back_populates="scenes")
+    images = relationship("SceneImage", back_populates="scene", cascade="all, delete-orphan")
+    characters = relationship(
+        "Character",
+        secondary=scene_character_association,
+        back_populates="scenes"
+    )
+    places = relationship("Place", secondary=place_scene_association, back_populates="scenes")
+    
+    cut_start = Column(Float, nullable=True, default=0.0)
+    cut_end = Column(Float, nullable=True, default=0.0)
+    layer = Column(Integer, default=2, nullable=True)
+
+
+class Place(Base):
+    __tablename__ = "places"
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    name = Column(String, nullable=False)
+    prompt = Column(String, nullable=False)
+    src = Column(String, nullable=True)
+    projects = relationship("Project", secondary=place_project_association, back_populates="places")
+    scenes = relationship("Scene", secondary=place_scene_association, back_populates="places")
+
+class Character(Base):
+    __tablename__ = "characters"
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
+    name = Column(String, nullable=False)
+    prompt = Column(Text, nullable=True)
+    src = Column(String, nullable=True)
+    projects = relationship(
+        "Project",
+        secondary=project_character_association,
+        back_populates="characters"
+    )
+    scenes = relationship(
+        "Scene",
+        secondary=scene_character_association,
+        back_populates="characters"
+    )
+
+class SceneImage(Base):
+    __tablename__ = "scene_images"
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    scene_id = Column(String(36), ForeignKey("scenes.id"), nullable=False, index=True)
+    time = Column(String(20), nullable=False, default="start")
+    prompt = Column(Text, nullable=True)
+    idea = Column(Text, nullable=True)
+    src = Column(String, nullable=True)
+    style = Column(String, nullable=True)
+    scene = relationship("Scene", back_populates="images")

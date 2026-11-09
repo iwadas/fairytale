@@ -1,19 +1,12 @@
 FRONTEND
 ```bash
-PS frontend> 
+PS frontend>
 py npm run serve
 ```
 
 BACKEND
 ```bash
-PS backend> 
+PS backend>
 env\Scripts\activate
-uvicorn main:app --reload --port 8000
-```
-
-
-WORKER:
-```bash
-PS backend> 
-py env\Scripts\huey_consumer.py worker.huey
+uvicorn app.main:app --reload --port 8000
 ```
