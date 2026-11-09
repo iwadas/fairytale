@@ -4,7 +4,7 @@ from sqlalchemy.sql import func
 import uuid
 
 import json
-import os
+import logging
 
 # from db import Place, get_session, Project, Scene, Character, Voiceover, SceneImage
 from app.pipeline.story.legacy_prompts import gather_story_data, generate_story, story_split, add_scenes_to_story, prepare_story_for_db, get_persistant_characters, add_character_changes, estimate_speech_time
@@ -14,15 +14,17 @@ from pydantic import BaseModel
 from typing import Optional, List
 from openai import OpenAI
 import instructor
-from dotenv import load_dotenv
 
-load_dotenv()
-OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
-XAI_API_KEY = os.getenv('XAI_API_KEY')
+from app.core.config import get_settings
+
+logger = logging.getLogger(__name__)
+
+_settings = get_settings()
+XAI_API_KEY = _settings.xai_api_key.get_secret_value() if _settings.xai_api_key is not None else None
 
 open_ai_client = instructor.from_openai(OpenAI(
     api_key=XAI_API_KEY,
-    base_url="https://api.x.ai/v1",
+    base_url=_settings.xai_base_url,
 ))
 
 router = APIRouter(prefix="/generators", tags=["generators"])
@@ -34,8 +36,7 @@ ai_model = "grok-4-1-fast-reasoning"
 async def fix_character_prompt(request):
     return
 
-    print("Something")
-    print("Original prompt:", request.prompt)
+    logger.debug("Original prompt: %s", request.prompt)
 
     response = open_ai_client.chat.completions.create(
         model=ai_model,
@@ -46,7 +47,7 @@ async def fix_character_prompt(request):
         ]
     )
     fixed_prompt = response.fixed_prompt  # Access directly (Instructor parses it for you)
-    print("Fixed prompt:", fixed_prompt)
+    logger.debug("Fixed prompt: %s", fixed_prompt)
     return {"fixed_prompt": fixed_prompt}
 
 
@@ -198,7 +199,7 @@ async def fix_scene_image_prompt(request: FixImagePrompt):
         ]
     )
     fixed_prompt = response.fixed_prompt  # Access directly (Instructor parses it for you)
-    print("Fixed prompt:", fixed_prompt)
+    logger.debug("Fixed prompt: %s", fixed_prompt)
     return {"fixed_prompt": fixed_prompt}
 
 
@@ -248,5 +249,5 @@ async def fix_scene_video_prompt(request: FixVideoPrompt):
         ]
     )
     fixed_prompt = response.fixed_prompt  # Access directly (Instructor parses it for you)
-    print("Fixed prompt:", fixed_prompt)
+    logger.debug("Fixed prompt: %s", fixed_prompt)
     return {"fixed_prompt": fixed_prompt}

@@ -1,11 +1,14 @@
-# save_file.py
+import logging
 import uuid
 import os
 import aiofiles
-from dotenv import load_dotenv
 from fastapi import UploadFile, HTTPException
 import cv2
 import numpy as np
+
+from app.core.config import get_settings
+
+logger = logging.getLogger(__name__)
 
 
 def remove_gemini_watermark_if_present(image_bytes: bytes) -> bytes | None:
@@ -16,7 +19,6 @@ def remove_gemini_watermark_if_present(image_bytes: bytes) -> bytes | None:
     """
     nparr = np.frombuffer(image_bytes, np.uint8)
     img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-    print("1-------")
     if img is None:
         return None
 
@@ -30,10 +32,9 @@ def remove_gemini_watermark_if_present(image_bytes: bytes) -> bytes | None:
         crop_start = (w - 96, h - 96)
         crop_end   = (w - 1, h - 1)
 
-    print(f"Image size: {w}x{h}, cropping region: {crop_start} to {crop_end}")
+    logger.debug("Image size: %sx%s, cropping region: %s to %s", w, h, crop_start, crop_end)
 
     # Safety bounds check
-    print("2-------")
 
     if (crop_start[0] < 0 or crop_start[1] < 0 or
         crop_end[0] >= w or crop_end[1] >= h or
@@ -53,10 +54,10 @@ def remove_gemini_watermark_if_present(image_bytes: bytes) -> bytes | None:
 
     # Typical detection window: ~20–55% bright pixels in that small region
     if not (18 < bright_ratio < 55):
-        print(f"No strong watermark detected (bright pixels: {bright_ratio:.1f}%) – skipping removal.")
+        logger.info("No strong watermark detected (bright pixels: %.1f%%) - skipping removal.", bright_ratio)
         return None
     
-    print(f"Watermark detected (bright pixels: {bright_ratio:.1f}%) – removing...")
+    logger.info("Watermark detected (bright pixels: %.1f%%) - removing...", bright_ratio)
 
     # Crop from bottom — most conservative approach
     keep_h = crop_start[1]
@@ -89,17 +90,17 @@ async def save_file(
     Saves uploaded file.
     For scene images: optionally removes Gemini-style watermark if requested and detected.
     """
-    load_dotenv()
+    settings = get_settings()
 
     # Determine output directory and default extension
     if type == "scene_video":
-        output_dir = os.getenv("SCENE_VIDEO_DIR", "static/videos/scenes")
+        output_dir = settings.scene_video_dir
         ext = "mp4"
     elif type == "scene_image":
-        output_dir = os.getenv("SCENE_IMAGE_DIR", "static/images/scenes")
+        output_dir = settings.scene_image_dir
         ext = "png"
     elif type == "music":
-        output_dir = os.getenv("MUSIC_DIR", "static/music")
+        output_dir = settings.music_dir
         ext = "mp3"
     else:
         raise ValueError(f"Invalid file type: {type}")
@@ -124,9 +125,9 @@ async def save_file(
         async with aiofiles.open(src, "wb") as f:
             await f.write(content)
 
-        print(f"Saved file to: {src}")
+        logger.info("Saved file to: %s", src)
         return src
 
     except Exception as e:
-        print(f"Error processing/saving file {src}: {str(e)}")
+        logger.exception("Error processing/saving file %s: %s", src, e)
         raise HTTPException(status_code=500, detail="Failed to save uploaded file")

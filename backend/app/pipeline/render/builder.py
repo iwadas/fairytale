@@ -1,3 +1,4 @@
+import logging
 import os
 import random
 from typing import List, Any
@@ -9,6 +10,8 @@ import uuid
 from app.pipeline.render.audio import AudioGenerator
 from app.pipeline.render.visual import VisualGenerator
 from app.pipeline.render.subtitles import SubtitleGenerator
+
+logger = logging.getLogger(__name__)
 
 
 class VideoBuilder:
@@ -89,7 +92,7 @@ class VideoBuilder:
 
         self.validate()
 
-        print(f"Building {self._output_filename}...")
+        logger.info("Building %s...", self._output_filename)
 
         temp_dir = tempfile.mkdtemp(prefix="proj_render_")
         audio_tmp = os.path.join(temp_dir, f"audio_{uuid.uuid4().hex}.wav")

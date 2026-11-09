@@ -1,3 +1,4 @@
+import logging
 from fastapi import APIRouter, Body, HTTPException
 
 from app.db.crud import create_voiceover_db, get_project_voiceovers_db, remove_voiceover_db, get_voiceover_db, update_voiceover_db
@@ -9,6 +10,8 @@ from app.realtime.connection_manager import WebSocketTaskManager
 from typing import Optional
 
 import uuid
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/voiceovers", tags=["voiceovers"])
 
@@ -94,14 +97,14 @@ async def generate_voiceover(
         status="init"
     )
 
-    print("Generating voiceover with text:", text)
+    logger.debug("Generating voiceover with text: %s", text)
 
     tts_result = await tts_client.generate(
         progress_callback=task.send_notification,
         text=text,
     )
 
-    print("TTS result:", tts_result)
+    logger.debug("TTS result: %s", tts_result)
 
     await task.send_notification(
         message=f"📁 Saving generated voiceover...",

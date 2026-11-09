@@ -1,3 +1,4 @@
+import logging
 
 
 
@@ -8,6 +9,10 @@ from moviepy import VideoFileClip, TextClip, CompositeVideoClip, AudioFileClip, 
 from moviepy.video.VideoClip import ImageClip
 from moviepy.video.fx import CrossFadeIn
 import numpy as np
+
+from app.core.config import get_settings
+
+logger = logging.getLogger(__name__)
 
 
 
@@ -90,11 +95,10 @@ def generate_karaoke_text(segments: List[Dict[str, Any]], visuals: VideoClip, op
 
         w, h = clip.size
 
-        print('clip size')
-        print((w, h))
+        logger.debug("Clip size: %s", (w, h))
         if w == 0 or h == 0:               # <-- safety net
             # fallback: draw a tiny coloured rectangle so the mask is not empty
-            print("fucking shit")
+            logger.warning("TextClip has zero size; falling back to a placeholder ColorClip")
             clip = ColorClip(size=(width, FONTSIZE+10), color=color).with_duration(end-start)
             w, h = clip.size
 
@@ -188,12 +192,8 @@ def generate_karaoke_text(segments: List[Dict[str, Any]], visuals: VideoClip, op
         current_width = 0
 
         for w in words:
-            print("word")
-            print(w)
             ww, wh = word_pixel_size(w["word"])
-            print("word width:")
-            print(ww)
-            print(wh)
+            logger.debug("Word %s size: %sx%s", w, ww, wh)
 
             new_word_width = WORD_GAP_PX + ww if current_width > 0 else ww 
 
@@ -208,8 +208,7 @@ def generate_karaoke_text(segments: List[Dict[str, Any]], visuals: VideoClip, op
         if current_line:
             lines.append(current_line)
 
-        print("lines")
-        print(lines)
+        logger.debug("Lines: %s", lines)
 
         # --------------------------------------------------------------
         # 2. Compute the exact (x, y) position of *every* word in the
@@ -234,8 +233,7 @@ def generate_karaoke_text(segments: List[Dict[str, Any]], visuals: VideoClip, op
 
             y += FONTSIZE + LINE_SPACING
 
-        print("word positions")
-        print(word_positions)
+        logger.debug("Word positions: %s", word_positions)
 
         # --------------------------------------------------------------
         # 3. Create a TextClip for *every* word
@@ -267,7 +265,7 @@ def generate_karaoke_text(segments: List[Dict[str, Any]], visuals: VideoClip, op
 
 
             except Exception as e:
-                print(f"Failed to create TextClip for word: '{txt}' | Error: {e}")
+                logger.exception("Failed to create TextClip for word: '%s': %s", txt, e)
                 continue
 
     # ------------------------------------------------------------------
@@ -283,23 +281,8 @@ def generate_karaoke_remotion(visuals, subtitles, **kwargs):
     import subprocess
     from moviepy.editor import VideoFileClip
 
-    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-
-    PROJECT_ROOT = os.path.abspath(
-    os.path.join(BASE_DIR, "..", "..", "..", "..")
-)
-
-    remotion_path = os.path.join(
-        PROJECT_ROOT,
-        "services",
-        "render-engine",
-        "remotion-app"
-    )
-
-    print("✅✅✅✅✅:")
-    print("Remotion path:")
-    print("✅✅✅✅✅:")
-    print(remotion_path)
+    remotion_path = str(get_settings().remotion_app_dir)
+    logger.info("Remotion path: %s", remotion_path)
 
     output_path = os.path.join(remotion_path, "out", "video7.mov")
 

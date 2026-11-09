@@ -2,11 +2,17 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.core.config import get_settings
+from app.core.logging import configure_logging
+
+settings = get_settings()
+configure_logging(settings.log_level)
+
 app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Your frontend origin
+    allow_origins=settings.cors_origins,
     allow_credentials=False,
     allow_methods=["*"],  # Allow all methods (GET, POST, etc.)
     allow_headers=["*"],  # Allow all headers
@@ -18,7 +24,7 @@ class NoCacheStaticFiles(StaticFiles):
         response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
         return response
 
-app.mount("/static", NoCacheStaticFiles(directory="static"), name="static")
+app.mount("/static", NoCacheStaticFiles(directory=settings.static_dir), name="static")
 
 
 # from app.api.routers.characters import router as characters_router

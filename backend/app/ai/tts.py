@@ -1,8 +1,7 @@
+import logging
 import uuid
-from dotenv import load_dotenv
 import os
 from pydub import AudioSegment
-import sys
 import aiofiles
 import asyncio
 import mimetypes
@@ -11,6 +10,7 @@ import wave
 
 from typing import Callable, Optional
 
+from app.core.config import get_settings
 from app.db.crud import get_settings_db
 
 from groq import AsyncGroq
@@ -19,13 +19,7 @@ from camb.types.stream_tts_output_configuration import StreamTtsOutputConfigurat
 from google import genai
 from google.genai import types
 
-# Standard path setup
-current_dir = os.path.dirname(os.path.abspath(__file__))
-project_root = os.path.dirname(os.path.dirname(current_dir))
-if project_root not in sys.path:
-    sys.path.append(project_root)
-
-load_dotenv()
+logger = logging.getLogger(__name__)
 
 class TTS:
     def __init__(self):
@@ -109,7 +103,7 @@ class TTS:
             audio = AudioSegment.from_file(audio_file_path)
             return len(audio) / 1000.0
         except Exception as e:
-            print(f"Error calculating duration: {e}")
+            logger.exception("Error calculating duration of %s: %s", audio_file_path, e)
             return 0.0
 
     async def add_timestamps_to_audio(self, audio_file_path: str):
@@ -117,15 +111,14 @@ class TTS:
         Perform STT with timestamps using Groq's API.
         """
 
-        print("Starting TTS generation with Camb.ai...")
+        logger.info("Adding word timestamps to %s via Groq", audio_file_path)
 
-
-        groq_api_key = os.getenv("GROQ_API_KEY")
+        groq_api_key = get_settings().groq_api_key
         if not groq_api_key:
-            print("GROQ_API_KEY missing, skipping timestamps.")
+            logger.warning("GROQ_API_KEY missing, skipping timestamps.")
             return
 
-        client = AsyncGroq(api_key=groq_api_key)
+        client = AsyncGroq(api_key=groq_api_key.get_secret_value())
 
         try:
 
@@ -157,10 +150,10 @@ class TTS:
                             "end": word_obj.end
                         })
             else:
-                print("No word-level timestamps returned from Groq.")
+                logger.warning("No word-level timestamps returned from Groq.")
 
         except Exception as e:
-            print(f"Error adding timestamps to audio: {e}")
+            logger.exception("Error adding timestamps to audio: %s", e)
             self.timestamps = []
 
     async def generate(self, progress_callback: Optional[Callable] = None, **kwargs):
@@ -228,7 +221,7 @@ class TTS:
         voice_style = self.provider_settings.get("voice_style", "Read aloud in a friendly tone.")
 
         output_file = f"{uuid.uuid4()}.wav"
-        output_dir = os.getenv("VOICEOVER_DIR", "voiceovers")
+        output_dir = get_settings().voiceover_dir
         os.makedirs(output_dir, exist_ok=True)
         output_path = os.path.join(output_dir, output_file)
 
@@ -255,7 +248,7 @@ class TTS:
                 config=generate_content_config
             )
         except Exception as e:
-            print(f"Gemini API Error: {e}")
+            logger.exception("Gemini API error: %s", e)
             return False
 
         def save_audio_file(filename, pcm, channels=1, rate=24000, sample_width=2):
@@ -278,7 +271,7 @@ class TTS:
 
 
     async def generate_camb(self):
-        print("Starting TTS generation with Camb.ai SDK...")
+        logger.info("Starting TTS generation with Camb.ai SDK")
 
         # Initialize the Async Client
         
@@ -295,7 +288,7 @@ class TTS:
             voice_id = 1
         
         # Output setup
-        output_dir = os.getenv("VOICEOVER_DIR", "voiceovers")
+        output_dir = get_settings().voiceover_dir
         os.makedirs(output_dir, exist_ok=True)
         filename = f"{uuid.uuid4()}.mp3"
         audio_file_path = os.path.join(output_dir, filename)
@@ -315,7 +308,7 @@ class TTS:
             # Stream to file using SDK utility
             await save_async_stream_to_file(response, audio_file_path)
 
-            print(f"✨ Generated speech saved as '{audio_file_path}'")
+            logger.info("Generated speech saved as '%s'", audio_file_path)
             
             self.src = audio_file_path
             
@@ -324,5 +317,5 @@ class TTS:
             return True
 
         except Exception as e:
-            print(f"Error generating TTS with camb SDK: {e}")
+            logger.exception("Error generating TTS with Camb SDK: %s", e)
             return False

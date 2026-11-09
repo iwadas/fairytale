@@ -1,3 +1,4 @@
+import logging
 from fastapi import APIRouter, HTTPException, Body
 from pydantic import BaseModel
 from app.ai.llm import LLM
@@ -15,6 +16,9 @@ from app.pipeline.script.script_generator import ScriptGenerator
 
 import re
 from app.realtime.connection_manager import WebSocketTaskManager
+from app.core.config import get_settings
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/projects", tags=["projects"])
 
@@ -265,11 +269,11 @@ async def update_project(
 async def download_project(project_id: str):
     project = await get_project_db(id=project_id, serialize=True)
 
-    output_dir = "videos"
+    output_dir = get_settings().render_output_dir
     os.makedirs(output_dir, exist_ok=True)
     output_filename = f"{get_save_name(project['name'])}.mp4"
     output_path = os.path.join(output_dir, output_filename)
-    print("starting generation")
+    logger.info("Starting video build for project %s -> %s", project_id, output_path)
 
     video_builder = VideoBuilder(project=project, output_filename=output_path) \
         .set_resolution(640, 640) \

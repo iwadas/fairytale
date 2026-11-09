@@ -1,0 +1,93 @@
+"""Shared pytest fixtures.
+
+The app reads its configuration (app.core.config) and creates the DB engine at
+import time, so the environment is prepared at the top of this module, BEFORE
+anything from ``app`` is imported.
+"""
+
+import os
+import shutil
+import tempfile
+from pathlib import Path
+
+import pytest
+
+BACKEND_DIR = Path(__file__).resolve().parents[1]
+
+# The app expects CWD = backend/ (static mount and media paths are CWD-relative).
+os.chdir(BACKEND_DIR)
+
+_TMP_DIR = Path(tempfile.mkdtemp(prefix="fairytaile-tests-"))
+TEST_DB_PATH = _TMP_DIR / "test.db"
+
+# Real env vars take precedence over backend/.env, so these win over local secrets.
+os.environ["DATABASE_URL"] = f"sqlite+aiosqlite:///{TEST_DB_PATH.as_posix()}"
+os.environ["SQL_ECHO"] = "false"
+# Some legacy modules build OpenAI-compatible clients at import time and need a key
+# to exist; tests never call providers, so a dummy value is enough.
+os.environ["XAI_API_KEY"] = "test-dummy-key"
+os.environ["OPENAI_API_KEY"] = "test-dummy-key"
+for _name in ("GROQ_API_KEY", "RUNWARE_API_KEY"):
+    os.environ.pop(_name, None)
+
+from sqlalchemy import create_engine  # noqa: E402
+
+from app.core.config import get_settings  # noqa: E402
+
+get_settings.cache_clear()
+
+from app.db.base import Base  # noqa: E402
+import app.db.models  # noqa: E402,F401  (registers all tables on Base.metadata)
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _schema():
+    """Create the schema on the temp DB.
+
+    Uses ``Base.metadata.create_all`` rather than Alembic: the migration chain
+    cannot build an empty database from scratch (its first revision assumes
+    pre-existing tables).
+    """
+    from app.db import session as db_session
+
+    # Safety net: never create/clean tables anywhere but the temp test DB.
+    assert db_session.DATABASE_URL == os.environ["DATABASE_URL"], db_session.DATABASE_URL
+    assert TEST_DB_PATH.as_posix() in get_settings().sync_database_url
+
+    engine = create_engine(get_settings().sync_database_url)
+    Base.metadata.create_all(engine)
+    engine.dispose()
+    yield
+    shutil.rmtree(_TMP_DIR, ignore_errors=True)
+
+
+@pytest.fixture
+def sync_db():
+    """A sync SQLAlchemy session on the test DB, for seeding/cleanup in tests."""
+    from sqlalchemy.orm import Session
+
+    engine = create_engine(get_settings().sync_database_url)
+    with Session(engine) as session:
+        yield session
+    engine.dispose()
+
+
+@pytest.fixture(autouse=True)
+def _clean_tables(_schema):
+    """Empty every table after each test so tests stay independent."""
+    yield
+    engine = create_engine(get_settings().sync_database_url)
+    with engine.begin() as conn:
+        for table in reversed(Base.metadata.sorted_tables):
+            conn.execute(table.delete())
+    engine.dispose()
+
+
+@pytest.fixture(scope="session")
+def client(_schema):
+    from fastapi.testclient import TestClient
+
+    from app.main import app
+
+    with TestClient(app) as test_client:
+        yield test_client

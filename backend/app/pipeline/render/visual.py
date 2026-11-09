@@ -1,8 +1,11 @@
+import logging
 import os
 import random
 from typing import Any, List
 from moviepy import VideoFileClip, TextClip, CompositeVideoClip, AudioFileClip, ColorClip, VideoClip, ImageClip, concatenate_videoclips
 from pydub import AudioSegment
+
+logger = logging.getLogger(__name__)
 
 BG_MUSIC_PATH = 'static/default/sounds/'
 
@@ -36,7 +39,7 @@ class VisualGenerator:
             cut_end = float(scene.get("cut_end", 0))
             
             if not src or not str(src).strip():
-                print(f"Skipping scene at {start_time}s — no video_src: {scene}")
+                logger.warning("Skipping scene at %ss - no video_src: %s", start_time, scene)
                 return None
             
             try:

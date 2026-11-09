@@ -1,8 +1,12 @@
+import logging
 from typing import Any
 from openai import AsyncOpenAI
 import instructor 
 
+from app.core.config import get_settings
 from app.db.crud import get_settings_db
+
+logger = logging.getLogger(__name__)
 
 
 class LLM:
@@ -57,7 +61,7 @@ class LLM:
             raise ValueError("Provider and API key must be set to initialize LLM client.")
 
         if self.provider == "xai":
-            self.client = instructor.from_openai(AsyncOpenAI(api_key=api_key, base_url="https://api.x.ai/v1"))
+            self.client = instructor.from_openai(AsyncOpenAI(api_key=api_key, base_url=get_settings().xai_base_url))
         elif self.provider == "openai":
             self.client = instructor.from_openai(AsyncOpenAI(api_key=api_key))
         else:
@@ -80,12 +84,10 @@ class LLM:
         if not ai_model:
             raise ValueError("AI model not specified in provider settings.")
         
-        print("SENDING REQUEST TO XAI:")
-        print("="*20)
-        print("Messages:")
-        for msg in messages:
-            print(f"{msg['role']}: {msg['content']}")
-        print("="*20)
+        logger.info("Sending request to %s (model=%s)", self.provider, ai_model)
+        if logger.isEnabledFor(logging.DEBUG):
+            for msg in messages:
+                logger.debug("%s: %s", msg['role'], msg['content'])
 
         response = await self.client.chat.completions.create(
             model=ai_model,
@@ -93,10 +95,8 @@ class LLM:
             response_model=response_format,
             temperature=temperature
         )
-        print("GOT RESPONSE FROM XAI:")
-        print("="*20)
-        print(response)
-        print("="*20)
+        logger.info("Got response from %s", self.provider)
+        logger.debug("Response: %s", response)
         return response
     
     async def generate_openai(self, messages: Any=None, response_format: Any=None, temperature: float=0.7):

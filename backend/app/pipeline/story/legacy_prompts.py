@@ -1,9 +1,8 @@
 from math import floor
-import os
+import logging
 import random  # Added missing import
 from openai import OpenAI
 import instructor
-from dotenv import load_dotenv
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
 import json  # Added for debug logging
@@ -11,12 +10,14 @@ import re
 import time
 import copy
 
-load_dotenv()
+from app.core.config import get_settings
 
-OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
-XAI_API_KEY = os.getenv('XAI_API_KEY')
+logger = logging.getLogger(__name__)
 
-open_ai_client = instructor.from_openai(OpenAI(api_key=XAI_API_KEY, base_url="https://api.x.ai/v1"))
+_settings = get_settings()
+XAI_API_KEY = _settings.xai_api_key.get_secret_value() if _settings.xai_api_key is not None else None
+
+open_ai_client = instructor.from_openai(OpenAI(api_key=XAI_API_KEY, base_url=_settings.xai_base_url))
 
 ai_model = "grok-4-1-fast-reasoning"
 
@@ -344,7 +345,7 @@ def add_scenes_to_story(splitted_story: List[Any]) -> List[Any]:
             return response.model_dump()["story"]
            
         except Exception as e:
-            print(f"Error in scene generation: {e}")
+            logger.exception("Error in scene generation: %s", e)
             return {}
 
     # === Main Loop: Try up to 3 times to fill all segments ===
@@ -367,10 +368,8 @@ def add_scenes_to_story(splitted_story: List[Any]) -> List[Any]:
                 segment_miss_scenes_indices.append(idx)
 
 
-        print("-----------------------")
-        print(json.dumps(filtered_story, indent=2))
-        print("-----------------------")
-        print(f"Attempt {attempt + 1}: Missing scenes for segments {segment_miss_scenes_indices}")
+        logger.debug("Filtered story: %s", json.dumps(filtered_story, indent=2))
+        logger.info("Attempt %d: missing scenes for segments %s", attempt + 1, segment_miss_scenes_indices)
 
         if(len(segment_miss_scenes_indices) == 0):
             break
@@ -548,11 +547,9 @@ def prepare_story_for_db(story_with_scenes, splitted_story):
                 segment["scenes"] = story_with_scenes[i].get("scenes", [])
                 i += 1
     try:
-        print("------------JOINED------------")
-        print(json.dumps(splitted_story, indent=2))
-        print("-------------------------------")
-    except:
-        print("not working")
+        logger.debug("Joined story: %s", json.dumps(splitted_story, indent=2))
+    except Exception:
+        logger.warning("Could not serialize joined story for logging")
 
     # Step 1: Add start_time to each segment (sum of previous est_durations)
     current_time = 0
@@ -606,10 +603,8 @@ class CharacterUpdate(BaseModel):
 
 def get_persistant_characters(scenes, gathered_data):
     
-    print("----scenes----")
-    print(json.dumps(scenes, indent=2))
-    print("----gathered data----")
-    print(json.dumps(gathered_data, indent=2))
+    logger.debug("Scenes: %s", json.dumps(scenes, indent=2))
+    logger.debug("Gathered data: %s", json.dumps(gathered_data, indent=2))
 
     messages = [
     {
@@ -717,9 +712,7 @@ def add_character_changes(story, character_updates):
     # add character to given scenes
     for character in character_updates["persistant_characters"]:
         for scene_index in character["scenes"]:
-            print(scene_index)
-            print(len(story["scenes"]))
-            print(story["scenes"][scene_index])
+            logger.debug("Scene %s of %d: %s", scene_index, len(story["scenes"]), story["scenes"][scene_index])
             if not "characters" in story["scenes"][scene_index]:
                 story["scenes"][scene_index]["characters"] = []
 

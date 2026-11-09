@@ -1,0 +1,14 @@
+# Tool configuration only (the backend is not packaged).
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "session"
+filterwarnings = [
+    # pydub warns at import time when ffmpeg is not on PATH; irrelevant for tests.
+    "ignore:Couldn't find ffmpeg or avconv:RuntimeWarning",
+    # Third-party deprecation noise (starlette TestClient, google-genai on Python 3.14).
+    "ignore::DeprecationWarning:starlette.*",
+    "ignore::DeprecationWarning:google.*",
+]

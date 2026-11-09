@@ -1,13 +1,16 @@
+import logging
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from app.realtime.connection_manager import socket_manager  # Import the global instance
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
 
 @router.websocket("/ws")
 async def global_ws(websocket: WebSocket):
-    print("New WebSocket connection established.")
+    logger.info("New WebSocket connection established.")
     await socket_manager.connect(websocket)
     try:
         while True:
@@ -20,7 +23,7 @@ async def global_ws(websocket: WebSocket):
 
 @router.websocket("/ws/responses")
 async def responses_ws(websocket: WebSocket):
-    print("New Responses WebSocket connection established.")
+    logger.info("New responses WebSocket connection established.")
     await socket_manager.connect(websocket, connection_type="responses")
     try:
         while True:

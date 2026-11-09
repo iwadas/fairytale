@@ -1,3 +1,4 @@
+import logging
 import os
 
 from fastapi import APIRouter, Body, UploadFile, File, HTTPException
@@ -8,6 +9,8 @@ from app.db.crud import create_music_db, get_music_db, update_music_db, delete_m
 from typing import Optional
 
 from pydub import AudioSegment
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/music", tags=["music"])
 
@@ -55,7 +58,7 @@ def get_audio_duration(audio_file_path: str) -> float:
         audio = AudioSegment.from_file(audio_file_path)
         return len(audio) / 1000.0
     except Exception as e:
-        print(f"Error calculating duration: {e}")
+        logger.exception("Error calculating duration of %s: %s", audio_file_path, e)
         return 0.0
 
 @router.put("/upload-music/{music_id}")

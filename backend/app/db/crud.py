@@ -1,6 +1,5 @@
 from typing import Any, Dict, List, Optional
 import uuid
-from requests import session
 from sqlalchemy import select, delete
 from app.db.models import Project, SceneImage, Voiceover, Place, Scene, Character, Music, Settings
 from app.db.decorators import with_session # Import your new tool

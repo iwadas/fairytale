@@ -1,6 +1,9 @@
+import logging
 from fastapi import WebSocket
 from typing import List, Dict, Any, Optional
 import uuid
+
+logger = logging.getLogger(__name__)
 
 class ConnectionManager:
     """
@@ -16,13 +19,13 @@ class ConnectionManager:
     async def connect(self, websocket: WebSocket, connection_type: str = "global"):
         """Accepts a new connection and routes it to the correct pool."""
         await websocket.accept()
-        print(f"✅ New WebSocket connection established for '{connection_type}'")
+        logger.info("New WebSocket connection established for '%s'", connection_type)
 
         if connection_type in self.active_connections:
             self.active_connections[connection_type].append(websocket)
         else:
             # Fallback/Error handling if an unknown type is passed
-            print(f"Warning: Attempted to connect with unknown type '{connection_type}'")
+            logger.warning("Attempted to connect with unknown type '%s'", connection_type)
 
     def disconnect(self, websocket: WebSocket):
         """Removes a connection from whichever list it belongs to."""
@@ -39,14 +42,14 @@ class ConnectionManager:
             return
 
         connections = self.active_connections[connection_type]
-        print(f"Broadcasting JSON to {len(connections)} '{connection_type}' clients.")
+        logger.debug("Broadcasting JSON to %d '%s' clients.", len(connections), connection_type)
         
         # Iterate over a copy of the list [:] to allow safe removal during iteration
         for connection in connections[:]:
             try:
                 await connection.send_json(message)
             except Exception as e:
-                print(f"Error sending message, disconnecting socket. Error: {e}")
+                logger.warning("Error sending message, disconnecting socket: %s", e)
                 self.disconnect(connection)
 
 

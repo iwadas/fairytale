@@ -1,3 +1,4 @@
+import logging
 import string
 from typing import Optional
 import uuid
@@ -10,10 +11,12 @@ from fastapi.concurrency import run_in_threadpool
 import aiofiles
 
 from fastapi import HTTPException
-from dotenv import load_dotenv
 
+from app.core.config import get_settings
 from app.db.crud import get_settings_db
 from runware import Runware, IVideoInference, IFrameImage, IVideoInputs, IBytedanceProviderSettings
+
+logger = logging.getLogger(__name__)
 
 
 class DictWrapper:
@@ -49,7 +52,6 @@ class Diffusion:
         :param provider: Description
         :type provider: str
         """
-        load_dotenv()
         self.provider = provider
         self.diffusion_model = diffusion_model
         self.resolution = resolution
@@ -102,7 +104,9 @@ class Diffusion:
 
     def set_client(self):
         if self.provider == "runware":
-            self.api_key = os.getenv("RUNWARE_API_KEY")
+            # NOTE: the env key intentionally overrides any key stored in DB settings (existing behavior).
+            runware_api_key = get_settings().runware_api_key
+            self.api_key = runware_api_key.get_secret_value() if runware_api_key else None
             if not self.api_key:
                 raise ValueError("RUNWARE_API_KEY not found in environment variables.")
             self.client = Runware(api_key=self.api_key)
@@ -146,7 +150,7 @@ class Diffusion:
                 raise ValueError(f'Image path not found: {frame["src"]}')
             
             image_data_uri = await run_in_threadpool(self.encode_image_to_base64, frame["src"])
-            print("Including image in payload")
+            logger.debug("Including image in payload: %s", frame["src"])
             
             # Build a raw dictionary instead of using the broken IFrameImage class
             if len(frames) == 1:
@@ -187,7 +191,7 @@ class Diffusion:
                 raise ValueError(f'Image path not found: {frame["src"]}')
             
             image_data_uri = await run_in_threadpool(self.encode_image_to_base64, frame["src"])
-            print("Including image in payload")
+            logger.debug("Including image in payload: %s", frame["src"])
             if(len(frames) == 1):
                 frame_image = IFrameImage(inputImage=image_data_uri)
             else:
@@ -235,7 +239,7 @@ class Diffusion:
             raise ValueError("Runware client not initialized.")
 
 
-        output_dir = os.getenv("SCENE_VIDEO_DIR", "static/videos/scenes")
+        output_dir = get_settings().scene_video_dir
         os.makedirs(output_dir, exist_ok=True)
 
         filename = self.normalize_filename(filename) if filename else str(uuid.uuid4())
@@ -247,7 +251,7 @@ class Diffusion:
 
             frames = await self.get_frames_runware_old(frames) if frames else None
 
-            print("diffusion_model:", self.diffusion_model)
+            logger.info("Runware video generation with model %s", self.diffusion_model)
 
             # KLINGAI
             if "klingai" in self.diffusion_model.lower():
@@ -280,25 +284,20 @@ class Diffusion:
 
             task_response = await self.client.videoInference(requestVideo=request)
             task_uuid = task_response.taskUUID
-            print(f"Video generation started. Task UUID: {task_uuid}")
+            logger.info("Video generation started. Task UUID: %s", task_uuid)
 
             videos = await self.client.getResponse(
                 taskUUID=task_uuid, 
                 numberResults=1
             )
 
-            print("\n--- DEBUG: RAW GETRESPONSE ---")
-            print(f"Type of response: {type(videos)}")
-
-            # If it returned a list, let's look inside the first item
-            if isinstance(videos, list) and len(videos) > 0:
-                print(f"Type of item 0: {type(videos[0])}")
-                # vars() extracts all the attributes of the object so you can actually read them
-                print(f"Contents of item 0: {vars(videos[0]) if hasattr(videos[0], '__dict__') else videos[0]}")
-            else:
-                # If it's not a list, just print whatever it is
-                print(f"Contents: {vars(videos) if hasattr(videos, '__dict__') else videos}")
-            print("------------------------------\n")
+            if logger.isEnabledFor(logging.DEBUG):
+                logger.debug("Raw getResponse type: %s", type(videos))
+                if isinstance(videos, list) and len(videos) > 0:
+                    item = videos[0]
+                    logger.debug("Item 0 (%s): %s", type(item), vars(item) if hasattr(item, '__dict__') else item)
+                else:
+                    logger.debug("Contents: %s", vars(videos) if hasattr(videos, '__dict__') else videos)
 
             # 1 videos is expected
             if not videos or len(videos) == 0:
@@ -306,7 +305,7 @@ class Diffusion:
             await self.download_mp4_from_url(videos[0].videoURL, output_path)
             return output_path
         except Exception as e:
-            print(f"Error during Runware video generation: {e}")
+            logger.exception("Error during Runware video generation: %s", e)
             raise HTTPException(status_code=500, detail=f"Video generation failed: {str(e)}")
         finally:
             await self.client.disconnect()

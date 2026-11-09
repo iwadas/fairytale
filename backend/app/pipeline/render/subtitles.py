@@ -1,3 +1,4 @@
+import logging
 import os
 from typing import List, Tuple, Dict, Any
 from moviepy import VideoClip
@@ -8,6 +9,9 @@ from moviepy import VideoClip
 from app.pipeline.render.text.border_text_generator import generate_border_text
 from app.pipeline.render.text.invert_text_mask import generate_invert_mask_text
 from app.pipeline.render.text.karaoke_text import generate_karaoke_text
+from app.core.config import get_settings
+
+logger = logging.getLogger(__name__)
 
 GLUE_PUNCTUATION = {",", ".", "?", "!", ":", ";", "-", "–", "—"}
 
@@ -31,7 +35,7 @@ class SubtitleGenerator:
             return RemotionKaraokeSubtitleGenerator(self._builder, self._visuals).generate()
         else:
             if(subtitle_type != "none"):
-                print(f"Unknown subtitle type: {subtitle_type}. Defaulting to 'None'")
+                logger.warning("Unknown subtitle type: %s. Defaulting to 'None'", subtitle_type)
             return self._visuals
             
         
@@ -155,19 +159,7 @@ class RemotionKaraokeSubtitleGenerator:
         from moviepy import VideoFileClip, CompositeVideoClip
 
         
-        BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-        remotion_path = os.path.abspath(
-            os.path.join(
-                BASE_DIR,
-                "..",
-                "..",
-                "..",
-                "..",
-                "services",
-                "render-engine",
-                "remotion-app"
-            )
-        )
+        remotion_path = str(get_settings().remotion_app_dir)
         subtitles_overlay_path = os.path.join(remotion_path, "out", "video.mov")
         overlay = VideoFileClip(subtitles_overlay_path)
         overlay = overlay.with_mask(overlay.to_mask())

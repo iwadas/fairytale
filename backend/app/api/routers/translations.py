@@ -1,7 +1,6 @@
-import os  
+import logging
 from openai import OpenAI
 import instructor
-from dotenv import load_dotenv
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
 import json  
@@ -9,8 +8,12 @@ import re
 from app.media.storage import generate_speech, filename_from_name  # FIXME(cleanup): generate_speech, filename_from_name no longer exist
 import uuid
 
-load_dotenv()
-OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
+from app.core.config import get_settings
+
+logger = logging.getLogger(__name__)
+
+_settings = get_settings()
+OPENAI_API_KEY = _settings.openai_api_key.get_secret_value() if _settings.openai_api_key is not None else None
 open_ai_client = instructor.from_openai(OpenAI(api_key=OPENAI_API_KEY))
 
 LANGUAGES = [
@@ -87,8 +90,7 @@ def get_translated_voiceovers(language_index, voiceovers):
     )
 
     translated_voiceovers_pre = response.model_dump()["voiceovers"]
-    print("-----------translated pre------------")
-    print(translated_voiceovers_pre)
+    logger.debug("Translated voiceovers (before correction): %s", translated_voiceovers_pre)
 
     messages_2 = [
         {
@@ -115,11 +117,9 @@ def get_translated_voiceovers(language_index, voiceovers):
     )
 
     translated_voiceovers = response_2.model_dump()["voiceovers"]
-    print("-----------translated------------")
-    print(translated_voiceovers)
+    logger.debug("Translated voiceovers: %s", translated_voiceovers)
 
-
-    print("-----------geting pauses----------")
+    logger.info("Splitting translated voiceovers into pause segments")
     for vo in translated_voiceovers:
         splitted = re.split('[,.]', vo["text"])
         splitted_shorter = []
@@ -148,8 +148,7 @@ def get_translated_voiceovers(language_index, voiceovers):
 
         vo["text_with_pauses"] = content_with_pauses
 
-    print("--------------splitted with pauses -------------")
-    print(json.dumps(translated_voiceovers))
+    logger.debug("Voiceovers split with pauses: %s", json.dumps(translated_voiceovers))
 
     # for eahc voiceover we need to generate speech
 
@@ -165,8 +164,7 @@ def get_translated_voiceovers(language_index, voiceovers):
         vo["src"] = audio_path
         vo["duration"] = duration
     
-    print("after generting in eleven labs")
-    print(json.dumps(translated_voiceovers))
+    logger.debug("Voiceovers after speech generation: %s", json.dumps(translated_voiceovers))
 
     return translated_voiceovers
 

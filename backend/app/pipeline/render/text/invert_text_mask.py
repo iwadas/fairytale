@@ -1,8 +1,11 @@
+import logging
 import random
 import numpy as np
 from typing import List, Tuple, Dict, Any
 from moviepy import VideoClip, TextClip, CompositeVideoClip, ImageClip
 from moviepy import vfx
+
+logger = logging.getLogger(__name__)
 
 def generate_invert_mask_text(
     video_size: Tuple[int, int],
@@ -21,7 +24,7 @@ def generate_invert_mask_text(
 
     all_knocked_clips = []
     
-    print("Available fonts:", fonts)
+    logger.debug("Available fonts: %s", fonts)
 
     for item in voiceover_data:
         txt = item["word"]
@@ -39,7 +42,7 @@ def generate_invert_mask_text(
             FONT_SIZE = 100
         
         FONT = random.choice(list(fonts))
-        print(f"Processing '{txt}' with Font: {FONT}")
+        logger.debug("Processing '%s' with font: %s", txt, FONT)
 
         # 1. Create the Clip used for the MASK (The hole cutter)
         # Note: Stroke here just dilates the mask slightly; we keep it black or remove it.
@@ -64,7 +67,6 @@ def generate_invert_mask_text(
              
         mask_img = mask_text_clip.mask.get_frame(0)
         h, w = mask_img.shape
-        # print("Mask size:", w, "x", h)
 
         full_mask_array = np.zeros((visuals.h, visuals.w), dtype=float)
 

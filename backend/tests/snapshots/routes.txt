@@ -1,0 +1,43 @@
+['GET', 'HEAD'] /docs swagger_ui_html
+['GET', 'HEAD'] /docs/oauth2-redirect swagger_ui_redirect
+['POST'] /generators/fix-character-prompt fix_character_prompt
+['POST'] /generators/fix-scene-image-prompt fix_scene_image_prompt
+['POST'] /generators/fix-scene-video-prompt fix_scene_video_prompt
+['PUT'] /music/upload-music/{music_id} upload_music
+['DELETE'] /music/{music_id} delete_music
+['PUT'] /music/{music_id} update_music
+['POST'] /music/{music_id}/duplicate duplicate_music
+['POST'] /music/{project_id} create_music
+['GET', 'HEAD'] /openapi.json openapi
+['GET'] /projects get_projects
+['POST'] /projects/add-translations/{project_id} add_translations
+['POST'] /projects/copy/{project_id} copy_project
+['POST'] /projects/create-project create_project
+['POST'] /projects/download/{project_id} download_project
+['POST'] /projects/generate-script script_generation
+['DELETE'] /projects/{project_id} delete_project
+['GET'] /projects/{project_id} get_project
+['PUT'] /projects/{project_id} update_project
+['GET', 'HEAD'] /redoc redoc_html
+['POST'] /scenes/add-character-to-scene add_character_to_scene
+['POST'] /scenes/fix-image-prompt fix_image_prompt
+['POST'] /scenes/fix-video-prompt/{scene_id} fix_video_prompt
+['POST'] /scenes/generate-image-prompts generate_scene_image_prompt
+['POST'] /scenes/generate-image/{scene_id} generate_scene_image
+['POST'] /scenes/generate-video/{scene_id} generate_scene_video
+['DELETE'] /scenes/remove-image/{scene_image_id} remove_scene_image
+['PUT'] /scenes/upload-image/{scene_id} upload_scene_image
+['PUT'] /scenes/upload-video/{scene_id} upload_scene_video
+['POST'] /scenes/{project_id} create_scene
+['DELETE'] /scenes/{scene_id} delete_scene
+['POST'] /scenes/{scene_id}/duplicate duplicate_scene
+['GET'] /settings get_settings
+['PUT'] /settings update_settings
+['WS'] /static 
+['POST'] /voiceovers/combine/{project_id} combine_voiceovers
+['POST'] /voiceovers/generate/{voiceover_id} generate_voiceover
+['POST'] /voiceovers/{project_id} create_voiceover
+['DELETE'] /voiceovers/{voiceover_id} delete_voiceover
+['POST'] /voiceovers/{voiceover_id}/duplicate duplicate_voiceover
+['WS'] /ws global_ws
+['WS'] /ws/responses responses_ws

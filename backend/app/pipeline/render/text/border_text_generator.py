@@ -1,8 +1,11 @@
+import logging
 import cv2
 import numpy as np
 import random
 from typing import Any, List, Tuple, Dict
 from moviepy import VideoFileClip, TextClip, CompositeVideoClip, ImageClip, VideoClip
+
+logger = logging.getLogger(__name__)
 
 NEON_COLOR_RGB = (242, 228, 124)
 
@@ -42,7 +45,7 @@ def generate_border_text(
 ) -> VideoClip:
     
     layers = [visuals]
-    print(f"Generating Neon Edges + Borders for {len(voiceover_data)} segments...")
+    logger.info("Generating neon edges + borders for %d segments...", len(voiceover_data))
 
     for item in voiceover_data:
         txt = item["word"]

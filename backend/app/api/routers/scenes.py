@@ -1,3 +1,4 @@
+import logging
 import asyncio
 
 from fastapi import APIRouter, HTTPException, Body, UploadFile, File, Form, BackgroundTasks
@@ -13,6 +14,8 @@ from pydantic import BaseModel, Field
 from app.media.storage import save_file
 
 from app.realtime.connection_manager import WebSocketTaskManager, socket_manager
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/scenes", tags=["scenes"])
 
@@ -71,7 +74,7 @@ async def generate_scene_image_prompt(
 
     new_scene_descriptions = response.scenes
 
-    print("Generated scene image prompt:", new_scene_descriptions)
+    logger.debug("Generated scene image prompts: %s", new_scene_descriptions)
     return {"new_scene_descriptions": new_scene_descriptions}
 
 
@@ -199,7 +202,7 @@ def get_video_duration_sync(file_path: str) -> float:
         with VideoFileClip(file_path) as clip:
             return clip.duration
     except Exception as e:
-        print(f"Error getting duration: {e}")
+        logger.exception("Error getting duration of %s: %s", file_path, e)
         return 0.0
 
 
@@ -281,13 +284,12 @@ async def process_video_task(scene_id: str, prompt: str, duration: float, frames
         await socket_notification_manager.send_notification(status="finished", message="✅ Video saved successfully!")
         
         
-        print("SENDING TO NOT GLOBAL WEBSOCKET")
         await socket_response_manager.send_response(status="completed", data={"video_src": video_src}, source={"scene_id": scene_id})
 
     except Exception as e:
         await socket_notification_manager.send_notification(status="failed", message=f"❌ Video generation failed. Error: {e}")
         await socket_response_manager.send_response_failed()
-        print(f"Background task FAILED for scene {scene_id}: {e}")
+        logger.exception("Background video generation failed for scene %s: %s", scene_id, e)
 
 @router.post("/generate-video/{scene_id}")
 async def generate_scene_video(
@@ -296,13 +298,13 @@ async def generate_scene_video(
     prompt: str = Body(..., embed=True),
     duration: int = Body(3, embed=True),
 ):
-    print(scene_id)
+    logger.info("Video generation requested for scene %s", scene_id)
     scene = await get_scene_db(scene_id)
 
     if not scene:
         raise HTTPException(404, "Scene not found")
     
-    print("scene[images]", scene["images"])
+    logger.debug("Scene %s images: %s", scene_id, scene["images"])
     
     frames = [
         {"src": img["src"], "time": img["time"]}
