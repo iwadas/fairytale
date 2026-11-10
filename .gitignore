@@ -58,3 +58,6 @@ services/render-engine/**/out/
 *.log
 *.tmp
 *.bak
+
+# Muse (OpenCode) delegation briefs/logs
+.muse/
